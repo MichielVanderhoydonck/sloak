@@ -1,0 +1,60 @@
+version: 3
+workdir: .
+allow:
+    depOnAnyVendor: false 
+    deepScan: true
+
+
+excludeFiles:
+  - "^.*_test\\.go$"
+  - "^.*\/test\/.*$"
+
+vendors:
+    3rd-cobra:
+        in: github.com/spf13/cobra
+
+components:
+    Domain:
+        in: ['internal/core/domain/**'] 
+    
+    Port:
+        in: ['internal/core/port/**']
+
+    Application:
+        in: ['internal/core/service/**']
+
+    Adapter:
+        in: ['internal/adapter/**']
+        
+    CLI:
+        in: ['cmd/**']
+
+    Util:
+        in: ['internal/util/**']
+
+deps:
+    Domain:
+        mayDependOn: [Domain] 
+        canUse: []
+        anyVendorDeps: true
+
+    Port:
+        mayDependOn: [Domain]
+        canUse: []
+
+    Application:
+        mayDependOn: [Domain, Port, Util]
+        canUse: []
+
+    Adapter:
+        mayDependOn: [Domain, Port, Application, Util] 
+        canUse: []
+
+    CLI:
+        mayDependOn: [CLI, Domain, Port, Application, Util] 
+        canUse: [3rd-cobra]
+
+    Util:
+        mayDependOn: []
+        canUse: []
+        anyVendorDeps: true
