@@ -14,6 +14,9 @@ import (
 
 	dependencyCmd "github.com/MichielVanderhoydonck/sloak/cmd/dependency"
     dependencyService "github.com/MichielVanderhoydonck/sloak/internal/core/service/dependency"
+
+	translatorCmd "github.com/MichielVanderhoydonck/sloak/cmd/translator"
+    translatorService "github.com/MichielVanderhoydonck/sloak/internal/core/service/translator"
 )
 
 var rootCmd = &cobra.Command{
@@ -44,4 +47,8 @@ func init() {
 	depSvc := dependencyService.NewAvailabilityService()
     dependencyCmd.SetService(depSvc)
     calculateCmd.AddCommand(dependencyCmd.NewDependencyCmd())
+
+	transSvc := translatorService.NewTranslatorService()
+    translatorCmd.SetService(transSvc)
+    calculateCmd.AddCommand(translatorCmd.NewTranslatorCmd())
 }

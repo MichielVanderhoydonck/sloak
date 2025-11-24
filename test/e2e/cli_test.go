@@ -92,3 +92,19 @@ func TestDependencyE2E(t *testing.T) {
 		t.Errorf("Expected '99.999900%%', got: %s", outStr)
 	}
 }
+
+func TestTranslatorE2E(t *testing.T) {
+	// Test translating 99.0% -> Should allow ~14m per day
+	cmd := exec.Command(sloakBinaryPath, "calculate", "translator", "--nines=99.0")
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+
+	if err != nil {
+		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
+	}
+
+	// 1% of 24h = 0.24h = 14.4 mins = 14m24s
+	if !strings.Contains(outStr, "Daily Allowed:     14m24s") {
+		t.Errorf("Expected 'Daily Allowed: 14m24s', got: %s", outStr)
+	}
+}
