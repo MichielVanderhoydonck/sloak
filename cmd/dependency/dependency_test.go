@@ -31,14 +31,13 @@ func TestDependencyCommand(t *testing.T) {
 	dependency.SetService(svc)
 
 	output, restore := captureOutput(t)
-	// No defer here, manual restore
 	
 	cmd := dependency.NewDependencyCmd()
 	cmd.SetArgs([]string{"--components=99.9,99.9", "--type=serial"})
 	
 	cmd.Execute()
 	
-	restore() // Restore before assertions
+	restore()
 
 	outStr := output.String()
 	if !strings.Contains(outStr, "Total Availability: 99.800100%") {
