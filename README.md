@@ -1,4 +1,4 @@
-# SLOAK
+<img src="./sloak.png" width="256"> 
 
 ## Service-Level-Objective-Army-Knife
 The primary goal of this tool is to provide a set of command-line utilities for designing service-level objectives (SLOs). 
@@ -41,3 +41,11 @@ Binary testing can be done invocing the following:
 go test -v -tags=e2e ./test/e2e
 ```
 
+## Building
+
+Creating a binary to run is as simple as:
+```bash
+go build -o sloak cmd/sloak/main.go
+```
+From there on you can perform `./sloak` from that directory.
+No publishing or containerisation planned at this time, to be revisited once it's in more complete state.

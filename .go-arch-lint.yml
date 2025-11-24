@@ -32,6 +32,9 @@ components:
     Util:
         in: ['internal/util/**']
 
+    TestUtil:
+        in: ['internal/testutil/**']
+
 deps:
     Domain:
         mayDependOn: [Domain] 
@@ -55,6 +58,11 @@ deps:
         canUse: [3rd-cobra]
 
     Util:
+        mayDependOn: []
+        canUse: []
+        anyVendorDeps: true
+
+    TestUtil:
         mayDependOn: []
         canUse: []
         anyVendorDeps: true

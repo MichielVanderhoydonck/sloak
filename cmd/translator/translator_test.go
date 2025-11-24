@@ -1,15 +1,13 @@
 package translator_test
 
 import (
-	"bytes"
-	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/translator"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/translator"
+	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 )
 
 type mockService struct {
@@ -31,7 +29,7 @@ func TestTranslatorCommand(t *testing.T) {
 	svc := &mockService{res: mockRes, err: nil}
 	translator.SetService(svc)
 
-	output, restore := captureOutput(t)
+	output, restore := testutil.CaptureOutput(t)
 	
 	cmd := translator.NewTranslatorCmd()
 	cmd.SetArgs([]string{"--nines=99.9"})
@@ -47,23 +45,4 @@ func TestTranslatorCommand(t *testing.T) {
 	if !strings.Contains(outStr, "Daily Allowed:     1m26s") {
 		t.Errorf("Missing daily downtime in output: %s", outStr)
 	}
-}
-
-func captureOutput(t *testing.T) (output *bytes.Buffer, restore func()) {
-	t.Helper()
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	output = new(bytes.Buffer)
-	done := make(chan struct{})
-	go func() {
-		io.Copy(output, r)
-		close(done)
-	}()
-	restore = func() {
-		w.Close()
-		<-done
-		os.Stdout = old
-	}
-	return output, restore
 }

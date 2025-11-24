@@ -1,15 +1,13 @@
 package burnrate_test 
 
 import (
-	"bytes"
-	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/burnrate"
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/burnrate"
+	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 )
 
 type mockBurnRateService struct {
@@ -37,7 +35,7 @@ func TestBurnRateCommand(t *testing.T) {
 
 	burnrate.SetService(mockSvc)
 
-	output, restoreStdout := captureOutput(t)
+	output, restoreStdout := testutil.CaptureOutput(t)
 
 	cmd := burnrate.NewBurnRateCmd()
 	cmd.SetArgs([]string{
@@ -63,23 +61,4 @@ func TestBurnRateCommand(t *testing.T) {
 	if !strings.Contains(outStr, "Status: CRITICAL!") {
 		t.Error("Output string did not contain the expected CRITICAL status")
 	}
-}
-
-func captureOutput(t *testing.T) (output *bytes.Buffer, restore func()) {
-	t.Helper()
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	output = new(bytes.Buffer)
-	done := make(chan struct{})
-	go func() {
-		io.Copy(output, r)
-		close(done) 
-	}()
-	restore = func() {
-		w.Close()
-		<-done 
-		os.Stdout = old
-	}
-	return output, restore
 }
