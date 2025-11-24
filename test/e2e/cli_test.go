@@ -73,3 +73,22 @@ func TestBurnRateE2E(t *testing.T) {
 		t.Errorf("Expected 'CRITICAL!' in output, got: %s", outStr)
 	}
 }
+
+func TestDependencyE2E(t *testing.T) {
+	// 99.9 and 99.9 in parallel should be 99.9999
+	cmd := exec.Command(sloakBinaryPath, "calculate", "dependency", 
+		"--components=99.9,99.9", 
+		"--type=parallel",
+	)
+
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+
+	if err != nil {
+		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
+	}
+
+	if !strings.Contains(outStr, "Total Availability: 99.999900%") {
+		t.Errorf("Expected '99.999900%%', got: %s", outStr)
+	}
+}

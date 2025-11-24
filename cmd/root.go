@@ -11,6 +11,9 @@ import (
 
 	burnrateService "github.com/MichielVanderhoydonck/sloak/internal/core/service/burnrate"
 	errorbudgetService "github.com/MichielVanderhoydonck/sloak/internal/core/service/errorbudget"
+
+	dependencyCmd "github.com/MichielVanderhoydonck/sloak/cmd/dependency"
+    dependencyService "github.com/MichielVanderhoydonck/sloak/internal/core/service/dependency"
 )
 
 var rootCmd = &cobra.Command{
@@ -37,4 +40,8 @@ func init() {
 	burnRateSvc := burnrateService.NewBurnRateService()
 	burnrateCmd.SetService(burnRateSvc)
 	calculateCmd.AddCommand(burnrateCmd.NewBurnRateCmd())
+
+	depSvc := dependencyService.NewAvailabilityService()
+    dependencyCmd.SetService(depSvc)
+    calculateCmd.AddCommand(dependencyCmd.NewDependencyCmd())
 }
