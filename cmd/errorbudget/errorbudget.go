@@ -60,7 +60,7 @@ func runErrorBudgetCmd(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("\n--- Error Budget Calculation ---\n")
-	fmt.Printf("SLO Target: %.3f%%\n", result.TargetSLO.Value) 
+	fmt.Printf("SLO Target: %.3f%%\n", result.TargetSLO.Value)
 	fmt.Printf("Time Window: %s\n", util.FormatDuration(result.TotalDuration))
 	fmt.Printf("--------------------------------\n")
 	fmt.Printf("Error Budget: %.5f%% of time\n", result.ErrorBudget)

@@ -21,39 +21,39 @@ func (m *mockCalculatorService) CalculateBudget(params errorbudgetDomain.Calcula
 }
 
 func TestErrorBudgetCommand(t *testing.T) {
-    slo99_95, _ := common.NewSLOTarget(99.95)
-    mockResult := errorbudgetDomain.BudgetResult{
-        TargetSLO:     slo99_95,
-        TotalDuration: 30 * 24 * time.Hour,
-        AllowedError:  (21 * time.Minute) + (36 * time.Second),
-        ErrorBudget:   0.05,
-    }
+	slo99_95, _ := common.NewSLOTarget(99.95)
+	mockResult := errorbudgetDomain.BudgetResult{
+		TargetSLO:     slo99_95,
+		TotalDuration: 30 * 24 * time.Hour,
+		AllowedError:  (21 * time.Minute) + (36 * time.Second),
+		ErrorBudget:   0.05,
+	}
 
-    mockSvc := &mockCalculatorService{
-        MockResult: mockResult,
-        MockError:  nil,
-    }
-    errorbudget.SetService(mockSvc)
+	mockSvc := &mockCalculatorService{
+		MockResult: mockResult,
+		MockError:  nil,
+	}
+	errorbudget.SetService(mockSvc)
 
-    output, restoreStdout := testutil.CaptureOutput(t)
+	output, restoreStdout := testutil.CaptureOutput(t)
 
-    cmd := errorbudget.NewErrorBudgetCmd() 
-    cmd.SetArgs([]string{
-        "--slo=99.95",
-        "--window=30d",
-    })
+	cmd := errorbudget.NewErrorBudgetCmd()
+	cmd.SetArgs([]string{
+		"--slo=99.95",
+		"--window=30d",
+	})
 
-    cmd.Execute()
+	cmd.Execute()
 
-    restoreStdout() 
+	restoreStdout()
 
-    outStr := output.String()
-    t.Log(outStr)
+	outStr := output.String()
+	t.Log(outStr)
 
-    if !strings.Contains(outStr, "Allowed Downtime: 21m36s") {
-        t.Error("Output string did not contain the expected allowed downtime")
-    }
-    if !strings.Contains(outStr, "Error Budget: 0.05000%") {
-        t.Error("Output string did not contain the expected error budget percentage")
-    }
+	if !strings.Contains(outStr, "Allowed Downtime: 21m36s") {
+		t.Error("Output string did not contain the expected allowed downtime")
+	}
+	if !strings.Contains(outStr, "Error Budget: 0.05000%") {
+		t.Error("Output string did not contain the expected error budget percentage")
+	}
 }

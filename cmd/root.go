@@ -13,10 +13,10 @@ import (
 	errorbudgetService "github.com/MichielVanderhoydonck/sloak/internal/core/service/errorbudget"
 
 	dependencyCmd "github.com/MichielVanderhoydonck/sloak/cmd/dependency"
-    dependencyService "github.com/MichielVanderhoydonck/sloak/internal/core/service/dependency"
+	dependencyService "github.com/MichielVanderhoydonck/sloak/internal/core/service/dependency"
 
 	translatorCmd "github.com/MichielVanderhoydonck/sloak/cmd/translator"
-    translatorService "github.com/MichielVanderhoydonck/sloak/internal/core/service/translator"
+	translatorService "github.com/MichielVanderhoydonck/sloak/internal/core/service/translator"
 )
 
 var rootCmd = &cobra.Command{
@@ -45,10 +45,10 @@ func init() {
 	calculateCmd.AddCommand(burnrateCmd.NewBurnRateCmd())
 
 	depSvc := dependencyService.NewAvailabilityService()
-    dependencyCmd.SetService(depSvc)
-    calculateCmd.AddCommand(dependencyCmd.NewDependencyCmd())
+	dependencyCmd.SetService(depSvc)
+	calculateCmd.AddCommand(dependencyCmd.NewDependencyCmd())
 
 	transSvc := translatorService.NewTranslatorService()
-    translatorCmd.SetService(transSvc)
-    calculateCmd.AddCommand(translatorCmd.NewTranslatorCmd())
+	translatorCmd.SetService(transSvc)
+	calculateCmd.AddCommand(translatorCmd.NewTranslatorCmd())
 }

@@ -17,14 +17,14 @@ func CaptureOutput(t *testing.T) (*bytes.Buffer, func()) {
 	os.Stdout = w
 
 	output := new(bytes.Buffer)
-	
+
 	// Channel to signal when copying is complete
 	done := make(chan struct{})
 
 	// Start the copy in a goroutine
 	go func() {
 		io.Copy(output, r)
-		close(done) 
+		close(done)
 	}()
 
 	// The cleanup function

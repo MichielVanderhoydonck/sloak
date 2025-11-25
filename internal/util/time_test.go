@@ -9,10 +9,10 @@ import (
 
 func TestParseTimeWindow(t *testing.T) {
 	testCases := []struct {
-		name           string
-		input          string
-		expectedDur    time.Duration
-		expectError    bool
+		name        string
+		input       string
+		expectedDur time.Duration
+		expectError bool
 	}{
 		{
 			name:        "Standard Go Duration (hours)",

@@ -51,7 +51,6 @@ func TestErrorBudgetE2E(t *testing.T) {
 }
 
 func TestBurnRateE2E(t *testing.T) {
-	// Arrange
 	cmd := exec.Command(sloakBinaryPath, "calculate", "burnrate",
 		"--slo=99.9",
 		"--window=30d",
@@ -72,6 +71,9 @@ func TestBurnRateE2E(t *testing.T) {
 	if !strings.Contains(outStr, "Status: CRITICAL!") {
 		t.Errorf("Expected 'CRITICAL!' in output, got: %s", outStr)
 	}
+    if !strings.Contains(outStr, "Forecast: Budget will be empty in") {
+        t.Errorf("Expected Forecast message in output, got: %s", outStr)
+    }
 }
 
 func TestDependencyE2E(t *testing.T) {

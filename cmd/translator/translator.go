@@ -3,7 +3,7 @@ package translator
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	
+
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/translator"
 	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/translator"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"

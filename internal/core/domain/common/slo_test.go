@@ -9,9 +9,9 @@ import (
 
 func TestNewSLOTarget(t *testing.T) {
 	testCases := []struct {
-		name        string   
+		name        string
 		input       float64
-		expectError bool     
+		expectError bool
 		expectedErr error
 	}{
 		{
@@ -46,7 +46,7 @@ func TestNewSLOTarget(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := common.NewSLOTarget(tc.input)
-			
+
 			if tc.expectError {
 				if err == nil {
 					t.Fatal("expected an error, but got nil")

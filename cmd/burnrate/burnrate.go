@@ -81,7 +81,10 @@ func runBurnRateCmd(cmd *cobra.Command, args []string) {
 
 	if result.BurnRate > 1.0 {
 		fmt.Println("\nStatus: CRITICAL! Budget is burning faster than expected.")
-	} else if result.BurnRate == 0.0 {
+		fmt.Printf("Forecast: Budget will be empty in %s\n", util.FormatDuration(result.TimeToExhaustion))
+		exhaustionDate := time.Now().Add(result.TimeToExhaustion)
+		fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
+	} else if result.IsInfinite {
 		fmt.Println("\nStatus: Excellent! No error budget consumed.")
 	} else {
 		fmt.Println("\nStatus: Healthy. Budget is being consumed at an acceptable rate.")

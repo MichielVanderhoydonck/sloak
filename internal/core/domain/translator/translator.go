@@ -16,25 +16,25 @@ const (
 // TranslationParams holds the user input.
 type TranslationParams struct {
 	Mode CalculationMode
-	
+
 	// Nines is used if Mode == ModeFromNines
 	Nines float64
-	
+
 	// Downtime & Window are used if Mode == ModeFromDowntime
-	Downtime      time.Duration
-	CustomWindow  time.Duration
+	Downtime     time.Duration
+	CustomWindow time.Duration
 }
 
 // TranslationResult holds the standardized output.
 type TranslationResult struct {
 	AvailabilityPercent float64
-	
+
 	// Standard Windows
-	DailyDowntime   time.Duration // 24h
-	WeeklyDowntime  time.Duration // 7d
-	MonthlyDowntime time.Duration // 30d
+	DailyDowntime     time.Duration // 24h
+	WeeklyDowntime    time.Duration // 7d
+	MonthlyDowntime   time.Duration // 30d
 	QuarterlyDowntime time.Duration // 90d
-	YearlyDowntime  time.Duration // 365d
+	YearlyDowntime    time.Duration // 365d
 }
 
 func (p TranslationParams) Validate() error {

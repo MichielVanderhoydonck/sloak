@@ -30,12 +30,12 @@ func TestTranslatorCommand(t *testing.T) {
 	translator.SetService(svc)
 
 	output, restore := testutil.CaptureOutput(t)
-	
+
 	cmd := translator.NewTranslatorCmd()
 	cmd.SetArgs([]string{"--nines=99.9"})
-	
+
 	cmd.Execute()
-	
+
 	restore()
 
 	outStr := output.String()

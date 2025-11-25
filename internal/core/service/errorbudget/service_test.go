@@ -8,7 +8,6 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/errorbudget"
 	errorbudgetService "github.com/MichielVanderhoydonck/sloak/internal/core/service/errorbudget"
-
 )
 
 func TestCalculatorService(t *testing.T) {
@@ -23,9 +22,9 @@ func TestCalculatorService(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name          string
-		params        errorbudgetDomain.CalculationParams
-		expectedError error
+		name             string
+		params           errorbudgetDomain.CalculationParams
+		expectedError    error
 		expectedDowntime time.Duration
 	}{
 		{
@@ -34,7 +33,7 @@ func TestCalculatorService(t *testing.T) {
 				TargetSLO:  mustNewSLO(99.9),
 				TimeWindow: 30 * 24 * time.Hour, // 720h
 			},
-			expectedError: nil,
+			expectedError:    nil,
 			expectedDowntime: (43 * time.Minute) + (12 * time.Second), // 0.1% of 720h
 		},
 		{
@@ -43,7 +42,7 @@ func TestCalculatorService(t *testing.T) {
 				TargetSLO:  mustNewSLO(99.95),
 				TimeWindow: 30 * 24 * time.Hour, // 720h
 			},
-			expectedError: nil,
+			expectedError:    nil,
 			expectedDowntime: (21 * time.Minute) + (36 * time.Second), // 0.05% of 720h
 		},
 		{
@@ -52,7 +51,7 @@ func TestCalculatorService(t *testing.T) {
 				TargetSLO:  mustNewSLO(95.0),
 				TimeWindow: 7 * 24 * time.Hour, // 168h
 			},
-			expectedError: nil,
+			expectedError:    nil,
 			expectedDowntime: (8 * time.Hour) + (24 * time.Minute), // 5% of 168h
 		},
 	}

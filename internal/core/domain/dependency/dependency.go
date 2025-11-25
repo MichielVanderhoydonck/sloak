@@ -11,7 +11,7 @@ const (
 
 type CalculationParams struct {
 	Components []float64
-	
+
 	Type CalculationType
 }
 

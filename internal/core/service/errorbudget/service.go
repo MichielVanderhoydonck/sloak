@@ -5,8 +5,8 @@ import (
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/errorbudget"
 	errorbudgetPort "github.com/MichielVanderhoydonck/sloak/internal/core/port/errorbudget"
 
-	"time"
 	"math"
+	"time"
 )
 
 var _ errorbudgetPort.CalculatorService = (*CalculatorServiceImpl)(nil)
@@ -28,9 +28,9 @@ func (s *CalculatorServiceImpl) CalculateBudget(params errorbudgetDomain.Calcula
 	allowedError := time.Duration(roundedNanos)
 
 	return errorbudgetDomain.BudgetResult{
-    TargetSLO:     params.TargetSLO,
-    TotalDuration: params.TimeWindow,
-    AllowedError:  allowedError,
-    ErrorBudget:   errorBudgetPercent,
-}, nil
+		TargetSLO:     params.TargetSLO,
+		TotalDuration: params.TimeWindow,
+		AllowedError:  allowedError,
+		ErrorBudget:   errorBudgetPercent,
+	}, nil
 }

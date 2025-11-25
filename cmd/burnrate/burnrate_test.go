@@ -1,4 +1,4 @@
-package burnrate_test 
+package burnrate_test
 
 import (
 	"strings"
@@ -19,13 +19,13 @@ func (m *mockBurnRateService) CalculateBurnRate(params burnrateDomain.Calculatio
 	return m.MockResult, m.MockError
 }
 
-
 func TestBurnRateCommand(t *testing.T) {
 	mockResult := burnrateDomain.BurnRateResult{
 		TotalErrorBudget: (43 * time.Minute) + (12 * time.Second),
 		BudgetConsumed:   69.44,
 		BurnRate:         2.98,
 		BudgetRemaining:  (13 * time.Minute) + (12 * time.Second),
+		TimeToExhaustion: 73*time.Hour + 55*time.Minute + 12*time.Second,
 	}
 
 	mockSvc := &mockBurnRateService{
@@ -60,5 +60,8 @@ func TestBurnRateCommand(t *testing.T) {
 	}
 	if !strings.Contains(outStr, "Status: CRITICAL!") {
 		t.Error("Output string did not contain the expected CRITICAL status")
+	}
+	if !strings.Contains(outStr, "Forecast: Budget will be empty in") {
+		t.Error("Output string did not contain the Forecast prediction")
 	}
 }

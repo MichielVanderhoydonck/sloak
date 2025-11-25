@@ -38,7 +38,9 @@ func runDependencyCmd(cmd *cobra.Command, args []string) {
 	var components []float64
 	for _, s := range strValues {
 		s = strings.TrimSpace(s)
-		if s == "" { continue }
+		if s == "" {
+			continue
+		}
 		val, err := strconv.ParseFloat(s, 64)
 		if err != nil {
 			fmt.Printf("Error parsing component '%s': %v\n", s, err)

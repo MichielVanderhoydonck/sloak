@@ -29,12 +29,12 @@ func TestDependencyCommand(t *testing.T) {
 	dependency.SetService(svc)
 
 	output, restore := testutil.CaptureOutput(t)
-	
+
 	cmd := dependency.NewDependencyCmd()
 	cmd.SetArgs([]string{"--components=99.9,99.9", "--type=serial"})
-	
+
 	cmd.Execute()
-	
+
 	restore()
 
 	outStr := output.String()

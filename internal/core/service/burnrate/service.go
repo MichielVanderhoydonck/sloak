@@ -17,7 +17,7 @@ func NewBurnRateService() burnratePort.BurnRateService {
 	return &BurnRateServiceImpl{}
 }
 
-func (s *BurnRateServiceImpl) CalculateBurnRate(params burnrateDomain.CalculationParams) (burnrateDomain.BurnRateResult, error) {	
+func (s *BurnRateServiceImpl) CalculateBurnRate(params burnrateDomain.CalculationParams) (burnrateDomain.BurnRateResult, error) {
 	errorBudgetPercent := 1.0 - (params.TargetSLO.Value / 100.0)
 	totalBudget := time.Duration(math.Round(float64(params.TotalWindow) * errorBudgetPercent))
 
@@ -38,13 +38,28 @@ func (s *BurnRateServiceImpl) CalculateBurnRate(params burnrateDomain.Calculatio
 			burnRate = 0.0
 		}
 	}
-	
+
 	budgetRemaining := totalBudget - params.ErrorConsumed
+
+	var tte time.Duration
+	isInfinite := false
+
+	if budgetRemaining <= 0 {
+		tte = 0
+	} else if params.ErrorConsumed <= 0 {
+		isInfinite = true
+	} else {
+		consumptionRate := float64(params.ErrorConsumed) / float64(params.TimeElapsed)
+		tteNanos := float64(budgetRemaining) / consumptionRate
+		tte = time.Duration(math.Round(tteNanos))
+	}
 
 	return burnrateDomain.BurnRateResult{
 		TotalErrorBudget: totalBudget,
 		BudgetConsumed:   budgetConsumedPercent,
 		BurnRate:         burnRate,
 		BudgetRemaining:  budgetRemaining,
+		TimeToExhaustion: tte,
+		IsInfinite:       isInfinite,
 	}, nil
 }
