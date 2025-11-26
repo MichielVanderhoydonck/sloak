@@ -69,6 +69,9 @@ func TestAlertGeneratorService(t *testing.T) {
 			if math.Abs(res.TicketRule.BurnRate-tc.expectedTickRate) > 0.01 {
 				t.Errorf("Expected Ticket BurnRate %.2f, got %.2f", tc.expectedTickRate, res.TicketRule.BurnRate)
 			}
+			if math.Abs(res.PageRule.ErrorRateThreshold-3.0) > 0.001 {
+				t.Errorf("Expected ErrorRate 3.0%%, got %.3f%%", res.PageRule.ErrorRateThreshold)
+			}
 		})
 	}
 }

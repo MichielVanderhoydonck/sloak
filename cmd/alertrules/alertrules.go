@@ -71,6 +71,7 @@ func runAlertRulesCmd(cmd *cobra.Command, args []string) {
 		fmt.Printf("Burn Rate Threshold: %.2fx\n", r.BurnRate)
 		fmt.Printf("Observation Window:  %s\n", util.FormatDuration(r.RecallWindow))
 		fmt.Printf("Budget Consumption:  %.1f%%\n", r.BudgetConsumed)
+		fmt.Printf("Error Rate Thresh:   %.3f%% (of total traffic)\n", r.ErrorRateThreshold)
 		fmt.Println("--------------------------------")
 		fmt.Printf("Logic: Fire if error rate > %.2fx over %s\n", r.BurnRate, util.FormatDuration(r.RecallWindow))
 	}

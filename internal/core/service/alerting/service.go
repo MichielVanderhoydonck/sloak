@@ -23,18 +23,20 @@ func NewAlertGeneratorService() port.AlertGeneratorService {
 }
 
 func (s *AlertGeneratorServiceImpl) GenerateThresholds(params domain.GenerateParams) (domain.Result, error) {
+	baseErrorBudgetPct := 100.0 - params.TargetSLO.Value
 	calc := func(severity domain.AlertSeverity, tte time.Duration, spendPct float64) domain.AlertRule {
 		burnRate := float64(params.TotalWindow) / float64(tte)
 		recallNanos := float64(tte) * spendPct
 		recallWindow := time.Duration(math.Round(recallNanos))
 		precisionWindow := time.Duration(math.Round(float64(recallWindow) / ShortWindowRatio))
-
+		errorRateThreshold := baseErrorBudgetPct * burnRate
 		return domain.AlertRule{
-			Severity:        severity,
-			BurnRate:        burnRate,
-			RecallWindow:    recallWindow,
-			PrecisionWindow: precisionWindow,
-			BudgetConsumed:  spendPct * 100,
+			Severity:           severity,
+			BurnRate:           burnRate,
+			RecallWindow:       recallWindow,
+			PrecisionWindow:    precisionWindow,
+			BudgetConsumed:     spendPct * 100,
+			ErrorRateThreshold: errorRateThreshold,
 		}
 	}
 

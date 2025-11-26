@@ -22,11 +22,12 @@ type GenerateParams struct {
 }
 
 type AlertRule struct {
-	Severity        AlertSeverity
-	BurnRate        float64
-	RecallWindow    time.Duration // The "Long" window (e.g. 1h)
-	PrecisionWindow time.Duration // The "Short" window (e.g. 5m) to prevent flapping
-	BudgetConsumed  float64       // % of budget consumed in the recall window
+	Severity           AlertSeverity
+	BurnRate           float64
+	RecallWindow       time.Duration // The "Long" window (e.g. 1h)
+	PrecisionWindow    time.Duration // The "Short" window (e.g. 5m) to prevent flapping
+	BudgetConsumed     float64       // % of budget consumed in the recall window
+	ErrorRateThreshold float64       // The actual % of errors in traffic required to trigger this
 }
 
 type Result struct {
