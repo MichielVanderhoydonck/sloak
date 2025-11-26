@@ -110,3 +110,29 @@ func TestTranslatorE2E(t *testing.T) {
 		t.Errorf("Expected 'Daily Allowed: 14m24s', got: %s", outStr)
 	}
 }
+
+func TestAlertRulesE2E(t *testing.T) {
+	// Scenario: 30d window. 
+	// Page TTE = 24h.
+	// Expect Burn Rate = 720h / 24h = 30x.
+	
+	cmd := exec.Command(sloakBinaryPath, "generate", "alert-thresholds", 
+		"--slo=99.9", 
+		"--window=30d", 
+		"--page-tte=24h",
+	)
+
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+
+	if err != nil {
+		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
+	}
+
+	if !strings.Contains(outStr, "Burn Rate Threshold: 30.00x") {
+		t.Errorf("Expected '30.00x', got: %s", outStr)
+	}
+	if !strings.Contains(outStr, "Logic: Fire if error rate > 30.00x") {
+		t.Errorf("Expected logic description, got: %s", outStr)
+	}
+}

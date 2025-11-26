@@ -17,6 +17,9 @@ import (
 
 	translatorCmd "github.com/MichielVanderhoydonck/sloak/cmd/translator"
 	translatorService "github.com/MichielVanderhoydonck/sloak/internal/core/service/translator"
+
+	alertRulesCmd "github.com/MichielVanderhoydonck/sloak/cmd/alertrules"
+	alertingService "github.com/MichielVanderhoydonck/sloak/internal/core/service/alerting"
 )
 
 var rootCmd = &cobra.Command{
@@ -35,6 +38,7 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(calculateCmd)
+	rootCmd.AddCommand(generateCmd)
 
 	calculatorSvc := errorbudgetService.NewCalculatorService()
 	errorbudgetCmd.SetService(calculatorSvc)
@@ -51,4 +55,8 @@ func init() {
 	transSvc := translatorService.NewTranslatorService()
 	translatorCmd.SetService(transSvc)
 	calculateCmd.AddCommand(translatorCmd.NewTranslatorCmd())
+
+	alertSvc := alertingService.NewAlertGeneratorService()
+	alertRulesCmd.SetService(alertSvc)
+	generateCmd.AddCommand(alertRulesCmd.NewAlertRulesCmd())
 }
