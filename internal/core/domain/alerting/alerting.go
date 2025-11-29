@@ -1,36 +1,38 @@
 package alerting
 
 import (
-	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	"time"
+
+	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 )
 
-type AlertSeverity string
+type NotificationType string
 
 const (
-	SeverityPage   AlertSeverity = "critical"
-	SeverityTicket AlertSeverity = "warning"
+	Page    NotificationType = "Page"
+	Message NotificationType = "Message"
+	Ticket  NotificationType = "Ticket"
 )
 
 type GenerateParams struct {
 	TargetSLO   common.SLOTarget
 	TotalWindow time.Duration
 
-	// Target Time-to-Exhaustion: "Page me if budget will be gone in X"
-	PageTTE   time.Duration
-	TicketTTE time.Duration
+	FastWindow      time.Duration // Default: 1h
+	SlowWindow      time.Duration // Default: 6h
+	SustainedWindow time.Duration // Default: 3d
 }
 
-type AlertRule struct {
-	Severity           AlertSeverity
-	BurnRate           float64
-	RecallWindow       time.Duration // The "Long" window (e.g. 1h)
-	PrecisionWindow    time.Duration // The "Short" window (e.g. 5m) to prevent flapping
-	BudgetConsumed     float64       // % of budget consumed in the recall window
-	ErrorRateThreshold float64       // The actual % of errors in traffic required to trigger this
+type AlertDefinition struct {
+	ConsumptionTarget float64
+	LongWindow        time.Duration
+	ShortWindow       time.Duration
+	BurnRate          float64
+	NotificationType  NotificationType
 }
 
-type Result struct {
-	PageRule   AlertRule
-	TicketRule AlertRule
+type TableResult struct {
+	TargetSLO   common.SLOTarget
+	TotalWindow time.Duration
+	Alerts      []AlertDefinition
 }

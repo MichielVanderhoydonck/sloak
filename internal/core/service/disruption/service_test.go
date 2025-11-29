@@ -23,12 +23,14 @@ func TestDisruptionService(t *testing.T) {
 	}
 
 	res, err := svc.CalculateCapacity(params)
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if res.MaxDisruptions != 43 {
 		t.Errorf("Expected 43 disruptions, got %d", res.MaxDisruptions)
 	}
-	
+
 	// 43 / 30 days = 1.43 per day
 	if res.DailyDisruptions < 1.4 || res.DailyDisruptions > 1.5 {
 		t.Errorf("Expected ~1.43 daily, got %f", res.DailyDisruptions)

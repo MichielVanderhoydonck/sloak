@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	PageBudgetSpend   = 0.02
-	TicketBudgetSpend = 0.05
-	ShortWindowRatio  = 12.0
+	ShortWindowRatio = 12.0
+	WinFast          = 1 * time.Hour
+	WinSlow          = 6 * time.Hour
+	WinSustained     = 72 * time.Hour
 )
 
 var _ port.AlertGeneratorService = (*AlertGeneratorServiceImpl)(nil)
@@ -22,26 +23,31 @@ func NewAlertGeneratorService() port.AlertGeneratorService {
 	return &AlertGeneratorServiceImpl{}
 }
 
-func (s *AlertGeneratorServiceImpl) GenerateThresholds(params domain.GenerateParams) (domain.Result, error) {
-	baseErrorBudgetPct := 100.0 - params.TargetSLO.Value
-	calc := func(severity domain.AlertSeverity, tte time.Duration, spendPct float64) domain.AlertRule {
-		burnRate := float64(params.TotalWindow) / float64(tte)
-		recallNanos := float64(tte) * spendPct
-		recallWindow := time.Duration(math.Round(recallNanos))
-		precisionWindow := time.Duration(math.Round(float64(recallWindow) / ShortWindowRatio))
-		errorRateThreshold := baseErrorBudgetPct * burnRate
-		return domain.AlertRule{
-			Severity:           severity,
-			BurnRate:           burnRate,
-			RecallWindow:       recallWindow,
-			PrecisionWindow:    precisionWindow,
-			BudgetConsumed:     spendPct * 100,
-			ErrorRateThreshold: errorRateThreshold,
+func (s *AlertGeneratorServiceImpl) GenerateTable(params domain.GenerateParams) (domain.TableResult, error) {
+
+	createRule := func(consumptionThreshold float64, longWindow time.Duration, notif domain.NotificationType) domain.AlertDefinition {
+		consumptionWindows := float64(params.TotalWindow) / float64(longWindow)
+		burnFactor := consumptionWindows * consumptionThreshold
+		shortWindow := time.Duration(math.Round(float64(longWindow) / ShortWindowRatio))
+
+		return domain.AlertDefinition{
+			ConsumptionTarget: consumptionThreshold * 100,
+			LongWindow:        longWindow,
+			ShortWindow:       shortWindow,
+			BurnRate:          burnFactor,
+			NotificationType:  notif,
 		}
 	}
 
-	return domain.Result{
-		PageRule:   calc(domain.SeverityPage, params.PageTTE, PageBudgetSpend),
-		TicketRule: calc(domain.SeverityTicket, params.TicketTTE, TicketBudgetSpend),
+	rules := []domain.AlertDefinition{
+		createRule(0.02, WinFast, domain.Page),
+		createRule(0.05, WinSlow, domain.Message),
+		createRule(0.10, WinSustained, domain.Ticket),
+	}
+
+	return domain.TableResult{
+		TargetSLO:   params.TargetSLO,
+		TotalWindow: params.TotalWindow,
+		Alerts:      rules,
 	}, nil
 }

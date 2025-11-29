@@ -3,7 +3,7 @@ package disruption
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	
+
 	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/disruption"
 	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/disruption"
@@ -63,7 +63,7 @@ func runDisruptionCmd(cmd *cobra.Command, args []string) {
 	fmt.Println("----------------------------------")
 	fmt.Printf("Max Events Total: %d\n", res.MaxDisruptions)
 	fmt.Printf("Daily Frequency:  %.1f events/day\n", res.DailyDisruptions)
-	
+
 	if res.MaxDisruptions < 1 {
 		fmt.Println("\nStatus: BLOCKED. Disruption cost exceeds total budget.")
 	} else if res.DailyDisruptions < 1.0 {

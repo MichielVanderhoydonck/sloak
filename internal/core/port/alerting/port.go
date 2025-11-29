@@ -5,5 +5,5 @@ import (
 )
 
 type AlertGeneratorService interface {
-	GenerateThresholds(params domain.GenerateParams) (domain.Result, error)
+	GenerateTable(params domain.GenerateParams) (domain.TableResult, error)
 }

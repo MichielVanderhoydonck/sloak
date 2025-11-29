@@ -10,68 +10,42 @@ import (
 	service "github.com/MichielVanderhoydonck/sloak/internal/core/service/alerting"
 )
 
-func TestAlertGeneratorService(t *testing.T) {
+func TestGenerateMatrix(t *testing.T) {
 	svc := service.NewAlertGeneratorService()
+	slo, _ := common.NewSLOTarget(99.9)
 
-	mustSLO := func(v float64) common.SLOTarget {
-		s, _ := common.NewSLOTarget(v)
-		return s
+	params := domain.GenerateParams{
+		TargetSLO:   slo,
+		TotalWindow: 30 * 24 * time.Hour,
 	}
 
-	testCases := []struct {
-		name             string
-		params           domain.GenerateParams
-		expectedPageRate float64
-		expectedPageWin  time.Duration
-		expectedTickRate float64
-	}{
-		{
-			name: "Standard 30d Window",
-			params: domain.GenerateParams{
-				TargetSLO:   mustSLO(99.9),
-				TotalWindow: 30 * 24 * time.Hour,
-				PageTTE:     24 * time.Hour,
-				TicketTTE:   3 * 24 * time.Hour,
-			},
-			expectedPageRate: 30.0,
-			expectedPageWin:  28*time.Minute + 48*time.Second,
-			expectedTickRate: 10.0,
-		},
-		{
-			name: "Aggressive 7d Window",
-			params: domain.GenerateParams{
-				TargetSLO:   mustSLO(99.9),
-				TotalWindow: 168 * time.Hour,
-				PageTTE:     4 * time.Hour,
-				TicketTTE:   24 * time.Hour,
-			},
-			expectedPageRate: 42.0,
-			expectedPageWin:  4*time.Minute + 48*time.Second,
-			expectedTickRate: 7.0,
-		},
+	res, _ := svc.GenerateTable(params)
+
+	if len(res.Alerts) != 3 {
+		t.Fatalf("Expected 3 alert rules, got %d", len(res.Alerts))
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			res, err := svc.GenerateThresholds(tc.params)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+	assertFloat := func(name string, expected, actual float64) {
+		if math.Abs(expected-actual) > 0.01 {
+			t.Errorf("[%s] Expected %.2f, got %.2f", name, expected, actual)
+		}
+	}
 
-			if math.Abs(res.PageRule.BurnRate-tc.expectedPageRate) > 0.01 {
-				t.Errorf("Expected Page BurnRate %.2f, got %.2f", tc.expectedPageRate, res.PageRule.BurnRate)
-			}
-			diff := res.PageRule.RecallWindow - tc.expectedPageWin
-			if diff < -time.Second || diff > time.Second {
-				t.Errorf("Expected Page Window %v, got %v", tc.expectedPageWin, res.PageRule.RecallWindow)
-			}
+	r1 := res.Alerts[0]
+	assertFloat("R1 BurnRate", 14.4, r1.BurnRate)
+	if r1.NotificationType != domain.Page {
+		t.Errorf("R1 expected Page, got %s", r1.NotificationType)
+	}
+	r2 := res.Alerts[1]
+	assertFloat("R2 BurnRate", 6.0, r2.BurnRate)
 
-			if math.Abs(res.TicketRule.BurnRate-tc.expectedTickRate) > 0.01 {
-				t.Errorf("Expected Ticket BurnRate %.2f, got %.2f", tc.expectedTickRate, res.TicketRule.BurnRate)
-			}
-			if math.Abs(res.PageRule.ErrorRateThreshold-3.0) > 0.001 {
-				t.Errorf("Expected ErrorRate 3.0%%, got %.3f%%", res.PageRule.ErrorRateThreshold)
-			}
-		})
+	if r2.NotificationType != domain.Message {
+		t.Errorf("R2 expected Page, got %s", r2.NotificationType)
+	}
+
+	r3 := res.Alerts[2]
+	assertFloat("R3 BurnRate", 1.0, r3.BurnRate)
+	if r3.NotificationType != domain.Ticket {
+		t.Errorf("R3 expected Ticket, got %s", r3.NotificationType)
 	}
 }

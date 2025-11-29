@@ -18,11 +18,11 @@ import (
 	translatorCmd "github.com/MichielVanderhoydonck/sloak/cmd/translator"
 	translatorService "github.com/MichielVanderhoydonck/sloak/internal/core/service/translator"
 
-	alertRulesCmd "github.com/MichielVanderhoydonck/sloak/cmd/alertrules"
+	alertingTableCmd "github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	alertingService "github.com/MichielVanderhoydonck/sloak/internal/core/service/alerting"
 
 	disruptionCmd "github.com/MichielVanderhoydonck/sloak/cmd/disruption"
-    disruptionService "github.com/MichielVanderhoydonck/sloak/internal/core/service/disruption"
+	disruptionService "github.com/MichielVanderhoydonck/sloak/internal/core/service/disruption"
 )
 
 var rootCmd = &cobra.Command{
@@ -60,10 +60,10 @@ func init() {
 	calculateCmd.AddCommand(translatorCmd.NewTranslatorCmd())
 
 	alertSvc := alertingService.NewAlertGeneratorService()
-	alertRulesCmd.SetService(alertSvc)
-	generateCmd.AddCommand(alertRulesCmd.NewAlertRulesCmd())
+	alertingTableCmd.SetService(alertSvc)
+	generateCmd.AddCommand(alertingTableCmd.NewAlertTableCmd())
 
 	disSvc := disruptionService.NewDisruptionService()
-    disruptionCmd.SetService(disSvc)
-    calculateCmd.AddCommand(disruptionCmd.NewDisruptionCmd())
+	disruptionCmd.SetService(disSvc)
+	calculateCmd.AddCommand(disruptionCmd.NewDisruptionCmd())
 }

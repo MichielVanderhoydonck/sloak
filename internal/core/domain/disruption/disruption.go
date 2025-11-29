@@ -1,14 +1,14 @@
 package disruption
 
 import (
-	"time"
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
+	"time"
 )
 
 type CalculationParams struct {
-	TargetSLO      common.SLOTarget
-	TotalWindow    time.Duration
-	CostPerEvent   time.Duration
+	TargetSLO    common.SLOTarget
+	TotalWindow  time.Duration
+	CostPerEvent time.Duration
 }
 
 type Result struct {
