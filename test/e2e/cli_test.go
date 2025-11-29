@@ -136,3 +136,16 @@ func TestAlertRulesE2E(t *testing.T) {
 		t.Errorf("Expected logic description, got: %s", outStr)
 	}
 }
+
+func TestDisruptionE2E(t *testing.T) {
+	// 99.9% of 30d = ~43m. Cost = 1m. Expect 43 events.
+	cmd := exec.Command(sloakBinaryPath, "calculate", "max-disruption", 
+		"--slo=99.9", "--window=30d", "--cost=1m",
+	)
+	output, _ := cmd.CombinedOutput()
+	outStr := string(output)
+
+	if !strings.Contains(outStr, "Max Events Total: 43") {
+		t.Errorf("Expected 43 events, got output:\n%s", outStr)
+	}
+}

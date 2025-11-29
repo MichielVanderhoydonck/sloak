@@ -20,6 +20,9 @@ import (
 
 	alertRulesCmd "github.com/MichielVanderhoydonck/sloak/cmd/alertrules"
 	alertingService "github.com/MichielVanderhoydonck/sloak/internal/core/service/alerting"
+
+	disruptionCmd "github.com/MichielVanderhoydonck/sloak/cmd/disruption"
+    disruptionService "github.com/MichielVanderhoydonck/sloak/internal/core/service/disruption"
 )
 
 var rootCmd = &cobra.Command{
@@ -59,4 +62,8 @@ func init() {
 	alertSvc := alertingService.NewAlertGeneratorService()
 	alertRulesCmd.SetService(alertSvc)
 	generateCmd.AddCommand(alertRulesCmd.NewAlertRulesCmd())
+
+	disSvc := disruptionService.NewDisruptionService()
+    disruptionCmd.SetService(disSvc)
+    calculateCmd.AddCommand(disruptionCmd.NewDisruptionCmd())
 }
