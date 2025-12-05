@@ -111,8 +111,8 @@ func TestTranslatorE2E(t *testing.T) {
 	}
 }
 
-func TestAlertMatrixE2E(t *testing.T) {
-	cmd := exec.Command(sloakBinaryPath, "generate", "alert-matrix", 
+func TestAlertTableE2E(t *testing.T) {
+	cmd := exec.Command(sloakBinaryPath, "generate", "alert-table", 
 		"--slo=99.9",
 	)
 	output, _ := cmd.CombinedOutput()

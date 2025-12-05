@@ -1,6 +1,9 @@
 package common
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type SLOTarget struct {
 	Value float64
@@ -13,4 +16,8 @@ func NewSLOTarget(value float64) (SLOTarget, error) {
 		return SLOTarget{}, ErrInvalidSLOTarget
 	}
 	return SLOTarget{Value: value}, nil
+}
+
+func (s SLOTarget) String() string {
+	return fmt.Sprintf("%.3f%%", s.Value)
 }
