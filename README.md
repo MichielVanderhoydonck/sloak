@@ -16,8 +16,7 @@ Each subfolder of the `cmd` folder should be self contained, only exposing the m
 The `main.go` file should be responsible for initializing the application and running the main command exposed through the root command containing the Cobra bootstrapping.
 
 ### go-arch-lint
-This repo includes config for linting architecture using [go-arch-lint](https://github.com/uber-go/go-arch-lint).  
-Note that this currently errros since that linter is still pinned on 1.23. (downgrade the mod file for now)
+This repo includes config for linting architecture using [go-arch-lint](https://github.com/fe3dback/go-arch-lint).  
 Simply run:
 ```bash
 docker run --rm -v ${PWD}:/app fe3dback/go-arch-lint:latest-stable-release check --project-path /app
