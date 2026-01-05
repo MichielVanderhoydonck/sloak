@@ -23,6 +23,9 @@ import (
 
 	disruptionCmd "github.com/MichielVanderhoydonck/sloak/cmd/disruption"
 	disruptionService "github.com/MichielVanderhoydonck/sloak/internal/core/service/disruption"
+
+	feasibilityCmd "github.com/MichielVanderhoydonck/sloak/cmd/feasibility"
+    feasibilityService "github.com/MichielVanderhoydonck/sloak/internal/core/service/feasibility"
 )
 
 var rootCmd = &cobra.Command{
@@ -66,4 +69,8 @@ func init() {
 	disSvc := disruptionService.NewDisruptionService()
 	disruptionCmd.SetService(disSvc)
 	calculateCmd.AddCommand(disruptionCmd.NewDisruptionCmd())
+
+	feasSvc := feasibilityService.NewFeasibilityService()
+    feasibilityCmd.SetService(feasSvc)
+    calculateCmd.AddCommand(feasibilityCmd.NewFeasibilityCmd())
 }

@@ -138,3 +138,19 @@ func TestDisruptionE2E(t *testing.T) {
 		t.Errorf("Expected 43 events, got output:\n%s", outStr)
 	}
 }
+
+func TestFeasibilityE2E(t *testing.T) {
+	cmd := exec.Command(sloakBinaryPath, "calculate", "feasibility", 
+		"--slo=99.9", "--mttr=1h",
+	)
+	output, _ := cmd.CombinedOutput()
+	outStr := string(output)
+
+	if !strings.Contains(outStr, "8.8 incidents") {
+		t.Errorf("Expected 8.8 incidents/year, got output:\n%s", outStr)
+	}
+	
+	if !strings.Contains(outStr, "CHALLENGING") {
+		t.Errorf("Expected CHALLENGING status (2.2/qtr), got output:\n%s", outStr)
+	}
+}
