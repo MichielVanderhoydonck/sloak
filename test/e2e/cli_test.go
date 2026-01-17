@@ -1,6 +1,7 @@
 // test/e2e/cli_test.go
 
 //go:build e2e
+
 // Build tag tells Go to ONLY run this test when explicitly asked.
 
 package e2e
@@ -25,7 +26,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "Failed to build test binary: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	sloakBinaryPath = "./sloak_test_binary"
 
 	exitCode := m.Run()
@@ -41,7 +42,7 @@ func TestErrorBudgetE2E(t *testing.T) {
 
 	output, err := cmd.CombinedOutput()
 	outStr := string(output)
-	
+
 	if err != nil {
 		t.Fatalf("Command failed with error: %v\nOutput: %s", err, outStr)
 	}
@@ -71,15 +72,15 @@ func TestBurnRateE2E(t *testing.T) {
 	if !strings.Contains(outStr, "Status: CRITICAL!") {
 		t.Errorf("Expected 'CRITICAL!' in output, got: %s", outStr)
 	}
-    if !strings.Contains(outStr, "Forecast: Budget will be empty in") {
-        t.Errorf("Expected Forecast message in output, got: %s", outStr)
-    }
+	if !strings.Contains(outStr, "Forecast: Budget will be empty in") {
+		t.Errorf("Expected Forecast message in output, got: %s", outStr)
+	}
 }
 
 func TestDependencyE2E(t *testing.T) {
 	// 99.9 and 99.9 in parallel should be 99.9999
-	cmd := exec.Command(sloakBinaryPath, "calculate", "dependency", 
-		"--components=99.9,99.9", 
+	cmd := exec.Command(sloakBinaryPath, "calculate", "dependency",
+		"--components=99.9,99.9",
 		"--type=parallel",
 	)
 
@@ -95,9 +96,9 @@ func TestDependencyE2E(t *testing.T) {
 	}
 }
 
-func TestTranslatorE2E(t *testing.T) {
+func TestConvertE2E(t *testing.T) {
 	// Test translating 99.0% -> Should allow ~14m per day
-	cmd := exec.Command(sloakBinaryPath, "calculate", "translator", "--nines=99.0")
+	cmd := exec.Command(sloakBinaryPath, "convert", "--nines=99.0")
 	output, err := cmd.CombinedOutput()
 	outStr := string(output)
 
@@ -112,7 +113,7 @@ func TestTranslatorE2E(t *testing.T) {
 }
 
 func TestAlertTableE2E(t *testing.T) {
-	cmd := exec.Command(sloakBinaryPath, "generate", "alert-table", 
+	cmd := exec.Command(sloakBinaryPath, "generate", "alert-table",
 		"--slo=99.9",
 	)
 	output, _ := cmd.CombinedOutput()
@@ -128,7 +129,7 @@ func TestAlertTableE2E(t *testing.T) {
 
 func TestDisruptionE2E(t *testing.T) {
 	// 99.9% of 30d = ~43m. Cost = 1m. Expect 43 events.
-	cmd := exec.Command(sloakBinaryPath, "calculate", "max-disruption", 
+	cmd := exec.Command(sloakBinaryPath, "calculate", "max-disruption",
 		"--slo=99.9", "--window=30d", "--cost=1m",
 	)
 	output, _ := cmd.CombinedOutput()
@@ -140,7 +141,7 @@ func TestDisruptionE2E(t *testing.T) {
 }
 
 func TestFeasibilityE2E(t *testing.T) {
-	cmd := exec.Command(sloakBinaryPath, "calculate", "feasibility", 
+	cmd := exec.Command(sloakBinaryPath, "calculate", "feasibility",
 		"--slo=99.9", "--mttr=1h",
 	)
 	output, _ := cmd.CombinedOutput()
@@ -149,7 +150,7 @@ func TestFeasibilityE2E(t *testing.T) {
 	if !strings.Contains(outStr, "8.8 incidents") {
 		t.Errorf("Expected 8.8 incidents/year, got output:\n%s", outStr)
 	}
-	
+
 	if !strings.Contains(outStr, "CHALLENGING") {
 		t.Errorf("Expected CHALLENGING status (2.2/qtr), got output:\n%s", outStr)
 	}

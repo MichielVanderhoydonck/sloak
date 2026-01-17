@@ -1,26 +1,27 @@
-package translator
+package convert
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/translator"
-	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/translator"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/convert"
+	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/convert"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service port.TranslatorService
+var service port.ConvertService
 
-func SetService(s port.TranslatorService) {
+func SetService(s port.ConvertService) {
 	service = s
 }
 
-func NewTranslatorCmd() *cobra.Command {
+func NewConvertCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "translator",
-		Short: "Translates between Availability % and Downtime Duration.",
+		Use:   "convert",
+		Short: "Converts between Availability % and Downtime Duration.",
 		Long:  `Converts "Nines" (e.g. 99.9%) to allowed downtime per day/month/year, or converts a specific downtime duration back into a percentage.`,
-		Run:   runTranslatorCmd,
+		Run:   runConvertCmd,
 	}
 
 	cmd.Flags().Float64("nines", -1, "Availability Percentage (e.g. 99.95)")
@@ -30,12 +31,12 @@ func NewTranslatorCmd() *cobra.Command {
 	return cmd
 }
 
-func runTranslatorCmd(cmd *cobra.Command, args []string) {
+func runConvertCmd(cmd *cobra.Command, args []string) {
 	nines, _ := cmd.Flags().GetFloat64("nines")
 	downtimeStr, _ := cmd.Flags().GetString("downtime")
 	windowStr, _ := cmd.Flags().GetString("window")
 
-	var params domain.TranslationParams
+	var params domain.ConversionParams
 
 	if nines != -1 && downtimeStr != "" {
 		fmt.Println("Error: Please provide EITHER --nines OR --downtime, not both.")
@@ -43,7 +44,7 @@ func runTranslatorCmd(cmd *cobra.Command, args []string) {
 	}
 
 	if nines != -1 {
-		params = domain.TranslationParams{
+		params = domain.ConversionParams{
 			Mode:  domain.ModeFromNines,
 			Nines: nines,
 		}
@@ -58,7 +59,7 @@ func runTranslatorCmd(cmd *cobra.Command, args []string) {
 			fmt.Printf("Error parsing window: %v\n", err)
 			return
 		}
-		params = domain.TranslationParams{
+		params = domain.ConversionParams{
 			Mode:         domain.ModeFromDowntime,
 			Downtime:     dt,
 			CustomWindow: win,
@@ -68,13 +69,13 @@ func runTranslatorCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	res, err := service.Translate(params)
+	res, err := service.Convert(params)
 	if err != nil {
 		fmt.Printf("Calculation Error: %v\n", err)
 		return
 	}
 
-	fmt.Printf("\n--- Availability Translation ---\n")
+	fmt.Printf("\n--- Availability Conversion ---\n")
 	fmt.Printf("Availability: %.5f%%\n", res.AvailabilityPercent)
 	fmt.Printf("--------------------------------\n")
 	fmt.Printf("Daily Allowed:     %s\n", util.FormatDuration(res.DailyDowntime))

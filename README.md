@@ -29,8 +29,8 @@ Here follows a quick reference table of available commands, use the `--help` fla
 || **errorbudget** | Calculates the total error budget (time) for a given SLO.|
 || **feasibility** |Calculates if an SLO is realistic given your MTTR.
 || **max-disruption** | Calculates allowed deployment frequency based on disruption cost.|
-|| **translator** | Translates between Availability % and Downtime Duration.|
-|**sloak generate**||main generate root|
+| **sloak convert** || Converts between Availability % and Downtime Duration.|
+| **sloak generate** ||main generate root|
 ||**alert-table** | Generates the standard SRE Alerting Table.|
 
 ## Testing

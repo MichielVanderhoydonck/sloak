@@ -1,37 +1,37 @@
-package translator_test
+package convert_test
 
 import (
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/MichielVanderhoydonck/sloak/cmd/translator"
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/translator"
+	"github.com/MichielVanderhoydonck/sloak/cmd/convert"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/convert"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 )
 
 type mockService struct {
-	res domain.TranslationResult
+	res domain.ConversionResult
 	err error
 }
 
-func (m *mockService) Translate(params domain.TranslationParams) (domain.TranslationResult, error) {
+func (m *mockService) Convert(params domain.ConversionParams) (domain.ConversionResult, error) {
 	return m.res, m.err
 }
 
-func TestTranslatorCommand(t *testing.T) {
-	mockRes := domain.TranslationResult{
+func TestConvertCommand(t *testing.T) {
+	mockRes := domain.ConversionResult{
 		AvailabilityPercent: 99.9,
 		DailyDowntime:       1*time.Minute + 26*time.Second,
 		YearlyDowntime:      8*time.Hour + 45*time.Minute,
 	}
 
 	svc := &mockService{res: mockRes, err: nil}
-	translator.SetService(svc)
+	convert.SetService(svc)
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := translator.NewTranslatorCmd()
+	cmd := convert.NewConvertCmd()
 	cmd.SetArgs([]string{"--nines=99.9"})
 
 	cmd.Execute()

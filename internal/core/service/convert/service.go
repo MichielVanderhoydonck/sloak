@@ -1,24 +1,24 @@
-package translator
+package convert
 
 import (
 	"math"
 	"time"
 
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/translator"
-	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/translator"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/convert"
+	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/convert"
 )
 
-var _ port.TranslatorService = (*TranslatorServiceImpl)(nil)
+var _ port.ConvertService = (*ConvertServiceImpl)(nil)
 
-type TranslatorServiceImpl struct{}
+type ConvertServiceImpl struct{}
 
-func NewTranslatorService() port.TranslatorService {
-	return &TranslatorServiceImpl{}
+func NewConvertService() port.ConvertService {
+	return &ConvertServiceImpl{}
 }
 
-func (s *TranslatorServiceImpl) Translate(params domain.TranslationParams) (domain.TranslationResult, error) {
+func (s *ConvertServiceImpl) Convert(params domain.ConversionParams) (domain.ConversionResult, error) {
 	if err := params.Validate(); err != nil {
-		return domain.TranslationResult{}, err
+		return domain.ConversionResult{}, err
 	}
 
 	var availabilityPercent float64
@@ -33,11 +33,11 @@ func (s *TranslatorServiceImpl) Translate(params domain.TranslationParams) (doma
 	errorRatio := 1.0 - (availabilityPercent / 100.0)
 
 	calcDuration := func(window time.Duration) time.Duration {
-		nanos := float64(window) * errorRatio
-		return time.Duration(math.Round(nanos))
+		seconds := window.Seconds() * errorRatio
+		return time.Duration(math.Round(seconds)) * time.Second
 	}
 
-	return domain.TranslationResult{
+	return domain.ConversionResult{
 		AvailabilityPercent: availabilityPercent,
 		DailyDowntime:       calcDuration(24 * time.Hour),
 		WeeklyDowntime:      calcDuration(7 * 24 * time.Hour),

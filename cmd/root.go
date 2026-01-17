@@ -15,8 +15,8 @@ import (
 	dependencyCmd "github.com/MichielVanderhoydonck/sloak/cmd/dependency"
 	dependencyService "github.com/MichielVanderhoydonck/sloak/internal/core/service/dependency"
 
-	translatorCmd "github.com/MichielVanderhoydonck/sloak/cmd/translator"
-	translatorService "github.com/MichielVanderhoydonck/sloak/internal/core/service/translator"
+	convertCmd "github.com/MichielVanderhoydonck/sloak/cmd/convert"
+	convertService "github.com/MichielVanderhoydonck/sloak/internal/core/service/convert"
 
 	alertingTableCmd "github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	alertingService "github.com/MichielVanderhoydonck/sloak/internal/core/service/alerting"
@@ -25,7 +25,7 @@ import (
 	disruptionService "github.com/MichielVanderhoydonck/sloak/internal/core/service/disruption"
 
 	feasibilityCmd "github.com/MichielVanderhoydonck/sloak/cmd/feasibility"
-    feasibilityService "github.com/MichielVanderhoydonck/sloak/internal/core/service/feasibility"
+	feasibilityService "github.com/MichielVanderhoydonck/sloak/internal/core/service/feasibility"
 )
 
 var rootCmd = &cobra.Command{
@@ -58,9 +58,9 @@ func init() {
 	dependencyCmd.SetService(depSvc)
 	calculateCmd.AddCommand(dependencyCmd.NewDependencyCmd())
 
-	transSvc := translatorService.NewTranslatorService()
-	translatorCmd.SetService(transSvc)
-	calculateCmd.AddCommand(translatorCmd.NewTranslatorCmd())
+	convSvc := convertService.NewConvertService()
+	convertCmd.SetService(convSvc)
+	rootCmd.AddCommand(convertCmd.NewConvertCmd())
 
 	alertSvc := alertingService.NewAlertGeneratorService()
 	alertingTableCmd.SetService(alertSvc)
@@ -71,6 +71,6 @@ func init() {
 	calculateCmd.AddCommand(disruptionCmd.NewDisruptionCmd())
 
 	feasSvc := feasibilityService.NewFeasibilityService()
-    feasibilityCmd.SetService(feasSvc)
-    calculateCmd.AddCommand(feasibilityCmd.NewFeasibilityCmd())
+	feasibilityCmd.SetService(feasSvc)
+	calculateCmd.AddCommand(feasibilityCmd.NewFeasibilityCmd())
 }
