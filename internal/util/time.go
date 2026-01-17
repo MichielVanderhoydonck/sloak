@@ -13,32 +13,44 @@ func ParseTimeWindow(s string) (time.Duration, error) {
 		return 0, fmt.Errorf("empty duration string")
 	}
 
-	unitIndex := strings.LastIndexAny(s, "0123456789")
-	if unitIndex == -1 {
-		return 0, fmt.Errorf("invalid duration format: %s", s)
+	// First, try parsing with the standard library. This handles formats like "1h30m", "10s", etc.
+	d, err := time.ParseDuration(s)
+	if err == nil {
+		return d, nil
+	}
+	originalErr := err // Keep original error for better messages
+
+	// If standard parsing fails, it might be due to our custom units (d, w, y).
+	// This custom logic expects a number followed by a single character unit, e.g., "30d", "1.5w".
+	unitIndex := strings.LastIndexAny(s, "dwy")
+	if unitIndex == -1 || unitIndex != len(s)-1 {
+		// No custom unit found, or it's not at the end of the string.
+		// Return the original, more descriptive error from time.ParseDuration.
+		return 0, originalErr
 	}
 
-	numberStr := s[:unitIndex+1]
-	unitStr := s[unitIndex+1:]
+	numberStr := s[:unitIndex]
+	unitStr := s[unitIndex:]
 
 	number, err := strconv.ParseFloat(numberStr, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid number in duration: %s", numberStr)
+		// The part before the unit is not a valid float, e.g., "1h30d".
+		return 0, fmt.Errorf("invalid number %q for custom duration %q", numberStr, s)
 	}
 
+	var unitMultiplier float64
 	switch unitStr {
 	case "d":
-		unitStr = "h"
-		number = number * 24
+		unitMultiplier = float64(24 * time.Hour)
 	case "w":
-		unitStr = "h"
-		number = number * 24 * 7
+		unitMultiplier = float64(7 * 24 * time.Hour)
 	case "y":
-		unitStr = "h"
-		number = number * 24 * 365
+		unitMultiplier = float64(365 * 24 * time.Hour)
 	}
 
-	return time.ParseDuration(fmt.Sprintf("%f%s", number, unitStr))
+	// Calculate duration in nanoseconds.
+	nanos := number * unitMultiplier
+	return time.Duration(nanos), nil
 }
 
 func FormatDuration(d time.Duration) string {

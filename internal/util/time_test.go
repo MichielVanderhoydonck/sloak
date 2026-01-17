@@ -21,6 +21,18 @@ func TestParseTimeWindow(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:        "Standard Go Duration (minutes)",
+			input:       "30m",
+			expectedDur: 30 * time.Minute,
+			expectError: false,
+		},
+		{
+			name:        "Compound Go Duration",
+			input:       "1h20m",
+			expectedDur: 1*time.Hour + 20*time.Minute,
+			expectError: false,
+		},
+		{
 			name:        "Custom 'd' unit (30 days)",
 			input:       "30d",
 			expectedDur: 30 * 24 * time.Hour, // 720h
@@ -45,9 +57,9 @@ func TestParseTimeWindow(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "Standard Go Duration (minutes)",
-			input:       "30m",
-			expectedDur: 30 * time.Minute,
+			name:        "Float 'w' unit (1.5 weeks)",
+			input:       "1.5w",
+			expectedDur: 1.5 * 7 * 24 * time.Hour,
 			expectError: false,
 		},
 		{
@@ -65,14 +77,22 @@ func TestParseTimeWindow(t *testing.T) {
 			input:       "",
 			expectError: true,
 		},
+		{
+			name:        "Invalid mixed duration",
+			input:       "1d12h",
+			expectError: true,
+		},
+		{
+			name:        "Invalid custom duration number",
+			input:       "1h30d",
+			expectError: true,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// --- Act ---
 			result, err := util.ParseTimeWindow(tc.input)
 
-			// --- Assert ---
 			if tc.expectError {
 				if err == nil {
 					t.Fatal("expected an error, but got nil")
