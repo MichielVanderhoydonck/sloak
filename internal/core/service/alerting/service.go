@@ -31,11 +31,13 @@ func (s *AlertGeneratorServiceImpl) GenerateTable(params domain.GenerateParams) 
 		shortWindow := time.Duration(math.Round(float64(longWindow) / ShortWindowRatio))
 
 		return domain.AlertDefinition{
-			ConsumptionTarget: consumptionThreshold * 100,
-			LongWindow:        longWindow,
-			ShortWindow:       shortWindow,
-			BurnRate:          burnFactor,
-			NotificationType:  notif,
+			ConsumptionTarget:  consumptionThreshold * 100,
+			LongWindow:         longWindow,
+			LongWindowSeconds:  longWindow.Seconds(),
+			ShortWindow:        shortWindow,
+			ShortWindowSeconds: shortWindow.Seconds(),
+			BurnRate:           burnFactor,
+			NotificationType:   notif,
 		}
 	}
 
@@ -46,8 +48,9 @@ func (s *AlertGeneratorServiceImpl) GenerateTable(params domain.GenerateParams) 
 	}
 
 	return domain.TableResult{
-		TargetSLO:   params.TargetSLO,
-		TotalWindow: params.TotalWindow,
-		Alerts:      rules,
+		TargetSLO:          params.TargetSLO,
+		TotalWindow:        params.TotalWindow,
+		TotalWindowSeconds: params.TotalWindow.Seconds(),
+		Alerts:             rules,
 	}, nil
 }

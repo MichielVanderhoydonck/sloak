@@ -7,3 +7,7 @@ var generateCmd = &cobra.Command{
 	Short: "Generates SRE configurations and rules.",
 	Long:  `Generates actionable configurations, such as Prometheus alert rules, based on SLO targets.`,
 }
+
+func init() {
+	generateCmd.PersistentFlags().StringP("output", "o", "", "Output format (e.g., json)")
+}

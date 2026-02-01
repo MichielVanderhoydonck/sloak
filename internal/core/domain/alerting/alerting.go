@@ -24,15 +24,18 @@ type GenerateParams struct {
 }
 
 type AlertDefinition struct {
-	ConsumptionTarget float64
-	LongWindow        time.Duration
-	ShortWindow       time.Duration
-	BurnRate          float64
-	NotificationType  NotificationType
+	ConsumptionTarget  float64          `json:"consumption_target"`
+	LongWindow         time.Duration    `json:"long_window"`
+	LongWindowSeconds  float64          `json:"long_window_seconds"`
+	ShortWindow        time.Duration    `json:"short_window"`
+	ShortWindowSeconds float64          `json:"short_window_seconds"`
+	BurnRate           float64          `json:"burn_rate"`
+	NotificationType   NotificationType `json:"notification_type"`
 }
 
 type TableResult struct {
-	TargetSLO   common.SLOTarget
-	TotalWindow time.Duration
-	Alerts      []AlertDefinition
+	TargetSLO          common.SLOTarget  `json:"target_slo"`
+	TotalWindow        time.Duration     `json:"total_window"`
+	TotalWindowSeconds float64           `json:"total_window_seconds"`
+	Alerts             []AlertDefinition `json:"alerts"`
 }

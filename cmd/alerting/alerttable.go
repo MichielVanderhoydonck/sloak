@@ -1,6 +1,7 @@
 package alerting
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -52,6 +53,16 @@ func runAlertRulesCmd(cmd *cobra.Command, args []string) {
 	res, err := service.GenerateTable(params)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	outputFlag, _ := cmd.Flags().GetString("output")
+	if outputFlag == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(res); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+		}
 		return
 	}
 
