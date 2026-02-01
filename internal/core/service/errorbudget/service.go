@@ -2,8 +2,10 @@ package errorbudget
 
 import (
 	"errors"
+
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/errorbudget"
 	errorbudgetPort "github.com/MichielVanderhoydonck/sloak/internal/core/port/errorbudget"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 
 	"math"
 	"time"
@@ -28,9 +30,12 @@ func (s *CalculatorServiceImpl) CalculateBudget(params errorbudgetDomain.Calcula
 	allowedError := time.Duration(roundedNanos)
 
 	return errorbudgetDomain.BudgetResult{
-		TargetSLO:     params.TargetSLO,
-		TotalDuration: params.TimeWindow,
-		AllowedError:  allowedError,
-		ErrorBudget:   errorBudgetPercent,
+		TargetSLO:            params.TargetSLO,
+		TotalDuration:        params.TimeWindow,
+		TotalDurationSeconds: math.Round(time.Duration(params.TimeWindow).Seconds()),
+		AllowedError:         util.Duration(allowedError),
+		AllowedErrorSeconds:  math.Round(allowedError.Seconds()),
+		ErrorBudget:          util.RoundPercentage(errorBudgetPercent * 100.0),
+		TargetSLORatio:       math.Round((params.TargetSLO.Value/100.0)*1000000) / 1000000,
 	}, nil
 }

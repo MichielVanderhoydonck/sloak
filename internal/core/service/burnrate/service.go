@@ -7,6 +7,7 @@ import (
 
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/burnrate"
 	burnratePort "github.com/MichielVanderhoydonck/sloak/internal/core/port/burnrate"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 var _ burnratePort.BurnRateService = (*BurnRateServiceImpl)(nil)
@@ -18,48 +19,63 @@ func NewBurnRateService() burnratePort.BurnRateService {
 }
 
 func (s *BurnRateServiceImpl) CalculateBurnRate(params burnrateDomain.CalculationParams) (burnrateDomain.BurnRateResult, error) {
-	errorBudgetPercent := 1.0 - (params.TargetSLO.Value / 100.0)
-	totalBudget := time.Duration(math.Round(float64(params.TotalWindow) * errorBudgetPercent))
+	totalWindow := time.Duration(params.TotalWindow)
+	errorConsumed := time.Duration(params.ErrorConsumed)
+	timeElapsed := time.Duration(params.TimeElapsed)
 
-	if totalBudget <= 0 {
+	totalBudget := totalWindow.Seconds() * (1.0 - (params.TargetSLO.Value / 100.0))
+	totalBudgetDur := time.Duration(totalBudget * float64(time.Second))
+
+	if totalBudgetDur <= 0 {
 		return burnrateDomain.BurnRateResult{}, errors.New("total error budget is zero or negative")
 	}
 
-	budgetConsumedPercent := (float64(params.ErrorConsumed) / float64(totalBudget)) * 100.0
-	timeElapsedPercent := (float64(params.TimeElapsed) / float64(params.TotalWindow)) * 100.0
+	budgetRemaining := totalBudgetDur - errorConsumed
+
+	var consumedPercent float64
+	if totalBudgetDur.Seconds() > 0 {
+		consumedPercent = (errorConsumed.Seconds() / totalBudgetDur.Seconds()) * 100.0
+	} else {
+		consumedPercent = 0.0
+	}
 
 	var burnRate float64
-	if timeElapsedPercent > 0 {
-		burnRate = budgetConsumedPercent / timeElapsedPercent
+	if timeElapsed.Seconds() > 0 && totalWindow.Seconds() > 0 {
+		timeElapsedPercent := (timeElapsed.Seconds() / totalWindow.Seconds()) * 100.0
+		if timeElapsedPercent > 0 {
+			burnRate = consumedPercent / timeElapsedPercent
+		} else {
+			burnRate = 0.0 // Should not happen if timeElapsed.Seconds() > 0
+		}
 	} else {
-		if params.ErrorConsumed > 0 {
-			burnRate = math.Inf(1)
+		if errorConsumed > 0 {
+			burnRate = util.Inf
 		} else {
 			burnRate = 0.0
 		}
 	}
 
-	budgetRemaining := totalBudget - params.ErrorConsumed
-
 	var tte time.Duration
-	isInfinite := false
+	if errorConsumed > 0 && timeElapsed.Seconds() > 0 {
+		consumptionRate := errorConsumed.Seconds() / timeElapsed.Seconds()
+		if consumptionRate > 0 {
+			tte = time.Duration(budgetRemaining.Seconds()/consumptionRate) * time.Second
+		}
+	}
 
-	if budgetRemaining <= 0 {
+	if tte < 0 {
 		tte = 0
-	} else if params.ErrorConsumed <= 0 {
-		isInfinite = true
-	} else {
-		consumptionRate := float64(params.ErrorConsumed) / float64(params.TimeElapsed)
-		tteNanos := float64(budgetRemaining) / consumptionRate
-		tte = time.Duration(math.Round(tteNanos))
 	}
 
 	return burnrateDomain.BurnRateResult{
-		TotalErrorBudget: totalBudget,
-		BudgetConsumed:   budgetConsumedPercent,
-		BurnRate:         burnRate,
-		BudgetRemaining:  budgetRemaining,
-		TimeToExhaustion: tte,
-		IsInfinite:       isInfinite,
+		TotalErrorBudget:        util.Duration(totalBudgetDur),
+		TotalErrorBudgetSeconds: math.Round(totalBudgetDur.Seconds()),
+		BudgetRemaining:         util.Duration(budgetRemaining),
+		BudgetRemainingSeconds:  math.Round(budgetRemaining.Seconds()),
+		BudgetConsumed:          util.RoundPercentage(consumedPercent),
+		BurnRate:                util.RoundValue(burnRate),
+		TimeToExhaustion:        util.Duration(tte),
+		TimeToExhaustionSeconds: math.Round(tte.Seconds()),
+		IsInfinite:              errorConsumed == 0,
 	}, nil
 }

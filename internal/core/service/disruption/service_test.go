@@ -7,6 +7,7 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/disruption"
 	service "github.com/MichielVanderhoydonck/sloak/internal/core/service/disruption"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 func TestDisruptionService(t *testing.T) {
@@ -18,8 +19,8 @@ func TestDisruptionService(t *testing.T) {
 	// Expect ~43 deploys total.
 	params := domain.CalculationParams{
 		TargetSLO:    slo999,
-		TotalWindow:  30 * 24 * time.Hour,
-		CostPerEvent: 1 * time.Minute,
+		TotalWindow:  util.Duration(30 * 24 * time.Hour),
+		CostPerEvent: util.Duration(1 * time.Minute),
 	}
 
 	res, err := svc.CalculateCapacity(params)

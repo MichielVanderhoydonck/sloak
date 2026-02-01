@@ -2,17 +2,18 @@ package disruption
 
 import (
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
-	"time"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type CalculationParams struct {
 	TargetSLO    common.SLOTarget
-	TotalWindow  time.Duration
-	CostPerEvent time.Duration
+	TotalWindow  util.Duration
+	CostPerEvent util.Duration
 }
 
 type Result struct {
-	TotalErrorBudget time.Duration
-	MaxDisruptions   int64
-	DailyDisruptions float64
+	TotalErrorBudget        util.Duration `json:"total_error_budget"`
+	TotalErrorBudgetSeconds float64       `json:"total_error_budget_seconds"`
+	MaxDisruptions          int64         `json:"max_disruptions"`
+	DailyDisruptions        float64       `json:"daily_disruptions"`
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/errorbudget"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type mockCalculatorService struct {
@@ -24,8 +25,8 @@ func TestErrorBudgetCommand(t *testing.T) {
 	slo99_95, _ := common.NewSLOTarget(99.95)
 	mockResult := errorbudgetDomain.BudgetResult{
 		TargetSLO:     slo99_95,
-		TotalDuration: 30 * 24 * time.Hour,
-		AllowedError:  (21 * time.Minute) + (36 * time.Second),
+		TotalDuration: util.Duration(30 * 24 * time.Hour),
+		AllowedError:  util.Duration((21 * time.Minute) + (36 * time.Second)),
 		ErrorBudget:   0.05,
 	}
 
@@ -53,7 +54,7 @@ func TestErrorBudgetCommand(t *testing.T) {
 	if !strings.Contains(outStr, "Allowed Downtime: 21m36s") {
 		t.Error("Output string did not contain the expected allowed downtime")
 	}
-	if !strings.Contains(outStr, "Error Budget: 0.05000%") {
+	if !strings.Contains(outStr, "Error Budget: 0.0500% of time") {
 		t.Error("Output string did not contain the expected error budget percentage")
 	}
 }

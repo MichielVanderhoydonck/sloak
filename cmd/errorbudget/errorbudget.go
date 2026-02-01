@@ -1,7 +1,9 @@
 package errorbudget
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -49,7 +51,7 @@ func runErrorBudgetCmd(cmd *cobra.Command, args []string) {
 
 	params := errorbudgetDomain.CalculationParams{
 		TargetSLO:  sloTargetVO,
-		TimeWindow: timeWindow,
+		TimeWindow: util.Duration(timeWindow),
 	}
 
 	result, err := calculatorService.CalculateBudget(params)
@@ -59,10 +61,20 @@ func runErrorBudgetCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	output, _ := cmd.Flags().GetString("output")
+	if output == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(result); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+		}
+		return
+	}
+
 	fmt.Printf("\n--- Error Budget Calculation ---\n")
 	fmt.Printf("SLO Target: %.3f%%\n", result.TargetSLO.Value)
-	fmt.Printf("Time Window: %s\n", util.FormatDuration(result.TotalDuration))
+	fmt.Printf("Time Window: %s\n", result.TotalDuration)
 	fmt.Printf("--------------------------------\n")
-	fmt.Printf("Error Budget: %.5f%% of time\n", result.ErrorBudget)
-	fmt.Printf("Allowed Downtime: %s\n", util.FormatDuration(result.AllowedError))
+	fmt.Printf("Error Budget: %.4f%% of time\n", result.ErrorBudget)
+	fmt.Printf("Allowed Downtime: %s\n", result.AllowedError)
 }

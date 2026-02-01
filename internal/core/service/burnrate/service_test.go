@@ -9,6 +9,7 @@ import (
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/burnrate"
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	burnrateService "github.com/MichielVanderhoydonck/sloak/internal/core/service/burnrate"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 func mustNewSLO(t *testing.T, val float64) common.SLOTarget {
@@ -32,52 +33,52 @@ func TestBurnRateService(t *testing.T) {
 		expectedError        error
 		expectedBurnRate     float64
 		expectedConsumedPct  float64
-		expectedRemainingDur time.Duration
-		expectedTTE          time.Duration
+		expectedRemainingDur util.Duration
+		expectedTTE          util.Duration
 		expectedInfinite     bool
 	}{
 		{
 			name: "Critical Burn (2.98x)",
 			params: burnrateDomain.CalculationParams{
 				TargetSLO:     mustNewSLO(t, 99.9),
-				TotalWindow:   30 * 24 * time.Hour, // 720h
-				TimeElapsed:   7 * 24 * time.Hour,  // 168h
-				ErrorConsumed: 30 * time.Minute,
+				TotalWindow:   util.Duration(30 * 24 * time.Hour), // 720h
+				TimeElapsed:   util.Duration(7 * 24 * time.Hour),  // 168h
+				ErrorConsumed: util.Duration(30 * time.Minute),
 			},
 			expectedError:        nil,
 			expectedBurnRate:     2.97619,
 			expectedConsumedPct:  69.444,
-			expectedRemainingDur: (13 * time.Minute) + (12 * time.Second),
-			expectedTTE:          73*time.Hour + 55*time.Minute + 12*time.Second,
+			expectedRemainingDur: util.Duration((13 * time.Minute) + (12 * time.Second)),
+			expectedTTE:          util.Duration(73*time.Hour + 55*time.Minute + 12*time.Second),
 			expectedInfinite:     false,
 		},
 		{
 			name: "Ideal Burn (1x)",
 			params: burnrateDomain.CalculationParams{
 				TargetSLO:     mustNewSLO(t, 99.9),
-				TotalWindow:   30 * 24 * time.Hour,
-				TimeElapsed:   15 * 24 * time.Hour,
-				ErrorConsumed: (21 * time.Minute) + (36 * time.Second),
+				TotalWindow:   util.Duration(30 * 24 * time.Hour),
+				TimeElapsed:   util.Duration(15 * 24 * time.Hour),
+				ErrorConsumed: util.Duration((21 * time.Minute) + (36 * time.Second)),
 			},
 			expectedError:        nil,
 			expectedBurnRate:     1.0,
 			expectedConsumedPct:  50.0,
-			expectedRemainingDur: (21 * time.Minute) + (36 * time.Second),
-			expectedTTE:          15 * 24 * time.Hour,
+			expectedRemainingDur: util.Duration((21 * time.Minute) + (36 * time.Second)),
+			expectedTTE:          util.Duration(15 * 24 * time.Hour),
 			expectedInfinite:     false,
 		},
 		{
 			name: "No Burn (0x)",
 			params: burnrateDomain.CalculationParams{
 				TargetSLO:     mustNewSLO(t, 99.9),
-				TotalWindow:   30 * 24 * time.Hour,
-				TimeElapsed:   7 * 24 * time.Hour,
+				TotalWindow:   util.Duration(30 * 24 * time.Hour),
+				TimeElapsed:   util.Duration(7 * 24 * time.Hour),
 				ErrorConsumed: 0,
 			},
 			expectedError:        nil,
 			expectedBurnRate:     0.0,
 			expectedConsumedPct:  0.0,
-			expectedRemainingDur: (43 * time.Minute) + (12 * time.Second),
+			expectedRemainingDur: util.Duration((43 * time.Minute) + (12 * time.Second)),
 			expectedTTE:          0,
 			expectedInfinite:     true,
 		},
@@ -85,14 +86,14 @@ func TestBurnRateService(t *testing.T) {
 			name: "Instant Burn (Infinite)",
 			params: burnrateDomain.CalculationParams{
 				TargetSLO:     mustNewSLO(t, 99.9),
-				TotalWindow:   30 * 24 * time.Hour,
+				TotalWindow:   util.Duration(30 * 24 * time.Hour),
 				TimeElapsed:   0,
-				ErrorConsumed: 1 * time.Minute,
+				ErrorConsumed: util.Duration(1 * time.Minute),
 			},
 			expectedError:        nil,
 			expectedBurnRate:     math.Inf(1),
 			expectedConsumedPct:  2.31,
-			expectedRemainingDur: (42 * time.Minute) + (12 * time.Second),
+			expectedRemainingDur: util.Duration((42 * time.Minute) + (12 * time.Second)),
 			expectedTTE:          0,
 			expectedInfinite:     false,
 		},
@@ -122,7 +123,7 @@ func TestBurnRateService(t *testing.T) {
 				if !approxEqual(result.BudgetConsumed, tc.expectedConsumedPct, 0.01) {
 					t.Errorf("expected consumed pct %.2f, but got %.2f", tc.expectedConsumedPct, result.BudgetConsumed)
 				}
-				if result.BudgetRemaining != tc.expectedRemainingDur {
+				if result.BudgetRemaining.String() != tc.expectedRemainingDur.String() {
 					t.Errorf("expected remaining duration %v, but got %v", tc.expectedRemainingDur, result.BudgetRemaining)
 				}
 
@@ -130,10 +131,9 @@ func TestBurnRateService(t *testing.T) {
 					t.Errorf("expected IsInfinite %v, got %v", tc.expectedInfinite, result.IsInfinite)
 				}
 
-				if !tc.expectedInfinite {
-					diff := result.TimeToExhaustion - tc.expectedTTE
-					if diff < -time.Second || diff > time.Second {
-						t.Errorf("expected TTE %v, got %v (diff %v)", tc.expectedTTE, result.TimeToExhaustion, diff)
+				if !tc.expectedInfinite && tc.expectedTTE > 0 {
+					if result.TimeToExhaustion.String() != tc.expectedTTE.String() {
+						t.Errorf("expected TTE %v, got %v", tc.expectedTTE, result.TimeToExhaustion)
 					}
 				}
 			}

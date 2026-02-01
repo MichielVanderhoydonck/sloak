@@ -38,7 +38,7 @@ func TestDependencyCommand(t *testing.T) {
 	restore()
 
 	outStr := output.String()
-	if !strings.Contains(outStr, "Total Availability: 99.800100%") {
+	if !strings.Contains(outStr, "Total Availability: 99.8001%") {
 		t.Errorf("Unexpected output: %s", outStr)
 	}
 }

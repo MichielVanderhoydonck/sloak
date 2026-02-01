@@ -1,13 +1,13 @@
 package feasibility_test
 
 import (
-	"math"
 	"testing"
 	"time"
 
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/feasibility"
 	service "github.com/MichielVanderhoydonck/sloak/internal/core/service/feasibility"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 func TestCalculateFeasibility(t *testing.T) {
@@ -16,7 +16,7 @@ func TestCalculateFeasibility(t *testing.T) {
 
 	params := domain.FeasibilityParams{
 		TargetSLO: slo999,
-		MTTR:      1 * time.Hour,
+		MTTR:      util.Duration(1 * time.Hour),
 	}
 
 	res, err := svc.CalculateFeasibility(params)
@@ -28,10 +28,8 @@ func TestCalculateFeasibility(t *testing.T) {
 		t.Errorf("Expected ~8.76 incidents/year, got %f", res.IncidentsPerYear)
 	}
 
-	expectedMTBF := 999 * time.Hour
-	diff := float64(res.RequiredMTBF - expectedMTBF)
-	
-	if math.Abs(diff) > float64(time.Second) {
-		t.Errorf("Expected MTBF %v, got %v", expectedMTBF, res.RequiredMTBF)
+	expectedMTBF := "41.7d"
+	if res.RequiredMTBF.String() != expectedMTBF {
+		t.Errorf("Expected MTBF %s, got %s", expectedMTBF, res.RequiredMTBF.String())
 	}
 }

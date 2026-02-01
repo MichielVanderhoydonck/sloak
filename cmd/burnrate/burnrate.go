@@ -1,6 +1,7 @@
 package burnrate
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -53,9 +54,9 @@ func runBurnRateCmd(cmd *cobra.Command, args []string) {
 
 	params := burnrateDomain.CalculationParams{
 		TargetSLO:     sloTargetVO,
-		TotalWindow:   totalWindow,
-		TimeElapsed:   timeElapsed,
-		ErrorConsumed: errorConsumed,
+		TotalWindow:   util.Duration(totalWindow),
+		TimeElapsed:   util.Duration(timeElapsed),
+		ErrorConsumed: util.Duration(errorConsumed),
 	}
 
 	result, err := burnRateService.CalculateBurnRate(params)
@@ -65,24 +66,34 @@ func runBurnRateCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	outputFlag, _ := cmd.Flags().GetString("output")
+	if outputFlag == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(result); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+		}
+		return
+	}
+
 	fmt.Printf("\n--- Burn Rate Analysis ---\n")
 	fmt.Printf("SLO Target: %.3f%%\n", sloTarget)
 
-	fmt.Printf("Time Window: %s\n", util.FormatDuration(params.TotalWindow))
+	fmt.Printf("Time Window: %s\n", params.TotalWindow)
 
-	fmt.Printf("Total Error Budget: %s\n", util.FormatDuration(result.TotalErrorBudget))
+	fmt.Printf("Total Error Budget: %s\n", result.TotalErrorBudget)
 
 	fmt.Printf("--------------------------\n")
 	fmt.Printf("Budget Consumed: %.2f%% (Time Elapsed: %.2f%%)\n",
 		result.BudgetConsumed,
 		(float64(timeElapsed)/float64(totalWindow))*100.0)
 	fmt.Printf("Burn Rate: %.2fx\n", result.BurnRate)
-	fmt.Printf("Budget Remaining: %s\n", util.FormatDuration(result.BudgetRemaining))
+	fmt.Printf("Budget Remaining: %s\n", result.BudgetRemaining)
 
 	if result.BurnRate > 1.0 {
 		fmt.Println("\nStatus: CRITICAL! Budget is burning faster than expected.")
-		fmt.Printf("Forecast: Budget will be empty in %s\n", util.FormatDuration(result.TimeToExhaustion))
-		exhaustionDate := time.Now().Add(result.TimeToExhaustion)
+		fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
+		exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
 		fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
 	} else if result.IsInfinite {
 		fmt.Println("\nStatus: Excellent! No error budget consumed.")

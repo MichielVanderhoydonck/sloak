@@ -91,8 +91,8 @@ func TestDependencyE2E(t *testing.T) {
 		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
 	}
 
-	if !strings.Contains(outStr, "Total Availability: 99.999900%") {
-		t.Errorf("Expected '99.999900%%', got: %s", outStr)
+	if !strings.Contains(outStr, "Total Availability: 99.9999%") {
+		t.Errorf("Expected '99.9999%%', got: %s", outStr)
 	}
 }
 

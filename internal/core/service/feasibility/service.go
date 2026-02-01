@@ -7,6 +7,7 @@ import (
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/feasibility"
 	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/feasibility"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 var _ port.FeasibilityService = (*FeasibilityServiceImpl)(nil)
@@ -18,25 +19,28 @@ func NewFeasibilityService() port.FeasibilityService {
 }
 
 func (s *FeasibilityServiceImpl) CalculateFeasibility(params domain.FeasibilityParams) (domain.FeasibilityResult, error) {
-	if params.MTTR <= 0 {
-		return domain.FeasibilityResult{}, errors.New("MTTR must be greater than zero")
+	mttr := time.Duration(params.MTTR)
+	errorBudgetPercent := 1.0 - (params.TargetSLO.Value / 100.0)
+
+	if errorBudgetPercent <= 0 {
+		return domain.FeasibilityResult{}, errors.New("SLO target 100% leaves no room for incidents; MTBF is infinite")
 	}
 
-	unavailability := 1.0 - (params.TargetSLO.Value / 100.0)
-	yearDuration := 8760 * time.Hour
-	yearlyBudget := float64(yearDuration) * unavailability
-	
-	incidentsPerYear := yearlyBudget / float64(params.MTTR)
+	mtbfNanos := mttr.Seconds() / errorBudgetPercent
 
-	availabilityRatio := params.TargetSLO.Value / 100.0
-	mtbfNanos := float64(params.MTTR) * (availabilityRatio / unavailability)
+	incidentsPerYear := (365 * 24 * time.Hour).Seconds() / (mtbfNanos + mttr.Seconds())
+
+	requiredMTBF := time.Duration(math.Round(mtbfNanos * float64(time.Second)))
 
 	return domain.FeasibilityResult{
 		TargetSLO:           params.TargetSLO,
+		TargetSLORatio:      math.Round((params.TargetSLO.Value/100.0)*1000000) / 1000000,
 		MTTR:                params.MTTR,
-		IncidentsPerYear:    incidentsPerYear,
-		IncidentsPerQuarter: incidentsPerYear / 4.0,
-		IncidentsPerMonth:   incidentsPerYear / 12.0,
-		RequiredMTBF:        time.Duration(math.Round(mtbfNanos)),
+		MTTRSeconds:         math.Round(mttr.Seconds()),
+		IncidentsPerYear:    util.RoundValue(incidentsPerYear),
+		IncidentsPerQuarter: util.RoundValue(incidentsPerYear / 4.0),
+		IncidentsPerMonth:   util.RoundValue(incidentsPerYear / 12.0),
+		RequiredMTBF:        util.Duration(requiredMTBF),
+		RequiredMTBFSeconds: math.Round(requiredMTBF.Seconds()),
 	}, nil
 }

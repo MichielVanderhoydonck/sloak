@@ -8,6 +8,7 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/errorbudget"
 	errorbudgetService "github.com/MichielVanderhoydonck/sloak/internal/core/service/errorbudget"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 func TestCalculatorService(t *testing.T) {
@@ -25,34 +26,34 @@ func TestCalculatorService(t *testing.T) {
 		name             string
 		params           errorbudgetDomain.CalculationParams
 		expectedError    error
-		expectedDowntime time.Duration
+		expectedDowntime util.Duration
 	}{
 		{
 			name: "99.9% over 30 days",
 			params: errorbudgetDomain.CalculationParams{
 				TargetSLO:  mustNewSLO(99.9),
-				TimeWindow: 30 * 24 * time.Hour, // 720h
+				TimeWindow: util.Duration(30 * 24 * time.Hour), // 720h
 			},
 			expectedError:    nil,
-			expectedDowntime: (43 * time.Minute) + (12 * time.Second), // 0.1% of 720h
+			expectedDowntime: util.Duration((43 * time.Minute) + (12 * time.Second)), // 0.1% of 720h
 		},
 		{
 			name: "99.95% over 30 days",
 			params: errorbudgetDomain.CalculationParams{
 				TargetSLO:  mustNewSLO(99.95),
-				TimeWindow: 30 * 24 * time.Hour, // 720h
+				TimeWindow: util.Duration(30 * 24 * time.Hour), // 720h
 			},
 			expectedError:    nil,
-			expectedDowntime: (21 * time.Minute) + (36 * time.Second), // 0.05% of 720h
+			expectedDowntime: util.Duration((21 * time.Minute) + (36 * time.Second)), // 0.05% of 720h
 		},
 		{
 			name: "95% over 7 days",
 			params: errorbudgetDomain.CalculationParams{
 				TargetSLO:  mustNewSLO(95.0),
-				TimeWindow: 7 * 24 * time.Hour, // 168h
+				TimeWindow: util.Duration(7 * 24 * time.Hour), // 168h
 			},
 			expectedError:    nil,
-			expectedDowntime: (8 * time.Hour) + (24 * time.Minute), // 5% of 168h
+			expectedDowntime: util.Duration((8 * time.Hour) + (24 * time.Minute)), // 5% of 168h
 		},
 	}
 

@@ -8,3 +8,7 @@ var calculateCmd = &cobra.Command{
 	Long: `The 'calculate' command provides a suite of tools for running
 core SRE calculations against SLOs, error budgets, and burn rates.`,
 }
+
+func init() {
+	calculateCmd.PersistentFlags().StringP("output", "o", "", "Output format (e.g., json)")
+}

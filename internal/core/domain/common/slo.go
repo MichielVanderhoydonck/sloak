@@ -6,7 +6,7 @@ import (
 )
 
 type SLOTarget struct {
-	Value float64
+	Value float64 `json:"value"`
 }
 
 var ErrInvalidSLOTarget = errors.New("SLO target must be between 0.0 and 100.0")

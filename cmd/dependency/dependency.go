@@ -1,7 +1,9 @@
 package dependency
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -60,8 +62,18 @@ func runDependencyCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	outputFlag, _ := cmd.Flags().GetString("output")
+	if outputFlag == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(res); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+		}
+		return
+	}
+
 	fmt.Printf("\n--- Dependency Availability (%s) ---\n", strings.Title(string(res.CalculationType)))
 	fmt.Printf("Components: %d\n", res.ComponentCount)
 	fmt.Printf("------------------------------------\n")
-	fmt.Printf("Total Availability: %.6f%%\n", res.TotalAvailability)
+	fmt.Printf("Total Availability: %.4f%%\n", res.TotalAvailability)
 }

@@ -1,7 +1,10 @@
 package feasibility
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 
 	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
@@ -43,7 +46,7 @@ func runFeasibilityCmd(cmd *cobra.Command, args []string) {
 
 	params := domain.FeasibilityParams{
 		TargetSLO: slo,
-		MTTR:      mttr,
+		MTTR:      util.Duration(mttr),
 	}
 
 	res, err := service.CalculateFeasibility(params)
@@ -52,20 +55,30 @@ func runFeasibilityCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	outputFlag, _ := cmd.Flags().GetString("output")
+	if outputFlag == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(res); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+		}
+		return
+	}
+
 	fmt.Printf("\n--- SLO Feasibility Analysis ---\n")
 	fmt.Printf("Target SLO:   %.3f%%\n", res.TargetSLO.Value)
-	fmt.Printf("Average MTTR: %s\n\n", util.FormatDuration(res.MTTR))
+	fmt.Printf("Average MTTR: %s\n\n", res.MTTR)
 
 	fmt.Println("--- Operational Reality ---")
-	fmt.Printf("To maintain %.3f%% with a %s response time:\n\n", res.TargetSLO.Value, util.FormatDuration(res.MTTR))
-	
+	fmt.Printf("To maintain %.3f%% with a %s response time:\n\n", res.TargetSLO.Value, res.MTTR)
+
 	fmt.Println("Max Incident Frequency:")
 	fmt.Printf("  • Per Year:    %.1f incidents\n", res.IncidentsPerYear)
 	fmt.Printf("  • Per Quarter: %.1f incidents\n", res.IncidentsPerQuarter)
 	fmt.Printf("  • Per Month:   %.1f incidents\n\n", res.IncidentsPerMonth)
 
 	fmt.Println("Required Reliability (MTBF):")
-	fmt.Printf("  • Systems must run for %s without failure.\n\n", util.FormatDuration(res.RequiredMTBF))
+	fmt.Printf("  • Systems must run for %s without failure.\n\n", res.RequiredMTBF)
 
 	// Simple Status Logic
 	fmt.Print("Status: ")

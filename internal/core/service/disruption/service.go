@@ -5,38 +5,46 @@ import (
 	"math"
 	"time"
 
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/disruption"
-	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/disruption"
+	disruptionDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/disruption"
+	disruptionPort "github.com/MichielVanderhoydonck/sloak/internal/core/port/disruption"
+	"github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var _ port.DisruptionService = (*DisruptionServiceImpl)(nil)
+var _ disruptionPort.DisruptionService = (*DisruptionServiceImpl)(nil)
 
 type DisruptionServiceImpl struct{}
 
-func NewDisruptionService() port.DisruptionService {
+func NewDisruptionService() disruptionPort.DisruptionService {
 	return &DisruptionServiceImpl{}
 }
 
-func (s *DisruptionServiceImpl) CalculateCapacity(params domain.CalculationParams) (domain.Result, error) {
+func (s *DisruptionServiceImpl) CalculateCapacity(params disruptionDomain.CalculationParams) (disruptionDomain.Result, error) {
 	if params.TotalWindow <= 0 {
-		return domain.Result{}, errors.New("window must be greater than zero")
+		return disruptionDomain.Result{}, errors.New("window must be greater than zero")
 	}
 	if params.CostPerEvent <= 0 {
-		return domain.Result{}, errors.New("cost per disruption must be greater than zero")
+		return disruptionDomain.Result{}, errors.New("cost per disruption must be greater than zero")
 	}
 
+	totalWindow := time.Duration(params.TotalWindow)
+	costPerEvent := time.Duration(params.CostPerEvent)
+
 	errorBudgetPercent := 1.0 - (params.TargetSLO.Value / 100.0)
-	totalBudgetNanos := float64(params.TotalWindow) * errorBudgetPercent
+	totalBudgetNanos := float64(totalWindow) * errorBudgetPercent
 	totalBudget := time.Duration(math.Round(totalBudgetNanos))
 
-	maxEvents := int64(totalBudget) / int64(params.CostPerEvent)
+	var maxDisruptions int64
+	var dailyDisruptions float64
 
-	daysInWindow := params.TotalWindow.Hours() / 24.0
-	dailyAverage := float64(maxEvents) / daysInWindow
+	if costPerEvent > 0 {
+		maxDisruptions = int64(totalBudget / costPerEvent)
+		dailyDisruptions = float64(maxDisruptions) / (totalWindow.Hours() / 24.0)
+	}
 
-	return domain.Result{
-		TotalErrorBudget: totalBudget,
-		MaxDisruptions:   maxEvents,
-		DailyDisruptions: dailyAverage,
+	return disruptionDomain.Result{
+		TotalErrorBudget:        util.Duration(totalBudget),
+		TotalErrorBudgetSeconds: math.Round(totalBudget.Seconds()),
+		MaxDisruptions:          maxDisruptions,
+		DailyDisruptions:        util.RoundValue(dailyDisruptions),
 	}, nil
 }

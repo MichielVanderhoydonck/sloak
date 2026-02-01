@@ -8,6 +8,7 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/burnrate"
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/burnrate"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type mockBurnRateService struct {
@@ -21,11 +22,11 @@ func (m *mockBurnRateService) CalculateBurnRate(params burnrateDomain.Calculatio
 
 func TestBurnRateCommand(t *testing.T) {
 	mockResult := burnrateDomain.BurnRateResult{
-		TotalErrorBudget: (43 * time.Minute) + (12 * time.Second),
+		TotalErrorBudget: util.Duration((43 * time.Minute) + (12 * time.Second)),
 		BudgetConsumed:   69.44,
 		BurnRate:         2.98,
-		BudgetRemaining:  (13 * time.Minute) + (12 * time.Second),
-		TimeToExhaustion: 73*time.Hour + 55*time.Minute + 12*time.Second,
+		BudgetRemaining:  util.Duration((13 * time.Minute) + (12 * time.Second)),
+		TimeToExhaustion: util.Duration(73*time.Hour + 55*time.Minute + 12*time.Second),
 	}
 
 	mockSvc := &mockBurnRateService{

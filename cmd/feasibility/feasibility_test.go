@@ -9,6 +9,7 @@ import (
 	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/feasibility"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type mockFeasibilityService struct {
@@ -24,11 +25,11 @@ func TestFeasibilityCommand(t *testing.T) {
 	targetSLO, _ := common.NewSLOTarget(99.9)
 	mockRes := domain.FeasibilityResult{
 		TargetSLO:           targetSLO,
-		MTTR:                30 * time.Minute,
+		MTTR:                util.Duration(30 * time.Minute),
 		IncidentsPerYear:    17.5,
 		IncidentsPerQuarter: 4.4,
 		IncidentsPerMonth:   1.5,
-		RequiredMTBF:        500 * time.Hour, 
+		RequiredMTBF:        util.Duration(500 * time.Hour),
 	}
 
 	svc := &mockFeasibilityService{res: mockRes}
@@ -57,11 +58,11 @@ func TestFeasibilityCommand(t *testing.T) {
 	if !strings.Contains(outStr, "Target SLO:   99.900%") {
 		t.Error("Output missing parsed SLO")
 	}
-	
+
 	if !strings.Contains(outStr, "17.5 incidents") {
 		t.Error("Output missing Incidents Per Year")
 	}
-	if !strings.Contains(outStr, "500h0m0s") { 
+	if !strings.Contains(outStr, "20.8d") {
 		t.Error("Output missing MTBF duration")
 	}
 

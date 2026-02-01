@@ -16,9 +16,9 @@ type CalculationParams struct {
 }
 
 type Result struct {
-	TotalAvailability float64
-	CalculationType   CalculationType
-	ComponentCount    int
+	TotalAvailability float64         `json:"total_availability"`
+	CalculationType   CalculationType `json:"calculation_type"`
+	ComponentCount    int             `json:"component_count"`
 }
 
 func (p CalculationParams) Validate() error {

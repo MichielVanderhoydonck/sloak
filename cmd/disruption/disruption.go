@@ -1,7 +1,10 @@
 package disruption
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 
 	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
@@ -46,8 +49,8 @@ func runDisruptionCmd(cmd *cobra.Command, args []string) {
 
 	params := domain.CalculationParams{
 		TargetSLO:    slo,
-		TotalWindow:  window,
-		CostPerEvent: cost,
+		TotalWindow:  util.Duration(window),
+		CostPerEvent: util.Duration(cost),
 	}
 
 	res, err := service.CalculateCapacity(params)
@@ -56,10 +59,20 @@ func runDisruptionCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	outputFlag, _ := cmd.Flags().GetString("output")
+	if outputFlag == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(res); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+		}
+		return
+	}
+
 	fmt.Printf("\n--- Disruption Budget Analysis ---\n")
 	fmt.Printf("SLO Target:       %.3f%%\n", slo.Value)
-	fmt.Printf("Total Budget:     %s\n", util.FormatDuration(res.TotalErrorBudget))
-	fmt.Printf("Cost per Event:   %s\n", util.FormatDuration(cost))
+	fmt.Printf("Total Budget:     %s\n", res.TotalErrorBudget)
+	fmt.Printf("Cost per Event:   %s\n", params.CostPerEvent)
 	fmt.Println("----------------------------------")
 	fmt.Printf("Max Events Total: %d\n", res.MaxDisruptions)
 	fmt.Printf("Daily Frequency:  %.1f events/day\n", res.DailyDisruptions)

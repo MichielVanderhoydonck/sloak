@@ -3,6 +3,7 @@ package dependency
 import (
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/dependency"
 	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/dependency"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 var _ port.AvailabilityService = (*AvailabilityServiceImpl)(nil)
@@ -36,7 +37,7 @@ func (s *AvailabilityServiceImpl) CalculateCompositeAvailability(params domain.C
 	}
 
 	return domain.Result{
-		TotalAvailability: total,
+		TotalAvailability: util.RoundPercentage(total),
 		CalculationType:   params.Type,
 		ComponentCount:    len(params.Components),
 	}, nil
