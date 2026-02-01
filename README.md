@@ -1,59 +1,99 @@
+# SLOak: Service-Level-Objective Army Knife
+
 <img src="./sloak.png" width="256"> 
 
-## Service-Level-Objective-Army-Knife
-The primary goal of this tool is to provide a set of command-line utilities for designing service-level objectives (SLOs). 
-It aims to simplify the process of setting up, configuring, and monitoring SLOs, making it easier for developers and operations teams to ensure high availability and performance.
-More information on implementing SLOs can be found on the [Google SRE book site](https://sre.google/workbook/implementing-slos/)
+`sloak` is a command-line tool designed to simplify Service Level Objective (SLO) engineering. It provides utilities for calculating error budgets, burn rates, feasibility, and more, helping SREs and developers build more reliable systems.
 
-## Architecture
-The main idea is to use a [clean architecture](https://threedots.tech/post/introducing-clean-architecture/) while staying compliant to framework guidelines.
-Current main frameworks used is [Cobra](https://github.com/spf13/cobra).  
-Each subfolder of the `cmd` folder should be self contained, only exposing the main command via a `NewCommand` function.
+Inspired by the [Google SRE Workbook](https://sre.google/workbook/implementing-slos/).
 
-The `main.go` file should be responsible for initializing the application and running the main command exposed through the root command containing the Cobra bootstrapping.
+---
 
-### go-arch-lint
-This repo includes config for linting architecture using [go-arch-lint](https://github.com/fe3dback/go-arch-lint).  
-Simply run:
+## 🚀 Getting Started
+
+The easiest way to start is by calculating an error budget for a standard SLO.
+
+```bash
+# Calculate 99.9% SLO over 30 days
+sloak calculate errorbudget --slo 99.9 --window 30d
+
+# Get machine-readable JSON for Prometheus/Automation
+sloak calculate errorbudget --slo 99.9 --window 30d --output json
+```
+
+### Common Commands
+
+- **Calculate Burn Rate**: See how fast you're consuming your budget.
+  ```bash
+  sloak calculate burnrate --slo 99.9 --window 30d --elapsed 7d --consumed 30m
+  ```
+- **Feasibility Analysis**: Check if your MTTR is realistic for your SLO.
+  ```bash
+  sloak calculate feasibility --slo 99.9 --mttr 1h
+  ```
+- **Max Disruption**: Calculate how many deployments you can afford.
+  ```bash
+  sloak calculate max-disruption --slo 99.9 --cost 2m
+  ```
+
+---
+
+## 🛠 Installation & Building
+
+### Building from Source
+```bash
+# Clone the repository
+git clone https://github.com/MichielVanderhoydonck/sloak.git
+cd sloak
+
+# Build the binary
+go build -o sloak cmd/sloak/main.go
+
+# (Optional) Install to your GOBIN
+go install ./cmd/sloak
+```
+
+---
+
+## 📖 Command Reference
+
+| Command | Description |
+|---------|-------------|
+| `calculate errorbudget` | Allowed failure time for a given SLO and window. |
+| `calculate burnrate` | Current budget consumption speed and exhaustion forecast. |
+| `calculate feasibility` | Required MTBF given a target SLO and MTTR. |
+| `calculate dependency` | Composite availability for serial/parallel systems. |
+| `calculate max-disruption` | Frequency limits based on deployment disruption cost. |
+| `convert` | Translate between availability % and downtime duration. |
+| `generate alert-table` | Generate a standard multi-window, multi-burn-rate alert table. |
+
+### Global Flags
+- `-o, --output string`: Set output format. Use `json` for machine-readable data (useful for Prometheus alerting config).
+
+---
+
+## 🏗 Architecture & Linting
+
+`sloak` follows **Clean Architecture** principles. Each command is self-contained in the `cmd` directory, with domain logic and services separated in `internal/core`.
+
+### Architecture Linting
+We use `go-arch-lint` to enforce architectural boundaries.
 ```bash
 docker run --rm -v ${PWD}:/app fe3dback/go-arch-lint:latest-stable-release check --project-path /app
 ```
 
-## Commands
-Here follows a quick reference table of available commands, use the `--help` flag to get more information.
-| command | sub-command | info |
-|---------|-------------|------|
-| **sloak calculate** || main calculate root |
-|| **burnrate** | Calculates the current error budget burn rate (consumption speed).|
-|| **dependency** | Calculates composite availability for serial or parallel dependencies.|
-|| **errorbudget** | Calculates the total error budget (time) for a given SLO.|
-|| **feasibility** |Calculates if an SLO is realistic given your MTTR.
-|| **max-disruption** | Calculates allowed deployment frequency based on disruption cost.|
-| **sloak convert** || Converts between Availability % and Downtime Duration.|
-| **sloak generate** ||main generate root|
-||**alert-table** | Generates the standard SRE Alerting Table.|
+---
 
-## Testing
+## 🧪 Testing
 
-Domain and Service Logic can be tested via:
+### Unit & Service Tests
 ```bash
 go test ./...
 ```
 
-Adapter tests (Mock based) test our driving adapter (Cobra CLI).
-Testing a specific command can be done by:
-```bash
-go test ./cmd/burnrate
-```
-
-Binary testing can be done invocing the following:
+### End-to-End (E2E) Tests
+Verified against the actual compiled binary.
 ```bash
 go test -v -tags=e2e ./test/e2e
 ```
 
-## Building
-
-Creating a binary to run is as simple as:
-```bash
-go build -o sloak cmd/sloak/main.go
-```
+---
