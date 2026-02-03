@@ -34,6 +34,10 @@ sloak calculate errorbudget --slo 99.9 --window 30d --output json
   ```bash
   sloak calculate max-disruption --slo 99.9 --cost 2m
   ```
+- **Prometheus Alert Rules**: Generate MWMBR alert rules for Prometheus Operator.
+  ```bash
+  sloak generate prometheus --slo 99.9 --metric-name checkout_flow --rule-labels "team=billing"
+  ```
 
 ---
 
@@ -65,6 +69,7 @@ go install ./cmd/sloak
 | `calculate max-disruption` | Frequency limits based on deployment disruption cost. |
 | `convert` | Translate between availability % and downtime duration. |
 | `generate alert-table` | Generate a standard multi-window, multi-burn-rate alert table. |
+| `generate prometheus` | Generate production-ready Prometheus MWMBR alert rules. |
 
 ### Global Flags
 - `-o, --output string`: Set output format. Use `json` for machine-readable data (useful for Prometheus alerting config).
