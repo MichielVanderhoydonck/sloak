@@ -1,6 +1,8 @@
 package alerting
 
 import (
+	"time"
+
 	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
 )
 
@@ -26,6 +28,7 @@ type PrometheusMatrix struct {
 }
 
 type GeneratePrometheusParams struct {
-	TargetSLO common.SLOTarget
-	Config    PrometheusConfig
+	TargetSLO   common.SLOTarget
+	TotalWindow time.Duration
+	Config      PrometheusConfig
 }

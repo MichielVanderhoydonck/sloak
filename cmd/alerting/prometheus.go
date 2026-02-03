@@ -8,6 +8,7 @@ import (
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 func NewPrometheusCmd() *cobra.Command {
@@ -31,12 +32,19 @@ func NewPrometheusCmd() *cobra.Command {
 
 func runPrometheusCmd(cmd *cobra.Command, args []string) {
 	sloFlag, _ := cmd.Flags().GetFloat64("slo")
+	windowStr, _ := cmd.Flags().GetString("window")
 
 	metricName, _ := cmd.Flags().GetString("metric-name")
 	namespace, _ := cmd.Flags().GetString("namespace")
 	ruleLabelsStr, _ := cmd.Flags().GetString("rule-labels")
 	metaLabelsStr, _ := cmd.Flags().GetString("meta-labels")
 	runbookURL, _ := cmd.Flags().GetString("runbook-url")
+
+	totalWindow, err := util.ParseTimeWindow(windowStr)
+	if err != nil {
+		fmt.Printf("Error parsing window: %v\n", err)
+		return
+	}
 
 	sloTarget, err := common.NewSLOTarget(sloFlag)
 	if err != nil {
@@ -45,7 +53,8 @@ func runPrometheusCmd(cmd *cobra.Command, args []string) {
 	}
 
 	params := domain.GeneratePrometheusParams{
-		TargetSLO: sloTarget,
+		TargetSLO:   sloTarget,
+		TotalWindow: totalWindow,
 		Config: domain.PrometheusConfig{
 			MetricName: metricName,
 			Namespace:  namespace,

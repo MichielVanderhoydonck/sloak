@@ -66,7 +66,7 @@ func (s *AlertGeneratorServiceImpl) GeneratePrometheus(params domain.GeneratePro
 	// 1. Generate the table result first to get the windows and burn rates
 	tableParams := domain.GenerateParams{
 		TargetSLO:   params.TargetSLO,
-		TotalWindow: 30 * 24 * time.Hour, // Standard window for alerting table
+		TotalWindow: params.TotalWindow,
 	}
 	tableRes, err := s.GenerateTable(tableParams)
 	if err != nil {
