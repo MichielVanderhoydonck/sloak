@@ -19,6 +19,10 @@ func (m *mockService) GenerateTable(params domain.GenerateParams) (domain.TableR
 	return m.res, m.err
 }
 
+func (m *mockService) GeneratePrometheus(params domain.GeneratePrometheusParams) (string, error) {
+	return "mocked-prometheus-output", nil
+}
+
 func TestAlertRulesCommand(t *testing.T) {
 	mockRes := domain.TableResult{
 		Alerts: []domain.AlertDefinition{
