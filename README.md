@@ -1,4 +1,4 @@
-# SLOak: Service-Level-Objective Army Knife
+# SLOAK: Service-Level-Objective Army Knife
 
 <img src="./sloak.png" width="256"> 
 
