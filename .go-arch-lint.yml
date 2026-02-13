@@ -12,6 +12,10 @@ excludeFiles:
 vendors:
     3rd-cobra:
         in: github.com/spf13/cobra
+    3rd-cue:
+        in: ['cuelang.org/go/cue', 'cuelang.org/go/cue/**']
+    3rd-yaml:
+        in: gopkg.in/yaml.v3
 
 components:
     Domain:
@@ -29,6 +33,9 @@ components:
     CLI:
         in: ['cmd/**']
 
+    Templates:
+        in: ['templates/**']
+
     Util:
         in: ['internal/util/**']
 
@@ -37,7 +44,7 @@ components:
 
 deps:
     Domain:
-        mayDependOn: [Domain] 
+        mayDependOn: [Domain, Util] 
         canUse: []
         anyVendorDeps: true
 
@@ -46,8 +53,8 @@ deps:
         canUse: []
 
     Application:
-        mayDependOn: [Domain, Port, Util]
-        canUse: []
+        mayDependOn: [Domain, Port, Util, Templates]
+        canUse: [3rd-cue, 3rd-yaml]
 
     Adapter:
         mayDependOn: [Domain, Port, Application, Util] 
@@ -56,6 +63,11 @@ deps:
     CLI:
         mayDependOn: [CLI, Domain, Port, Application, Util] 
         canUse: [3rd-cobra]
+
+    Templates:
+        mayDependOn: []
+        canUse: []
+        anyProjectDeps: true
 
     Util:
         mayDependOn: []
