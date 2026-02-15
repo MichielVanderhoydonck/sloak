@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/alerting"
-	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
+	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 

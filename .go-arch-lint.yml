@@ -7,7 +7,7 @@ allow:
 
 excludeFiles:
   - "^.*_test\\.go$"
-  - "^.*\/test\/.*$"
+  - "^.*\\/test\\/.*$"
 
 vendors:
     3rd-cobra:
@@ -19,17 +19,11 @@ vendors:
 
 components:
     Domain:
-        in: ['internal/core/domain/**'] 
+        in: ['internal/domain/**'] 
     
-    Port:
-        in: ['internal/core/port/**']
+    Service:
+        in: ['internal/service/**']
 
-    Application:
-        in: ['internal/core/service/**']
-
-    Adapter:
-        in: ['internal/adapter/**']
-        
     CLI:
         in: ['cmd/**']
 
@@ -48,20 +42,12 @@ deps:
         canUse: []
         anyVendorDeps: true
 
-    Port:
-        mayDependOn: [Domain]
-        canUse: []
-
-    Application:
-        mayDependOn: [Domain, Port, Util, Templates]
+    Service:
+        mayDependOn: [Domain, Util, Templates]
         canUse: [3rd-cue, 3rd-yaml]
 
-    Adapter:
-        mayDependOn: [Domain, Port, Application, Util] 
-        canUse: []
-
     CLI:
-        mayDependOn: [CLI, Domain, Port, Application, Util] 
+        mayDependOn: [CLI, Domain, Service, Util] 
         canUse: [3rd-cobra]
 
     Templates:

@@ -9,13 +9,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/dependency"
-	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/dependency"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
 )
 
-var service port.AvailabilityService
+type Service interface {
+	CalculateCompositeAvailability(params domain.CalculationParams) (domain.Result, error)
+}
 
-func SetService(s port.AvailabilityService) {
+var service Service
+
+func SetService(s Service) {
 	service = s
 }
 

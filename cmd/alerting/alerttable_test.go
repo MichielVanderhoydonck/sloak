@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/alerting"
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/alerting"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 )
 

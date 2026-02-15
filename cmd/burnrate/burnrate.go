@@ -8,16 +8,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/burnrate"
-	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
-	burnratePort "github.com/MichielVanderhoydonck/sloak/internal/core/port/burnrate"
+	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/burnrate"
+	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var burnRateService burnratePort.BurnRateService
+type Service interface {
+	CalculateBurnRate(params burnrateDomain.CalculationParams) (burnrateDomain.BurnRateResult, error)
+}
 
-func SetService(svc burnratePort.BurnRateService) {
-	burnRateService = svc
+var service Service
+
+func SetService(svc Service) {
+	service = svc
 }
 
 func NewBurnRateCmd() *cobra.Command {
@@ -59,7 +62,7 @@ func runBurnRateCmd(cmd *cobra.Command, args []string) {
 		ErrorConsumed: util.Duration(errorConsumed),
 	}
 
-	result, err := burnRateService.CalculateBurnRate(params)
+	result, err := service.CalculateBurnRate(params)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Calculation Error: %v\n", err)

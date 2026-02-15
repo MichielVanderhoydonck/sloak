@@ -7,15 +7,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/disruption"
-	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/disruption"
+	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/disruption"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service port.DisruptionService
+type Service interface {
+	CalculateCapacity(params domain.CalculationParams) (domain.Result, error)
+}
 
-func SetService(s port.DisruptionService) {
+var service Service
+
+func SetService(s Service) {
 	service = s
 }
 

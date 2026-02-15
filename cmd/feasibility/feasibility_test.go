@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/feasibility"
-	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/feasibility"
+	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/feasibility"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )

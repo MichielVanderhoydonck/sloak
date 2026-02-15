@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/burnrate"
-	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/burnrate"
+	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/burnrate"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )

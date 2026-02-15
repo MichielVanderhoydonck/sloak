@@ -7,16 +7,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
-	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/errorbudget"
-	errorbudgetPort "github.com/MichielVanderhoydonck/sloak/internal/core/port/errorbudget"
+	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
+	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/errorbudget"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var calculatorService errorbudgetPort.CalculatorService
+type Service interface {
+	CalculateBudget(params errorbudgetDomain.CalculationParams) (errorbudgetDomain.BudgetResult, error)
+}
 
-func SetService(svc errorbudgetPort.CalculatorService) {
-	calculatorService = svc
+var service Service
+
+func SetService(svc Service) {
+	service = svc
 }
 
 func NewErrorBudgetCmd() *cobra.Command {
@@ -54,7 +57,7 @@ func runErrorBudgetCmd(cmd *cobra.Command, args []string) {
 		TimeWindow: util.Duration(timeWindow),
 	}
 
-	result, err := calculatorService.CalculateBudget(params)
+	result, err := service.CalculateBudget(params)
 
 	if err != nil {
 		fmt.Printf("Calculation Error: %v\n", err)

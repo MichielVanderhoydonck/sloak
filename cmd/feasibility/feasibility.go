@@ -7,15 +7,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/feasibility"
-	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/feasibility"
+	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/feasibility"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service port.FeasibilityService
+type Service interface {
+	CalculateFeasibility(params domain.FeasibilityParams) (domain.FeasibilityResult, error)
+}
 
-func SetService(s port.FeasibilityService) {
+var service Service
+
+func SetService(s Service) {
 	service = s
 }
 

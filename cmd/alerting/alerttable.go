@@ -8,15 +8,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/alerting"
-	common "github.com/MichielVanderhoydonck/sloak/internal/core/domain/common"
-	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/alerting"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
+	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service port.AlertGeneratorService
+type Service interface {
+	GenerateTable(params domain.GenerateParams) (domain.TableResult, error)
+	GeneratePrometheus(params domain.GeneratePrometheusParams) (string, error)
+}
 
-func SetService(s port.AlertGeneratorService) {
+var service Service
+
+func SetService(s Service) {
 	service = s
 }
 

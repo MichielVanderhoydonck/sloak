@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/dependency"
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/dependency"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 )
 

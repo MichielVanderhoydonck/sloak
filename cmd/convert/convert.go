@@ -5,14 +5,17 @@ import (
 
 	"github.com/spf13/cobra"
 
-	domain "github.com/MichielVanderhoydonck/sloak/internal/core/domain/convert"
-	port "github.com/MichielVanderhoydonck/sloak/internal/core/port/convert"
+	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/convert"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service port.ConvertService
+type Service interface {
+	Convert(params domain.ConversionParams) (domain.ConversionResult, error)
+}
 
-func SetService(s port.ConvertService) {
+var service Service
+
+func SetService(s Service) {
 	service = s
 }
 
