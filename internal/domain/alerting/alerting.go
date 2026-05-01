@@ -17,10 +17,6 @@ const (
 type GenerateParams struct {
 	TargetSLO   common.SLOTarget
 	TotalWindow time.Duration
-
-	FastWindow      time.Duration // Default: 1h
-	SlowWindow      time.Duration // Default: 6h
-	SustainedWindow time.Duration // Default: 3d
 }
 
 type AlertDefinition struct {
