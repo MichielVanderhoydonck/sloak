@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/disruption"
@@ -38,9 +39,10 @@ func NewDisruptionCmd() *cobra.Command {
 }
 
 func runDisruptionCmd(cmd *cobra.Command, args []string) {
-	sloFlag, _ := cmd.Flags().GetFloat64("slo")
-	windowStr, _ := cmd.Flags().GetString("window")
-	costStr, _ := cmd.Flags().GetString("cost")
+	viper.BindPFlags(cmd.Flags())
+	sloFlag := viper.GetFloat64("slo")
+	windowStr := viper.GetString("window")
+	costStr := viper.GetString("cost")
 
 	window, _ := util.ParseTimeWindow(windowStr)
 	cost, _ := util.ParseTimeWindow(costStr)
@@ -62,7 +64,7 @@ func runDisruptionCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("output")
+	outputFlag := viper.GetString("output")
 	if outputFlag == "json" {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")

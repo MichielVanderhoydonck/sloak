@@ -12,6 +12,8 @@ excludeFiles:
 vendors:
     3rd-cobra:
         in: github.com/spf13/cobra
+    3rd-viper:
+        in: github.com/spf13/viper
     3rd-cue:
         in: ['cuelang.org/go/cue', 'cuelang.org/go/cue/**']
     3rd-yaml:
@@ -48,7 +50,7 @@ deps:
 
     CLI:
         mayDependOn: [CLI, Domain, Service, Util] 
-        canUse: [3rd-cobra]
+        canUse: [3rd-cobra, 3rd-viper]
 
     Templates:
         mayDependOn: []

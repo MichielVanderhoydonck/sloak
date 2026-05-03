@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
 )
@@ -36,8 +37,9 @@ func NewDependencyCmd() *cobra.Command {
 }
 
 func runDependencyCmd(cmd *cobra.Command, args []string) {
-	compStr, _ := cmd.Flags().GetString("components")
-	typeStr, _ := cmd.Flags().GetString("type")
+	viper.BindPFlags(cmd.Flags())
+	compStr := viper.GetString("components")
+	typeStr := viper.GetString("type")
 
 	strValues := strings.Split(compStr, ",")
 	var components []float64
@@ -65,7 +67,7 @@ func runDependencyCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("output")
+	outputFlag := viper.GetString("output")
 	if outputFlag == "json" {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")

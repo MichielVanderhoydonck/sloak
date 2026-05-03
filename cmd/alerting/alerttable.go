@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
@@ -39,8 +40,9 @@ func NewAlertTableCmd() *cobra.Command {
 }
 
 func runAlertRulesCmd(cmd *cobra.Command, args []string) {
-	sloFlag, _ := cmd.Flags().GetFloat64("slo")
-	windowStr, _ := cmd.Flags().GetString("window")
+	viper.BindPFlags(cmd.Flags())
+	sloFlag := viper.GetFloat64("slo")
+	windowStr := viper.GetString("window")
 
 	totalWindow, _ := util.ParseTimeWindow(windowStr)
 	sloTarget, err := common.NewSLOTarget(sloFlag)
@@ -60,7 +62,7 @@ func runAlertRulesCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("output")
+	outputFlag := viper.GetString("output")
 	if outputFlag == "json" {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")

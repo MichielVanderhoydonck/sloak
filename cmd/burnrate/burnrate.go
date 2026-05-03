@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/burnrate"
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
@@ -40,10 +41,11 @@ func NewBurnRateCmd() *cobra.Command {
 }
 
 func runBurnRateCmd(cmd *cobra.Command, args []string) {
-	sloTarget, _ := cmd.Flags().GetFloat64("slo")
-	windowStr, _ := cmd.Flags().GetString("window")
-	elapsedStr, _ := cmd.Flags().GetString("elapsed")
-	consumedStr, _ := cmd.Flags().GetString("consumed")
+	viper.BindPFlags(cmd.Flags())
+	sloTarget := viper.GetFloat64("slo")
+	windowStr := viper.GetString("window")
+	elapsedStr := viper.GetString("elapsed")
+	consumedStr := viper.GetString("consumed")
 
 	totalWindow, _ := util.ParseTimeWindow(windowStr)
 	timeElapsed, _ := util.ParseTimeWindow(elapsedStr)
@@ -69,7 +71,7 @@ func runBurnRateCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("output")
+	outputFlag := viper.GetString("output")
 	if outputFlag == "json" {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")

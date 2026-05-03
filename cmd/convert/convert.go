@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/convert"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
@@ -35,9 +36,10 @@ func NewConvertCmd() *cobra.Command {
 }
 
 func runConvertCmd(cmd *cobra.Command, args []string) {
-	nines, _ := cmd.Flags().GetFloat64("nines")
-	downtimeStr, _ := cmd.Flags().GetString("downtime")
-	windowStr, _ := cmd.Flags().GetString("window")
+	viper.BindPFlags(cmd.Flags())
+	nines := viper.GetFloat64("nines")
+	downtimeStr := viper.GetString("downtime")
+	windowStr := viper.GetString("window")
 
 	var params domain.ConversionParams
 

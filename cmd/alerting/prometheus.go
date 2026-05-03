@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
@@ -31,14 +32,15 @@ func NewPrometheusCmd() *cobra.Command {
 }
 
 func runPrometheusCmd(cmd *cobra.Command, args []string) {
-	sloFlag, _ := cmd.Flags().GetFloat64("slo")
-	windowStr, _ := cmd.Flags().GetString("window")
+	viper.BindPFlags(cmd.Flags())
+	sloFlag := viper.GetFloat64("slo")
+	windowStr := viper.GetString("window")
 
-	metricName, _ := cmd.Flags().GetString("metric-name")
-	namespace, _ := cmd.Flags().GetString("namespace")
-	ruleLabelsStr, _ := cmd.Flags().GetString("rule-labels")
-	metaLabelsStr, _ := cmd.Flags().GetString("meta-labels")
-	runbookURL, _ := cmd.Flags().GetString("runbook-url")
+	metricName := viper.GetString("metric-name")
+	namespace := viper.GetString("namespace")
+	ruleLabelsStr := viper.GetString("rule-labels")
+	metaLabelsStr := viper.GetString("meta-labels")
+	runbookURL := viper.GetString("runbook-url")
 
 	totalWindow, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
