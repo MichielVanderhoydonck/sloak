@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/feasibility"
@@ -37,8 +38,9 @@ func NewFeasibilityCmd() *cobra.Command {
 }
 
 func runFeasibilityCmd(cmd *cobra.Command, args []string) {
-	sloFlag, _ := cmd.Flags().GetFloat64("slo")
-	mttrStr, _ := cmd.Flags().GetString("mttr")
+	viper.BindPFlags(cmd.Flags())
+	sloFlag := viper.GetFloat64("slo")
+	mttrStr := viper.GetString("mttr")
 
 	mttr, _ := util.ParseTimeWindow(mttrStr)
 	slo, err := common.NewSLOTarget(sloFlag)
@@ -58,7 +60,7 @@ func runFeasibilityCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("output")
+	outputFlag := viper.GetString("output")
 	if outputFlag == "json" {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")

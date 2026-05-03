@@ -20,6 +20,22 @@ sloak calculate errorbudget --slo 99.9 --window 30d
 sloak calculate errorbudget --slo 99.9 --window 30d --output json
 ```
 
+### Configuration
+
+SLOAK supports file-based configuration and environment variables to set team-wide global defaults (like your SLO, time window, MTTR, etc). 
+
+To generate a starting configuration template, simply run:
+```bash
+sloak init > .sloak.yaml
+```
+
+Once `.sloak.yaml` is placed in your home directory or current working directory (or using `SLOAK_` prefixed environment variables like `SLOAK_SLO=95.0`), you can omit those flags!
+
+```bash
+# Automatically uses 'slo' and 'window' from your config
+sloak calculate errorbudget
+```
+
 ### Common Commands
 
 - **Calculate Burn Rate**: See how fast you're consuming your budget.
@@ -62,6 +78,7 @@ go install ./cmd/sloak
 
 | Command | Description |
 |---------|-------------|
+| `init` | Prints a default `.sloak.yaml` configuration template. |
 | `calculate errorbudget` | Allowed failure time for a given SLO and window. |
 | `calculate burnrate` | Current budget consumption speed and exhaustion forecast. |
 | `calculate feasibility` | Required MTBF given a target SLO and MTTR. |
@@ -72,13 +89,14 @@ go install ./cmd/sloak
 | `generate prometheus` | Generate production-ready Prometheus MWMBR alert rules. |
 
 ### Global Flags
+- `--config string`: Override the path to the configuration file (default is `$HOME/.sloak.yaml` or `./.sloak.yaml`).
 - `-o, --output string`: Set output format. Use `json` for machine-readable data (useful for Prometheus alerting config).
 
 ---
 
 ## 🏗 Architecture & Linting
 
-`sloak` follows **Clean Architecture** principles. Each command is self-contained in the `cmd` directory, with domain logic and services separated in `internal/core`.
+`sloak` follows **Clean Architecture** principles. Each command is self-contained in the `cmd` directory, with domain logic and services separated in the `internal/domain` and `internal/service` directories.
 
 ### Architecture Linting
 We use `go-arch-lint` to enforce architectural boundaries.

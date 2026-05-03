@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/errorbudget"
@@ -37,8 +38,9 @@ func NewErrorBudgetCmd() *cobra.Command {
 }
 
 func runErrorBudgetCmd(cmd *cobra.Command, args []string) {
-	sloTarget, _ := cmd.Flags().GetFloat64("slo")
-	windowStr, _ := cmd.Flags().GetString("window")
+	viper.BindPFlags(cmd.Flags())
+	sloTarget := viper.GetFloat64("slo")
+	windowStr := viper.GetString("window")
 
 	timeWindow, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
@@ -64,7 +66,7 @@ func runErrorBudgetCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	output, _ := cmd.Flags().GetString("output")
+	output := viper.GetString("output")
 	if output == "json" {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")

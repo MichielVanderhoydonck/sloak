@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	burnrateCmd "github.com/MichielVanderhoydonck/sloak/cmd/burnrate"
 	errorbudgetCmd "github.com/MichielVanderhoydonck/sloak/cmd/errorbudget"
@@ -28,6 +29,8 @@ import (
 	feasibilityService "github.com/MichielVanderhoydonck/sloak/internal/service/feasibility"
 )
 
+var cfgFile string
+
 var rootCmd = &cobra.Command{
 	Use:   "sloak",
 	Short: "SLOAK is a Service Level Objective Army Knife for SRE calculations.",
@@ -43,6 +46,9 @@ func Execute() {
 }
 
 func init() {
+	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.sloak.yaml)")
+
 	rootCmd.AddCommand(calculateCmd)
 	rootCmd.AddCommand(generateCmd)
 
@@ -74,4 +80,23 @@ func init() {
 	feasSvc := feasibilityService.NewFeasibilityService()
 	feasibilityCmd.SetService(feasSvc)
 	calculateCmd.AddCommand(feasibilityCmd.NewFeasibilityCmd())
+}
+
+func initConfig() {
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	} else {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			viper.AddConfigPath(home)
+			viper.AddConfigPath(".")
+			viper.SetConfigType("yaml")
+			viper.SetConfigName(".sloak")
+		}
+	}
+
+	viper.SetEnvPrefix("SLOAK")
+	viper.AutomaticEnv()
+
+	_ = viper.ReadInConfig()
 }
