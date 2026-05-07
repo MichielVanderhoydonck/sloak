@@ -35,3 +35,18 @@ type TableResult struct {
 	TotalWindowSeconds float64           `json:"total_window_seconds"`
 	Alerts             []AlertDefinition `json:"alerts"`
 }
+
+type AlertingWindow struct {
+	LongWindow       string  `json:"long"`
+	ShortWindow      string  `json:"short"`
+	BurnRate         float64 `json:"burn"`
+	NotificationType string  `json:"severity"`
+}
+
+type AlertingContext struct {
+	TargetSLO          float64                `json:"slo_target"`
+	ErrorBudgetRatio   float64                `json:"error_budget_ratio"`
+	TotalWindowSeconds float64                `json:"total_window_seconds"`
+	Windows            []AlertingWindow       `json:"windows"`
+	Config             map[string]interface{} `json:"config,omitempty"`
+}

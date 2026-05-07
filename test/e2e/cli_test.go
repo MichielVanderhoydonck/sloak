@@ -155,3 +155,18 @@ func TestFeasibilityE2E(t *testing.T) {
 		t.Errorf("Expected CHALLENGING status (2.2/qtr), got output:\n%s", outStr)
 	}
 }
+
+func TestGenerateConfigE2E(t *testing.T) {
+	cmd := exec.Command(sloakBinaryPath, "generate", "config",
+		"--template=../../templates/prometheus_mwmbr.cue", "--slo=99.9",
+	)
+	output, _ := cmd.CombinedOutput()
+	outStr := string(output)
+
+	if !strings.Contains(outStr, "apiVersion: monitoring.coreos.com/v1") {
+		t.Errorf("Expected prometheus apiVersion in output, got:\n%s", outStr)
+	}
+	if !strings.Contains(outStr, "slo-alerts") {
+		t.Errorf("Expected slo-alerts in output, got:\n%s", outStr)
+	}
+}

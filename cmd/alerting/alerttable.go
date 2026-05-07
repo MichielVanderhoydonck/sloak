@@ -16,7 +16,7 @@ import (
 
 type Service interface {
 	GenerateTable(params domain.GenerateParams) (domain.TableResult, error)
-	GeneratePrometheus(params domain.GeneratePrometheusParams) (string, error)
+	RenderTemplate(params domain.GenerateParams, config map[string]interface{}, templateContent string) (string, error)
 }
 
 var service Service

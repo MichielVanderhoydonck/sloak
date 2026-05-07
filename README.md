@@ -50,9 +50,9 @@ sloak calculate errorbudget
   ```bash
   sloak calculate max-disruption --slo 99.9 --cost 2m
   ```
-- **Prometheus Alert Rules**: Generate MWMBR alert rules for Prometheus Operator.
+- **Template Configuration**: Generate observability configs from templates (Prometheus, Datadog, etc).
   ```bash
-  sloak generate prometheus --slo 99.9 --metric-name checkout_flow --rule-labels "team=billing"
+  sloak generate config --template ./templates/prometheus_mwmbr.cue --slo 99.9 --set metric_name=checkout_flow --set namespace=billing
   ```
 
 ---
@@ -86,7 +86,7 @@ go install ./cmd/sloak
 | `calculate max-disruption` | Frequency limits based on deployment disruption cost. |
 | `convert` | Translate between availability % and downtime duration. |
 | `generate alert-table` | Generate a standard multi-window, multi-burn-rate alert table. |
-| `generate prometheus` | Generate production-ready Prometheus MWMBR alert rules. |
+| `generate config` | Generate observability rules using a BYOT CUE template. |
 
 ### Global Flags
 - `--config string`: Override the path to the configuration file (default is `$HOME/.sloak.yaml` or `./.sloak.yaml`).

@@ -11,7 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
-	"github.com/MichielVanderhoydonck/sloak/templates"
 )
 
 const (
@@ -59,29 +58,27 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 	}, nil
 }
 
-func (s *AlertGeneratorService) GeneratePrometheus(params domain.GeneratePrometheusParams) (string, error) {
+func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, config map[string]interface{}, templateContent string) (string, error) {
 	// 1. Generate the table result first to get the windows and burn rates
-	tableParams := domain.GenerateParams{
-		TargetSLO:   params.TargetSLO,
-		TotalWindow: params.TotalWindow,
-	}
-	tableRes, err := s.GenerateTable(tableParams)
+	tableRes, err := s.GenerateTable(params)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate alerting table: %w", err)
 	}
 
-	// 2. Prepare the PrometheusMatrix DTO
+	// 2. Prepare the AlertingContext DTO
 	budget := 1 - (params.TargetSLO.Value / 100)
 	budget = math.Round(budget*1e10) / 1e10
 
-	matrix := domain.PrometheusMatrix{
-		ErrorBudgetRatio: budget,
-		Alerts:           make([]domain.PrometheusAlert, len(tableRes.Alerts)),
-		Config:           params.Config,
+	contextData := domain.AlertingContext{
+		TargetSLO:          params.TargetSLO.Value,
+		ErrorBudgetRatio:   budget,
+		TotalWindowSeconds: params.TotalWindow.Seconds(),
+		Windows:            make([]domain.AlertingWindow, len(tableRes.Alerts)),
+		Config:             config,
 	}
 
 	for i, alert := range tableRes.Alerts {
-		matrix.Alerts[i] = domain.PrometheusAlert{
+		contextData.Windows[i] = domain.AlertingWindow{
 			LongWindow:       formatPrometheusDuration(alert.LongWindow),
 			ShortWindow:      formatPrometheusDuration(alert.ShortWindow),
 			BurnRate:         alert.BurnRate,
@@ -91,12 +88,12 @@ func (s *AlertGeneratorService) GeneratePrometheus(params domain.GeneratePrometh
 
 	// 3. CUE processing
 	ctx := cuecontext.New()
-	dataValue := ctx.Encode(matrix)
+	dataValue := ctx.Encode(contextData)
 	if dataValue.Err() != nil {
 		return "", fmt.Errorf("failed to encode data to CUE: %w", dataValue.Err())
 	}
 
-	tplValue := ctx.CompileString(templates.PrometheusMWMbr)
+	tplValue := ctx.CompileString(templateContent)
 	if tplValue.Err() != nil {
 		return "", fmt.Errorf("failed to compile CUE template: %w", tplValue.Err())
 	}
