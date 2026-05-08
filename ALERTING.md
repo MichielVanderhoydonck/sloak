@@ -50,9 +50,9 @@ Run sloak to generate the alerting rules.
 Important: We add the release=prometheus label so the Operator loads the file, and set the window to 0s to skip the "Pending" wait time for instant verification.
 Bash
 
-### Generate the YAML
+### Render the YAML
 ```
-./sloak generate config \
+./sloak render \
   --template ./templates/prometheus_mwmbr.cue \
   --slo 99.9 \
   --set metric_name=api_errors \

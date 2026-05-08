@@ -71,7 +71,7 @@ func init() {
 	alertSvc := alertingService.NewAlertGeneratorService()
 	alertingTableCmd.SetService(alertSvc)
 	generateCmd.AddCommand(alertingTableCmd.NewAlertTableCmd())
-	generateCmd.AddCommand(alertingTableCmd.NewConfigCmd())
+	rootCmd.AddCommand(alertingTableCmd.NewRenderCmd())
 
 	disSvc := disruptionService.NewDisruptionService()
 	disruptionCmd.SetService(disSvc)

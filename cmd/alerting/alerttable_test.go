@@ -19,7 +19,7 @@ func (m *mockService) GenerateTable(params domain.GenerateParams) (domain.TableR
 	return m.res, m.err
 }
 
-func (m *mockService) RenderTemplate(params domain.GenerateParams, config map[string]interface{}, templateContent string) (string, error) {
+func (m *mockService) RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error) {
 	return "mocked-template-output", nil
 }
 

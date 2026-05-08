@@ -58,7 +58,7 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 	}, nil
 }
 
-func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, config map[string]interface{}, templateContent string) (string, error) {
+func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error) {
 	// 1. Generate the table result first to get the windows and burn rates
 	tableRes, err := s.GenerateTable(params)
 	if err != nil {

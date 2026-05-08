@@ -156,8 +156,8 @@ func TestFeasibilityE2E(t *testing.T) {
 	}
 }
 
-func TestGenerateConfigE2E(t *testing.T) {
-	cmd := exec.Command(sloakBinaryPath, "generate", "config",
+func TestRenderE2E(t *testing.T) {
+	cmd := exec.Command(sloakBinaryPath, "render",
 		"--template=../../templates/prometheus_mwmbr.cue", "--slo=99.9",
 	)
 	output, _ := cmd.CombinedOutput()

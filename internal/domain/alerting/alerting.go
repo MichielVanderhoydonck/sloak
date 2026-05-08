@@ -48,5 +48,5 @@ type AlertingContext struct {
 	ErrorBudgetRatio   float64                `json:"error_budget_ratio"`
 	TotalWindowSeconds float64                `json:"total_window_seconds"`
 	Windows            []AlertingWindow       `json:"windows"`
-	Config             map[string]interface{} `json:"config,omitempty"`
+	Config             map[string]any     `json:"config,omitempty"`
 }

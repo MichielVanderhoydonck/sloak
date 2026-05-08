@@ -14,12 +14,12 @@ import (
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-func NewConfigCmd() *cobra.Command {
+func NewRenderCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "config",
-		Short: "Generates observability configuration from templates.",
-		Long:  `Generates actionable configurations by rendering a provided BYOT CUE template with generic SLO math.`,
-		Run:   runConfigCmd,
+		Use:   "render",
+		Short: "Renders observability configuration from BYOT templates.",
+		Long:  `Renders actionable configurations by taking a provided BYOT CUE template and injecting generic SLO math.`,
+		Run:   runRenderCmd,
 	}
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "SLO target percentage")
@@ -32,7 +32,7 @@ func NewConfigCmd() *cobra.Command {
 	return cmd
 }
 
-func runConfigCmd(cmd *cobra.Command, args []string) {
+func runRenderCmd(cmd *cobra.Command, args []string) {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")
@@ -59,7 +59,7 @@ func runConfigCmd(cmd *cobra.Command, args []string) {
 	}
 
 	// Build the generic configuration map
-	configData := make(map[string]interface{})
+	configData := make(map[string]any)
 
 	// 1. Read from values file
 	if valuesFile != "" {
@@ -94,9 +94,6 @@ func runConfigCmd(cmd *cobra.Command, args []string) {
 		TargetSLO:   sloTarget,
 		TotalWindow: totalWindow,
 	}
-
-	fmt.Printf("DEBUG: valuesFile is %q\n", valuesFile)
-	fmt.Printf("DEBUG: configData is %#v\n", configData)
 
 	res, err := service.RenderTemplate(params, configData, templateContent)
 	if err != nil {
