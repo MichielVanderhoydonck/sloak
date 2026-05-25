@@ -50,9 +50,9 @@ sloak calculate errorbudget
   ```bash
   sloak calculate max-disruption --slo 99.9 --cost 2m
   ```
-- **Template Rendering**: Render observability configs from BYOT templates (Prometheus, Datadog, etc).
+- **Template Rendering**: Render observability configs from BYOT templates (Prometheus Operator, Datadog, etc).
   ```bash
-  sloak render --template ./templates/prometheus_mwmbr.cue --slo 99.9 --set metric_name=checkout_flow --set namespace=billing
+  sloak render --template ./templates/prometheus_operator_mwmbr.cue --slo 99.9 --set metric_name=checkout_flow --set namespace=billing
   ```
 
 ---

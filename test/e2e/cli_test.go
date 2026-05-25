@@ -158,13 +158,13 @@ func TestFeasibilityE2E(t *testing.T) {
 
 func TestRenderE2E(t *testing.T) {
 	cmd := exec.Command(sloakBinaryPath, "render",
-		"--template=../../templates/prometheus_mwmbr.cue", "--slo=99.9",
+		"--template=../../templates/prometheus_operator_mwmbr.cue", "--slo=99.9",
 	)
 	output, _ := cmd.CombinedOutput()
 	outStr := string(output)
 
 	if !strings.Contains(outStr, "apiVersion: monitoring.coreos.com/v1") {
-		t.Errorf("Expected prometheus apiVersion in output, got:\n%s", outStr)
+		t.Errorf("Expected prometheus operator apiVersion in output, got:\n%s", outStr)
 	}
 	if !strings.Contains(outStr, "slo-alerts") {
 		t.Errorf("Expected slo-alerts in output, got:\n%s", outStr)
