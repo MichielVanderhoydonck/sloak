@@ -1,4 +1,4 @@
-# 🧪 End-to-End Prometheus Verification
+# 🧪 End-to-End Prometheus Operator Verification
 
 To validate that sloak generates valid configuration that correctly triggers alerts, you can run a local test lab using Minikube and the Prometheus Operator.
 ## 1. Start the Lab Environment
@@ -50,14 +50,15 @@ Run sloak to generate the alerting rules.
 Important: We add the release=prometheus label so the Operator loads the file, and set the window to 0s to skip the "Pending" wait time for instant verification.
 Bash
 
-### Generate the YAML
+### Render the YAML
 ```
-./sloak generate prometheus \
+./sloak render \
+  --template ./templates/prometheus_operator_mwmbr.cue \
   --slo 99.9 \
-  --metric-name api_errors \
-  --rule-labels "service=api,env=prod" \
-  --meta-labels "release=prometheus" \
-  --namespace monitoring \
+  --set metric_name=api_errors \
+  --set "rule_labels=service=api,env=prod" \
+  --set "meta_labels=release=prometheus" \
+  --set namespace=monitoring \
   --window 30d > slo-alerts.yaml
 ```
 ### (Optional) Edit yaml to set 'for: 0s' for instant firing

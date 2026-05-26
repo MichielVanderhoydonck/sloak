@@ -29,7 +29,7 @@ A configuration file should not be a dumping ground for every possible flag. We 
 - **`nines` & `downtime`** *(from `convert`)*: These are the direct input values you want the tool to translate (e.g., "What is 99.95% in downtime?"). 
 
 ### 4. Third-Party Exporters
-- **`metric-name`, `rule-labels`, `namespace`** *(from `generate prometheus`)*: These define the strict output structure for third-party systems like Prometheus Operator. Because these are highly sensitive to the cluster/namespace being targeted, they are kept as explicit flags to prevent accidental cross-contamination from a global config file.
+- **`metric-name`, `rule-labels`, `namespace`** *(from `render` using Prometheus Operator templates)*: These define the strict output structure for third-party systems like Prometheus Operator. Because these are highly sensitive to the cluster/namespace being targeted, they are kept as explicit flags to prevent accidental cross-contamination from a global config file.
 
 ## Excluded: Universal CLI Mechanics
 
