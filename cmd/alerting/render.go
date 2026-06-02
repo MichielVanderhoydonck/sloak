@@ -13,7 +13,6 @@ import (
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
-	alertingService "github.com/MichielVanderhoydonck/sloak/internal/service/alerting"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
@@ -28,11 +27,11 @@ func NewRenderCmd() *cobra.Command {
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "SLO target percentage")
 	cmd.Flags().StringP("window", "w", "30d", "Total time window")
+	cmd.Flags().StringP("spec", "f", "", "Path to OpenSLO specification file (overrides --slo and --window)")
+	cmd.Flags().String("values", "", "Path to custom values file (YAML)")
+	cmd.Flags().StringSlice("set", []string{}, "Set individual values (e.g. key=val)")
 	
 	cmd.Flags().String("template", "", "Path to a BYOT CUE template file or name of built-in template (required)")
-	cmd.Flags().StringSlice("set", []string{}, "Set configuration values for the template (e.g., --set namespace=monitoring)")
-	cmd.Flags().String("values", "", "Path to a YAML/JSON file containing configuration values for the template")
-	cmd.Flags().String("spec", "", "Path to an OpenSLO specification file to read SLO target and window from")
 
 	return cmd
 }
@@ -50,24 +49,25 @@ func runRenderCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	var sloFlag float64
+	sloFlag := viper.GetFloat64("slo")
+	windowStr := viper.GetString("window")
+
+	var sloVal float64 = sloFlag
 	var totalWindow time.Duration
 	var openSLOConfig map[string]any
+	var err error
 
 	if specFile != "" {
-		target, window, _, metaConfig, err := alertingService.ParseOpenSLO(specFile)
+		var target float64
+		var metaConfig map[string]any
+		target, totalWindow, _, metaConfig, err = domain.ParseOpenSLO(specFile)
 		if err != nil {
 			fmt.Printf("Error parsing OpenSLO spec: %v\n", err)
 			return
 		}
-		sloFlag = target
-		totalWindow = window
+		sloVal = target
 		openSLOConfig = metaConfig
 	} else {
-		sloFlag = viper.GetFloat64("slo")
-		windowStr := viper.GetString("window")
-
-		var err error
 		totalWindow, err = util.ParseTimeWindow(windowStr)
 		if err != nil {
 			fmt.Printf("Error parsing window: %v\n", err)
@@ -75,7 +75,7 @@ func runRenderCmd(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	sloTarget, err := common.NewSLOTarget(sloFlag)
+	sloTarget, err := common.NewSLOTarget(sloVal)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return

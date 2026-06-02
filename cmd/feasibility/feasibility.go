@@ -10,19 +10,12 @@ import (
 
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/feasibility"
-	feasibilityService "github.com/MichielVanderhoydonck/sloak/internal/service/feasibility"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-type Service interface {
-	CalculateFeasibility(params domain.FeasibilityParams) (domain.FeasibilityResult, error)
-}
+var service domain.Service
 
-var _ Service = (*feasibilityService.FeasibilityService)(nil)
-
-var service Service
-
-func SetService(s Service) {
+func SetService(s domain.Service) {
 	service = s
 }
 

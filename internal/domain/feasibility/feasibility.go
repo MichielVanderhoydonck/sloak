@@ -21,3 +21,7 @@ type FeasibilityResult struct {
 	RequiredMTBF        util.Duration    `json:"required_mtbf"`
 	RequiredMTBFSeconds float64          `json:"required_mtbf_seconds"`
 }
+
+type Service interface {
+	CalculateFeasibility(params FeasibilityParams) (FeasibilityResult, error)
+}

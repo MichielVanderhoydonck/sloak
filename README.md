@@ -96,12 +96,16 @@ go install ./cmd/sloak
 
 ## 🏗 Architecture & Linting
 
-`sloak` follows **Clean Architecture** principles. Each command is self-contained in the `cmd` directory, with domain logic and services separated in the `internal/domain` and `internal/service` directories.
+`sloak` follows **Clean Architecture** principles:
+- **Domain (`internal/domain`)**: Core business rules and interfaces (`Service`). Depends on nothing.
+- **Service (`internal/service`)**: Concrete implementation of domain logic. Depends on `Domain`.
+- **CLI Commands (`cmd/convert`, etc.)**: Delivery mechanism. Depends only on `Domain`. They are strictly prohibited from importing package `internal/service`.
+- **Composition Root (`cmd/root.go`, `cmd/sloak/main.go`)**: Bootstrap layer. Allowed to import both `cmd` and `internal/service` to wire concrete services to commands via dependency injection.
 
 ### Architecture Linting
-We use `go-arch-lint` to enforce architectural boundaries.
+We use `go-arch-lint` to enforce these architectural boundaries.
 ```bash
-docker run --rm -v ${PWD}:/app fe3dback/go-arch-lint:latest-stable-release check --project-path /app
+docker run --rm -v ${PWD}:/app fe3dback/go-arch-lint:latest check --project-path /app
 ```
 
 ---

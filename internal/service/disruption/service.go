@@ -8,8 +8,9 @@ import (
 	disruptionDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/disruption"
 	"github.com/MichielVanderhoydonck/sloak/internal/util"
 )
-
 type DisruptionService struct{}
+
+var _ disruptionDomain.Service = (*DisruptionService)(nil)
 
 func NewDisruptionService() *DisruptionService {
 	return &DisruptionService{}

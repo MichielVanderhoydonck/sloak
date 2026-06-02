@@ -35,3 +35,7 @@ func (p CalculationParams) Validate() error {
 	}
 	return nil
 }
+
+type Service interface {
+	CalculateCompositeAvailability(params CalculationParams) (Result, error)
+}

@@ -12,6 +12,8 @@ import (
 
 type CalculatorService struct{}
 
+var _ errorbudgetDomain.Service = (*CalculatorService)(nil)
+
 func NewCalculatorService() *CalculatorService {
 	return &CalculatorService{}
 }

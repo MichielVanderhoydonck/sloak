@@ -50,3 +50,8 @@ type AlertingContext struct {
 	Windows            []AlertingWindow       `json:"windows"`
 	Config             map[string]any     `json:"config,omitempty"`
 }
+
+type Service interface {
+	GenerateTable(params GenerateParams) (TableResult, error)
+	RenderTemplate(params GenerateParams, config map[string]any, templateContent string) (string, error)
+}

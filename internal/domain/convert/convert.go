@@ -36,3 +36,7 @@ type ConversionResult struct {
 	QuarterlyDowntime   time.Duration
 	YearlyDowntime      time.Duration
 }
+
+type Service interface {
+	Convert(params ConversionParams) (ConversionResult, error)
+}

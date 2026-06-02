@@ -11,6 +11,8 @@ import (
 
 type FeasibilityService struct{}
 
+var _ domain.Service = (*FeasibilityService)(nil)
+
 func NewFeasibilityService() *FeasibilityService {
 	return &FeasibilityService{}
 }

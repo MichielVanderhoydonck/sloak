@@ -10,19 +10,12 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/errorbudget"
-	errorbudgetService "github.com/MichielVanderhoydonck/sloak/internal/service/errorbudget"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-type Service interface {
-	CalculateBudget(params errorbudgetDomain.CalculationParams) (errorbudgetDomain.BudgetResult, error)
-}
+var service errorbudgetDomain.Service
 
-var _ Service = (*errorbudgetService.CalculatorService)(nil)
-
-var service Service
-
-func SetService(svc Service) {
+func SetService(svc errorbudgetDomain.Service) {
 	service = svc
 }
 

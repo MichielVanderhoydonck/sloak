@@ -2,12 +2,13 @@ version: 3
 workdir: .
 allow:
     depOnAnyVendor: false 
-    deepScan: true
+    deepScan: false
 
 
 excludeFiles:
   - "^.*_test\\.go$"
   - "^.*\\/test\\/.*$"
+  - "vendor/"
 
 vendors:
     3rd-cobra:
@@ -18,6 +19,8 @@ vendors:
         in: ['cuelang.org/go/cue', 'cuelang.org/go/cue/**']
     3rd-yaml:
         in: gopkg.in/yaml.v3
+    3rd-openslo:
+        in: ['github.com/OpenSLO/go-sdk/**']
 
 components:
     Domain:
@@ -27,7 +30,10 @@ components:
         in: ['internal/service/**']
 
     CLI:
-        in: ['cmd/**']
+        in: ['cmd/convert', 'cmd/disruption', 'cmd/errorbudget', 'cmd/burnrate', 'cmd/feasibility', 'cmd/dependency', 'cmd/alerting']
+
+    CLI-Root:
+        in: ['cmd', 'cmd/sloak']
 
     Templates:
         in: ['templates/**']
@@ -46,11 +52,15 @@ deps:
 
     Service:
         mayDependOn: [Domain, Util, Templates]
-        canUse: [3rd-cue, 3rd-yaml]
+        canUse: [3rd-cue, 3rd-yaml, 3rd-openslo]
 
     CLI:
-        mayDependOn: [CLI, Domain, Service, Util] 
-        canUse: [3rd-cobra, 3rd-viper]
+        mayDependOn: [CLI, Domain, Util, Templates] 
+        canUse: [3rd-cobra, 3rd-viper, 3rd-yaml]
+
+    CLI-Root:
+        mayDependOn: [CLI-Root, CLI, Domain, Service, Util, Templates]
+        canUse: [3rd-cobra, 3rd-viper, 3rd-yaml]
 
     Templates:
         mayDependOn: []

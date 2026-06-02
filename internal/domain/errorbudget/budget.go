@@ -20,3 +20,7 @@ type BudgetResult struct {
 	ErrorBudget          float64          `json:"error_budget_percentage"`
 	TargetSLORatio       float64          `json:"target_slo_ratio"`
 }
+
+type Service interface {
+	CalculateBudget(params CalculationParams) (BudgetResult, error)
+}

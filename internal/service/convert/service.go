@@ -9,6 +9,8 @@ import (
 
 type ConvertService struct{}
 
+var _ domain.Service = (*ConvertService)(nil)
+
 func NewConvertService() *ConvertService {
 	return &ConvertService{}
 }

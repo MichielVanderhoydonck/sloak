@@ -17,3 +17,7 @@ type Result struct {
 	MaxDisruptions          int64         `json:"max_disruptions"`
 	DailyDisruptions        float64       `json:"daily_disruptions"`
 }
+
+type Service interface {
+	CalculateCapacity(params CalculationParams) (Result, error)
+}

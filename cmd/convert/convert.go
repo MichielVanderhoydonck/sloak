@@ -7,19 +7,12 @@ import (
 	"github.com/spf13/viper"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/convert"
-	convertService "github.com/MichielVanderhoydonck/sloak/internal/service/convert"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-type Service interface {
-	Convert(params domain.ConversionParams) (domain.ConversionResult, error)
-}
+var service domain.Service
 
-var _ Service = (*convertService.ConvertService)(nil)
-
-var service Service
-
-func SetService(s Service) {
+func SetService(s domain.Service) {
 	service = s
 }
 

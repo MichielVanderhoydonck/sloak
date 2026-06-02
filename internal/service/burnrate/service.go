@@ -11,6 +11,8 @@ import (
 
 type BurnRateService struct{}
 
+var _ burnrateDomain.Service = (*BurnRateService)(nil)
+
 func NewBurnRateService() *BurnRateService {
 	return &BurnRateService{}
 }

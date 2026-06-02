@@ -22,6 +22,8 @@ const (
 
 type AlertGeneratorService struct{}
 
+var _ domain.Service = (*AlertGeneratorService)(nil)
+
 func NewAlertGeneratorService() *AlertGeneratorService {
 	return &AlertGeneratorService{}
 }

@@ -11,20 +11,12 @@ import (
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
-	alertingService "github.com/MichielVanderhoydonck/sloak/internal/service/alerting"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-type Service interface {
-	GenerateTable(params domain.GenerateParams) (domain.TableResult, error)
-	RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error)
-}
+var service domain.Service
 
-var _ Service = (*alertingService.AlertGeneratorService)(nil)
-
-var service Service
-
-func SetService(s Service) {
+func SetService(s domain.Service) {
 	service = s
 }
 

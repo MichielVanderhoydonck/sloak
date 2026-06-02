@@ -23,3 +23,7 @@ type BurnRateResult struct {
 	TimeToExhaustionSeconds float64       `json:"time_to_exhaustion_seconds"`
 	IsInfinite              bool          `json:"is_infinite"`
 }
+
+type Service interface {
+	CalculateBurnRate(params CalculationParams) (BurnRateResult, error)
+}
