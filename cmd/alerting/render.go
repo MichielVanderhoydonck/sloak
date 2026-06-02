@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -11,7 +12,9 @@ import (
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
+	alertingService "github.com/MichielVanderhoydonck/sloak/internal/service/alerting"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
+	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
 
 func NewRenderCmd() *cobra.Command {
@@ -25,31 +28,50 @@ func NewRenderCmd() *cobra.Command {
 	cmd.Flags().Float64P("slo", "s", 99.9, "SLO target percentage")
 	cmd.Flags().StringP("window", "w", "30d", "Total time window")
 	
-	cmd.Flags().String("template", "", "Path to a BYOT CUE template file (required)")
+	cmd.Flags().String("template", "", "Path to a BYOT CUE template file or name of built-in template (required)")
 	cmd.Flags().StringSlice("set", []string{}, "Set configuration values for the template (e.g., --set namespace=monitoring)")
 	cmd.Flags().String("values", "", "Path to a YAML/JSON file containing configuration values for the template")
+	cmd.Flags().String("spec", "", "Path to an OpenSLO specification file to read SLO target and window from")
 
 	return cmd
 }
 
 func runRenderCmd(cmd *cobra.Command, args []string) {
 	viper.BindPFlags(cmd.Flags())
-	sloFlag := viper.GetFloat64("slo")
-	windowStr := viper.GetString("window")
 	
 	templatePath := viper.GetString("template")
 	setVals := viper.GetStringSlice("set")
 	valuesFile := viper.GetString("values")
+	specFile := viper.GetString("spec")
 
 	if templatePath == "" {
 		fmt.Println("Error: --template is required")
 		return
 	}
 
-	totalWindow, err := util.ParseTimeWindow(windowStr)
-	if err != nil {
-		fmt.Printf("Error parsing window: %v\n", err)
-		return
+	var sloFlag float64
+	var totalWindow time.Duration
+	var openSLOConfig map[string]any
+
+	if specFile != "" {
+		target, window, _, metaConfig, err := alertingService.ParseOpenSLO(specFile)
+		if err != nil {
+			fmt.Printf("Error parsing OpenSLO spec: %v\n", err)
+			return
+		}
+		sloFlag = target
+		totalWindow = window
+		openSLOConfig = metaConfig
+	} else {
+		sloFlag = viper.GetFloat64("slo")
+		windowStr := viper.GetString("window")
+
+		var err error
+		totalWindow, err = util.ParseTimeWindow(windowStr)
+		if err != nil {
+			fmt.Printf("Error parsing window: %v\n", err)
+			return
+		}
 	}
 
 	sloTarget, err := common.NewSLOTarget(sloFlag)
@@ -61,7 +83,14 @@ func runRenderCmd(cmd *cobra.Command, args []string) {
 	// Build the generic configuration map
 	configData := make(map[string]any)
 
-	// 1. Read from values file
+	// 1. Read from OpenSLO metadata if parsed
+	if openSLOConfig != nil {
+		for k, v := range openSLOConfig {
+			configData[k] = v
+		}
+	}
+
+	// 2. Read from values file (overrides OpenSLO defaults)
 	if valuesFile != "" {
 		bytes, err := os.ReadFile(valuesFile)
 		if err != nil {
@@ -74,7 +103,7 @@ func runRenderCmd(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// 2. Read from --set flags (overrides file)
+	// 3. Read from --set flags (overrides file and OpenSLO defaults)
 	for _, setVal := range setVals {
 		parts := strings.SplitN(setVal, "=", 2)
 		if len(parts) == 2 {
@@ -82,13 +111,19 @@ func runRenderCmd(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Determine the CUE template content
-	bytes, err := os.ReadFile(templatePath)
-	if err != nil {
-		fmt.Printf("Error reading template file: %v\n", err)
-		return
+	// Determine the CUE template content (check built-in templates first)
+	var templateContent string
+	builtInContent, err := templates.GetTemplate(templatePath)
+	if err == nil {
+		templateContent = builtInContent
+	} else {
+		bytes, err := os.ReadFile(templatePath)
+		if err != nil {
+			fmt.Printf("Error reading template file: %v\n", err)
+			return
+		}
+		templateContent = string(bytes)
 	}
-	templateContent := string(bytes)
 
 	params := domain.GenerateParams{
 		TargetSLO:   sloTarget,
@@ -103,3 +138,4 @@ func runRenderCmd(cmd *cobra.Command, args []string) {
 
 	fmt.Print(res)
 }
+

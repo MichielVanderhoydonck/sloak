@@ -170,3 +170,79 @@ func TestRenderE2E(t *testing.T) {
 		t.Errorf("Expected slo-alerts in output, got:\n%s", outStr)
 	}
 }
+
+func TestRenderBuiltInTemplatesE2E(t *testing.T) {
+	templates := []struct {
+		name       string
+		wantString string
+	}{
+		{"prometheus-operator", "apiVersion: monitoring.coreos.com/v1"},
+		{"datadog", "type: metric"},
+		{"grafana-cloud", "groups:"},
+		{"otel-collector", "connectors:"},
+	}
+
+	for _, tt := range templates {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := exec.Command(sloakBinaryPath, "render",
+				"--template", tt.name, "--slo=99.9",
+			)
+			output, err := cmd.CombinedOutput()
+			outStr := string(output)
+			if err != nil {
+				t.Fatalf("Template %s failed to render: %v\nOutput: %s", tt.name, err, outStr)
+			}
+			if !strings.Contains(outStr, tt.wantString) {
+				t.Errorf("Template %s output missing %q. Got:\n%s", tt.name, tt.wantString, outStr)
+			}
+		})
+	}
+}
+
+func TestRenderOpenSLOE2E(t *testing.T) {
+	yamlContent := `
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: test-openslo-metric
+spec:
+  service: my-service
+  budgetingMethod: Occurrences
+  indicatorRef: success-rate-sli
+  objectives:
+    - target: 0.999
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+`
+	tmpFile, err := os.CreateTemp("", "openslo-*.yaml")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(yamlContent); err != nil {
+		t.Fatalf("failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	cmd := exec.Command(sloakBinaryPath, "render",
+		"--spec", tmpFile.Name(),
+		"--template", "prometheus-operator",
+	)
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+	if err != nil {
+		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
+	}
+
+	// Should contain the metric name from metadata.name
+	if !strings.Contains(outStr, "test-openslo-metric") {
+		t.Errorf("Expected OpenSLO metadata name 'test-openslo-metric' in output, got:\n%s", outStr)
+	}
+	// Should have correct SLO math based on 99.9%
+	if !strings.Contains(outStr, "0.001") {
+		t.Errorf("Expected correct error budget ratio (0.001) in output, got:\n%s", outStr)
+	}
+}
+
