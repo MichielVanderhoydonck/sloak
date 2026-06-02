@@ -25,6 +25,7 @@ var ignoredFlags = map[string]bool{
 	"template":   true,
 	"values":     true,
 	"set":        true,
+	"spec":       true,
 }
 
 func getSubCommands(cmdArgs []string) ([]string, error) {

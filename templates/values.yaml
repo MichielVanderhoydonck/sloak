@@ -1,0 +1,27 @@
+# General configurations used by templates (Prometheus, Datadog, Grafana Cloud, OTel)
+metric_name: "checkout_flow_errors"
+name: "Checkout Flow Availability"
+description: "SLO alerts for the checkout flow error budget."
+namespace: "billing-prod"
+runbook_url: "https://wiki.example.com/runbooks/checkout-alerts"
+
+# Labels/tags that will be added to alerts or resources
+rule_labels:
+  team: payments
+  tier: critical
+
+# Metadata labels for wrapped resources (e.g. Kubernetes resources)
+meta_labels:
+  name: checkout-slo-alerts
+  role: alert-rules
+
+# Datadog specific configs
+tags:
+  - "env:prod"
+  - "service:checkout"
+  - "team:payments"
+
+# OpenTelemetry specific configs
+service_name: "checkout-service"
+receiver: "otlp"
+exporter: "prometheus"
