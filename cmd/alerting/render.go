@@ -1,6 +1,7 @@
 package alerting
 
 import (
+	"maps"
 	"fmt"
 	"os"
 	"strings"
@@ -84,11 +85,7 @@ func runRenderCmd(cmd *cobra.Command, args []string) {
 	configData := make(map[string]any)
 
 	// 1. Read from OpenSLO metadata if parsed
-	if openSLOConfig != nil {
-		for k, v := range openSLOConfig {
-			configData[k] = v
-		}
-	}
+	maps.Copy(configData, openSLOConfig)
 
 	// 2. Read from values file (overrides OpenSLO defaults)
 	if valuesFile != "" {

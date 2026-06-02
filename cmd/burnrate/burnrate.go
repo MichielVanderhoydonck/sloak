@@ -11,12 +11,15 @@ import (
 
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/burnrate"
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
+	burnrateService "github.com/MichielVanderhoydonck/sloak/internal/service/burnrate"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type Service interface {
 	CalculateBurnRate(params burnrateDomain.CalculationParams) (burnrateDomain.BurnRateResult, error)
 }
+
+var _ Service = (*burnrateService.BurnRateService)(nil)
 
 var service Service
 

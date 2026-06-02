@@ -10,12 +10,15 @@ import (
 
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/disruption"
+	disruptionService "github.com/MichielVanderhoydonck/sloak/internal/service/disruption"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type Service interface {
 	CalculateCapacity(params domain.CalculationParams) (domain.Result, error)
 }
+
+var _ Service = (*disruptionService.DisruptionService)(nil)
 
 var service Service
 

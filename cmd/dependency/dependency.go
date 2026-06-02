@@ -11,11 +11,14 @@ import (
 	"github.com/spf13/viper"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
+	dependencyService "github.com/MichielVanderhoydonck/sloak/internal/service/dependency"
 )
 
 type Service interface {
 	CalculateCompositeAvailability(params domain.CalculationParams) (domain.Result, error)
 }
+
+var _ Service = (*dependencyService.AvailabilityService)(nil)
 
 var service Service
 
