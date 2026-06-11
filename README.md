@@ -8,6 +8,12 @@ Inspired by the [Google SRE Workbook](https://sre.google/workbook/implementing-s
 
 ---
 
+## Word of Warning
+
+AI was used in the form of the Antigravity IDE with the Gemini LLM to speed up coding.
+The LLM was guided into using desired frameworks in an exploratory manner, had to follow general golang standards as well as clean architecture.
+If you want to re-use this or build from it I advice you to review thouroughly.
+
 ## 🚀 Getting Started
 
 The easiest way to start is by calculating an error budget for a standard SLO.
