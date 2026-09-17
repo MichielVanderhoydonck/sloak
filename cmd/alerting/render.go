@@ -17,6 +17,12 @@ import (
 	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
 
+var renderService domain.TemplateRenderer
+
+func SetRenderService(s domain.TemplateRenderer) {
+	renderService = s
+}
+
 func NewRenderCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "render",
@@ -127,7 +133,7 @@ func runRenderCmd(cmd *cobra.Command, args []string) {
 		TotalWindow: totalWindow,
 	}
 
-	res, err := service.RenderTemplate(params, configData, templateContent)
+	res, err := renderService.RenderTemplate(params, configData, templateContent)
 	if err != nil {
 		fmt.Printf("Error generating config: %v\n", err)
 		return

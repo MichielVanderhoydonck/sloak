@@ -51,7 +51,15 @@ type AlertingContext struct {
 	Config             map[string]any     `json:"config,omitempty"`
 }
 
-type Service interface {
+type TableGenerator interface {
 	GenerateTable(params GenerateParams) (TableResult, error)
+}
+
+type TemplateRenderer interface {
 	RenderTemplate(params GenerateParams, config map[string]any, templateContent string) (string, error)
+}
+
+type Service interface {
+	TableGenerator
+	TemplateRenderer
 }

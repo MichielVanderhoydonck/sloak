@@ -14,9 +14,9 @@ import (
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service domain.Service
+var service domain.TableGenerator
 
-func SetService(s domain.Service) {
+func SetService(s domain.TableGenerator) {
 	service = s
 }
 

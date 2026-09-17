@@ -70,6 +70,7 @@ func init() {
 
 	alertSvc := alertingService.NewAlertGeneratorService()
 	alertingTableCmd.SetService(alertSvc)
+	alertingTableCmd.SetRenderService(alertSvc)
 	generateCmd.AddCommand(alertingTableCmd.NewAlertTableCmd())
 	rootCmd.AddCommand(alertingTableCmd.NewRenderCmd())
 

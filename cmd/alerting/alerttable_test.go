@@ -10,17 +10,15 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 )
 
-type mockService struct {
+type mockTableGenerator struct {
 	res domain.TableResult
 	err error
 }
 
-func (m *mockService) GenerateTable(params domain.GenerateParams) (domain.TableResult, error) {
-	return m.res, m.err
-}
+var _ domain.TableGenerator = (*mockTableGenerator)(nil)
 
-func (m *mockService) RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error) {
-	return "mocked-template-output", nil
+func (m *mockTableGenerator) GenerateTable(params domain.GenerateParams) (domain.TableResult, error) {
+	return m.res, m.err
 }
 
 func TestAlertRulesCommand(t *testing.T) {
@@ -50,7 +48,7 @@ func TestAlertRulesCommand(t *testing.T) {
 		},
 	}
 
-	svc := &mockService{res: mockRes}
+	svc := &mockTableGenerator{res: mockRes}
 	alerting.SetService(svc)
 
 	output, restore := testutil.CaptureOutput(t)
