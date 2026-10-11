@@ -17,6 +17,8 @@ func GetTemplate(nameOrPath string) (string, error) {
 		"grafana-cloud":          "grafana_cloud_alerting.cue",
 		"grafana-cloud-alerting": "grafana_cloud_alerting.cue",
 		"otel-collector":         "otel_collector.cue",
+		"incident-io":            "incident_io.cue",
+		"incident_io":            "incident_io.cue",
 	}
 
 	normalized := strings.ToLower(filepath.Base(nameOrPath))

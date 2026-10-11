@@ -27,6 +27,20 @@ _config: {
 	metric_name: *data.config.metric_name | "slo_errors"
 	runbook_url: *data.config.runbook_url | ""
 	rule_labels: *data.config.rule_labels | {}
+
+	rule_annotations: *data.config.rule_annotations | {}
+
+	severity_labels: {
+		page:    *(data.config.severity_labels.page) | {}
+		message: *(data.config.severity_labels.message) | {}
+		ticket:  *(data.config.severity_labels.ticket) | {}
+	}
+
+	severity_annotations: {
+		page:    *(data.config.severity_annotations.page) | {}
+		message: *(data.config.severity_annotations.message) | {}
+		ticket:  *(data.config.severity_annotations.ticket) | {}
+	}
 }
 
 // Helper to filter and format alerts
@@ -39,8 +53,15 @@ _config: {
 	exists: len(_list) > 0
 	out:    strings.Join(_list, "\n or \n")
 	
-	summary:     "High burn rate for \(sev) alerts"
-	description: "The \(sev) error budget is burning too fast for metric \(_config.metric_name). Current burn rate exceeds SRE thresholds."
+	labels: _config.rule_labels & _config.severity_labels[sev] & {severity: sev}
+
+	annotations: _config.rule_annotations & _config.severity_annotations[sev] & {
+		summary:     "High burn rate for \(sev) alerts"
+		description: "The \(sev) error budget is burning too fast for metric \(_config.metric_name). Current burn rate exceeds SRE thresholds."
+		if _config.runbook_url != "" {
+			runbook_url: _config.runbook_url
+		}
+	}
 }
 
 _pages:    #FormatAlerts & {sev: "page"}
@@ -53,40 +74,22 @@ groups: [
 		name: "slo-alerts"
 		rules: [
 			if _pages.exists {
-				alert: "HighBurnRatePage"
-				labels: _config.rule_labels & {severity: "page"}
-				expr: _pages.out
-				annotations: {
-					summary:     _pages.summary
-					description: _pages.description
-					if _config.runbook_url != "" {
-						runbook_url: _config.runbook_url
-					}
-				}
+				alert:       "HighBurnRatePage"
+				labels:      _pages.labels
+				expr:        _pages.out
+				annotations: _pages.annotations
 			},
 			if _messages.exists {
-				alert: "HighBurnRateMessage"
-				labels: _config.rule_labels & {severity: "message"}
-				expr: _messages.out
-				annotations: {
-					summary:     _messages.summary
-					description: _messages.description
-					if _config.runbook_url != "" {
-						runbook_url: _config.runbook_url
-					}
-				}
+				alert:       "HighBurnRateMessage"
+				labels:      _messages.labels
+				expr:        _messages.out
+				annotations: _messages.annotations
 			},
 			if _tickets.exists {
-				alert: "HighBurnRateTicket"
-				labels: _config.rule_labels & {severity: "ticket"}
-				expr: _tickets.out
-				annotations: {
-					summary:     _tickets.summary
-					description: _tickets.description
-					if _config.runbook_url != "" {
-						runbook_url: _config.runbook_url
-					}
-				}
+				alert:       "HighBurnRateTicket"
+				labels:      _tickets.labels
+				expr:        _tickets.out
+				annotations: _tickets.annotations
 			},
 		]
 	},
