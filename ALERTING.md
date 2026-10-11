@@ -219,3 +219,31 @@ docker run --rm -v $(pwd):/workspace -w /workspace hashicorp/terraform:latest va
     -d @datadog-slo.json
   ```
 
+---
+
+# 🚨 Incident.io Alert Source Verification
+
+`sloak` renders incident.io Alert Source configuration payloads (`--template incident-io`) for automated alert routing and incident creation rules.
+
+## 1. Syntax & Schema Validation (Local)
+You can render the configuration and validate that it is valid JSON using standard tools:
+
+```bash
+# Generate the Incident.io Alert Source JSON payload
+./sloak render --template incident-io --slo 99.9 --window 30d --values templates/values.yaml > incident-alert-source.json
+
+# Validate JSON structure locally
+cat incident-alert-source.json | jq .
+```
+
+## 2. Platform Golden Path Integration
+In an automated platform pipeline (e.g. GitHub Actions, Terraform external data source, or custom platform CLI), you can sync the generated alert source definition directly with the Incident.io API:
+
+```bash
+curl -X POST "https://api.incident.io/v2/alert_sources" \
+  -H "Authorization: Bearer ${INCIDENT_IO_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d @incident-alert-source.json
+```
+
+

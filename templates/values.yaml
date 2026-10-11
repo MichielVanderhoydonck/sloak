@@ -10,6 +10,23 @@ rule_labels:
   team: payments
   tier: critical
 
+# Optional per-severity label overrides (vendor-neutral, e.g. for routing or on-call)
+severity_labels:
+  page:
+    urgency: high
+  message:
+    urgency: medium
+  ticket:
+    urgency: low
+
+# Optional base and per-severity annotation overrides
+rule_annotations:
+  dashboard_url: "https://grafana.example.com/d/checkout-slo"
+
+severity_annotations:
+  page:
+    action: "Escalate to on-call engineer immediately"
+
 # Metadata labels for wrapped resources (e.g. Kubernetes resources)
 meta_labels:
   name: checkout-slo-alerts
@@ -21,7 +38,14 @@ tags:
   - "service:checkout"
   - "team:payments"
 
-# OpenTelemetry specific configs
+# OpenTelemetry and Incident.io service identification
 service_name: "checkout-service"
 receiver: "otlp"
 exporter: "prometheus"
+
+# Incident.io specific configs (used by --template incident-io)
+source_type: "custom"
+severity_map:
+  page: "critical"
+  message: "major"
+  ticket: "minor"

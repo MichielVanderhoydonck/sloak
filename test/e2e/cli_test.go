@@ -180,6 +180,7 @@ func TestRenderBuiltInTemplatesE2E(t *testing.T) {
 		{"datadog", "type: metric"},
 		{"grafana-cloud", "groups:"},
 		{"otel-collector", "connectors:"},
+		{"incident-io", "source_type: custom"},
 	}
 
 	for _, tt := range templates {
@@ -196,6 +197,33 @@ func TestRenderBuiltInTemplatesE2E(t *testing.T) {
 				t.Errorf("Template %s output missing %q. Got:\n%s", tt.name, tt.wantString, outStr)
 			}
 		})
+	}
+}
+
+func TestRenderSeverityOverridesE2E(t *testing.T) {
+	cmd := exec.Command(sloakBinaryPath, "render",
+		"--template", "prometheus-operator",
+		"--slo=99.9",
+		"--values", "../../templates/values.yaml",
+	)
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+	if err != nil {
+		t.Fatalf("Failed to render prometheus-operator with values.yaml: %v\nOutput: %s", err, outStr)
+	}
+
+	expectedSubstrings := []string{
+		"urgency: high",
+		"urgency: medium",
+		"urgency: low",
+		"dashboard_url: https://grafana.example.com/d/checkout-slo",
+		"action: Escalate to on-call engineer immediately",
+	}
+
+	for _, s := range expectedSubstrings {
+		if !strings.Contains(outStr, s) {
+			t.Errorf("Output missing expected override %q. Got:\n%s", s, outStr)
+		}
 	}
 }
 
