@@ -26,11 +26,10 @@ func TestDependencyCommand(t *testing.T) {
 	}
 
 	svc := &mockService{res: mockRes, err: nil}
-	dependency.SetService(svc)
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := dependency.NewDependencyCmd()
+	cmd := dependency.NewDependencyCmd(svc)
 	cmd.SetArgs([]string{"--components=99.9,99.9", "--type=serial"})
 
 	cmd.Execute()

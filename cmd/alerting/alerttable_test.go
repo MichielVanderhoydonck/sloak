@@ -49,11 +49,10 @@ func TestAlertRulesCommand(t *testing.T) {
 	}
 
 	svc := &mockTableGenerator{res: mockRes}
-	alerting.SetService(svc)
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewAlertTableCmd()
+	cmd := alerting.NewAlertTableCmd(svc)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",

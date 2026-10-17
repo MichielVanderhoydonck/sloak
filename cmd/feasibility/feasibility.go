@@ -13,18 +13,14 @@ import (
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service domain.Service
-
-func SetService(s domain.Service) {
-	service = s
-}
-
-func NewFeasibilityCmd() *cobra.Command {
+func NewFeasibilityCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "feasibility",
 		Short: "Calculates if an SLO is realistic given your MTTR.",
 		Long:  `Analyzes whether your target SLO is mathematically feasible based on your team's average Mean Time To Recover (MTTR).`,
-		Run:   runFeasibilityCmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			runFeasibilityCmd(cmd, args, service)
+		},
 	}
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "SLO target percentage")
@@ -33,7 +29,7 @@ func NewFeasibilityCmd() *cobra.Command {
 	return cmd
 }
 
-func runFeasibilityCmd(cmd *cobra.Command, args []string) {
+func runFeasibilityCmd(cmd *cobra.Command, args []string, service domain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	mttrStr := viper.GetString("mttr")

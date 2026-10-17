@@ -13,18 +13,14 @@ import (
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service errorbudgetDomain.Service
-
-func SetService(svc errorbudgetDomain.Service) {
-	service = svc
-}
-
-func NewErrorBudgetCmd() *cobra.Command {
+func NewErrorBudgetCmd(service errorbudgetDomain.Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "errorbudget",
 		Short: "Calculates the total error budget (time) for a given SLO.",
 		Long:  `Calculates the allowed failure time based on an SLO percentage and a time window.`,
-		Run:   runErrorBudgetCmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			runErrorBudgetCmd(cmd, args, service)
+		},
 	}
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "The SLO target percentage (e.g., 99.9)")
@@ -33,7 +29,7 @@ func NewErrorBudgetCmd() *cobra.Command {
 	return cmd
 }
 
-func runErrorBudgetCmd(cmd *cobra.Command, args []string) {
+func runErrorBudgetCmd(cmd *cobra.Command, args []string, service errorbudgetDomain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	sloTarget := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")

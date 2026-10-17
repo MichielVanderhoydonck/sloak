@@ -13,18 +13,14 @@ import (
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service domain.Service
-
-func SetService(s domain.Service) {
-	service = s
-}
-
-func NewDisruptionCmd() *cobra.Command {
+func NewDisruptionCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "max-disruption",
 		Short: "Calculates allowed deployment frequency based on disruption cost.",
 		Long:  `Determines how many disruptive events (e.g. deployments, restarts) fit into the error budget.`,
-		Run:   runDisruptionCmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			runDisruptionCmd(cmd, args, service)
+		},
 	}
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "SLO target percentage")
@@ -34,7 +30,7 @@ func NewDisruptionCmd() *cobra.Command {
 	return cmd
 }
 
-func runDisruptionCmd(cmd *cobra.Command, args []string) {
+func runDisruptionCmd(cmd *cobra.Command, args []string, service domain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")

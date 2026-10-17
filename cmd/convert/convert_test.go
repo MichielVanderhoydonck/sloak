@@ -27,11 +27,10 @@ func TestConvertCommand(t *testing.T) {
 	}
 
 	svc := &mockService{res: mockRes, err: nil}
-	convert.SetService(svc)
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := convert.NewConvertCmd()
+	cmd := convert.NewConvertCmd(svc)
 	cmd.SetArgs([]string{"--nines=99.9"})
 
 	cmd.Execute()

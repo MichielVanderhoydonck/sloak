@@ -34,11 +34,10 @@ func TestErrorBudgetCommand(t *testing.T) {
 		MockResult: mockResult,
 		MockError:  nil,
 	}
-	errorbudget.SetService(mockSvc)
 
 	output, restoreStdout := testutil.CaptureOutput(t)
 
-	cmd := errorbudget.NewErrorBudgetCmd()
+	cmd := errorbudget.NewErrorBudgetCmd(mockSvc)
 	cmd.SetArgs([]string{
 		"--slo=99.95",
 		"--window=30d",

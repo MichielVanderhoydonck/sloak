@@ -14,18 +14,14 @@ import (
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service domain.TableGenerator
-
-func SetService(s domain.TableGenerator) {
-	service = s
-}
-
-func NewAlertTableCmd() *cobra.Command {
+func NewAlertTableCmd(service domain.TableGenerator) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "alert-table",
 		Short: "Generates the standard SRE Alerting Table.",
 		Long:  `Generates the Google SRE standard alerting table (Fast/Slow/Sustained burn rates).`,
-		Run:   runAlertRulesCmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			runAlertRulesCmd(cmd, args, service)
+		},
 	}
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "SLO target percentage")
@@ -34,7 +30,7 @@ func NewAlertTableCmd() *cobra.Command {
 	return cmd
 }
 
-func runAlertRulesCmd(cmd *cobra.Command, args []string) {
+func runAlertRulesCmd(cmd *cobra.Command, args []string, service domain.TableGenerator) {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")
