@@ -17,18 +17,14 @@ import (
 	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
 
-var renderService domain.TemplateRenderer
-
-func SetRenderService(s domain.TemplateRenderer) {
-	renderService = s
-}
-
-func NewRenderCmd() *cobra.Command {
+func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "render",
 		Short: "Renders observability configuration from BYOT templates.",
 		Long:  `Renders actionable configurations by taking a provided BYOT CUE template and injecting generic SLO math.`,
-		Run:   runRenderCmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			runRenderCmd(cmd, args, renderService)
+		},
 	}
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "SLO target percentage")
@@ -42,7 +38,7 @@ func NewRenderCmd() *cobra.Command {
 	return cmd
 }
 
-func runRenderCmd(cmd *cobra.Command, args []string) {
+func runRenderCmd(cmd *cobra.Command, args []string, renderService domain.TemplateRenderer) {
 	viper.BindPFlags(cmd.Flags())
 	
 	templatePath := viper.GetString("template")

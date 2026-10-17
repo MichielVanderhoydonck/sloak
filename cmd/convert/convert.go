@@ -10,18 +10,14 @@ import (
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service domain.Service
-
-func SetService(s domain.Service) {
-	service = s
-}
-
-func NewConvertCmd() *cobra.Command {
+func NewConvertCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "convert",
 		Short: "Converts between Availability % and Downtime Duration.",
 		Long:  `Converts "Nines" (e.g. 99.9%) to allowed downtime per day/month/year, or converts a specific downtime duration back into a percentage.`,
-		Run:   runConvertCmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			runConvertCmd(cmd, args, service)
+		},
 	}
 
 	cmd.Flags().Float64("nines", -1, "Availability Percentage (e.g. 99.95)")
@@ -31,7 +27,7 @@ func NewConvertCmd() *cobra.Command {
 	return cmd
 }
 
-func runConvertCmd(cmd *cobra.Command, args []string) {
+func runConvertCmd(cmd *cobra.Command, args []string, service domain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	nines := viper.GetFloat64("nines")
 	downtimeStr := viper.GetString("downtime")

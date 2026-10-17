@@ -34,11 +34,9 @@ func TestBurnRateCommand(t *testing.T) {
 		MockError:  nil,
 	}
 
-	burnrate.SetService(mockSvc)
-
 	output, restoreStdout := testutil.CaptureOutput(t)
 
-	cmd := burnrate.NewBurnRateCmd()
+	cmd := burnrate.NewBurnRateCmd(mockSvc)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",

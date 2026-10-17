@@ -52,35 +52,17 @@ func init() {
 	rootCmd.AddCommand(calculateCmd)
 	rootCmd.AddCommand(generateCmd)
 
-	calculatorSvc := errorbudgetService.NewCalculatorService()
-	errorbudgetCmd.SetService(calculatorSvc)
-	calculateCmd.AddCommand(errorbudgetCmd.NewErrorBudgetCmd())
+	calculateCmd.AddCommand(errorbudgetCmd.NewErrorBudgetCmd(errorbudgetService.NewCalculatorService()))
+	calculateCmd.AddCommand(burnrateCmd.NewBurnRateCmd(burnrateService.NewBurnRateService()))
+	calculateCmd.AddCommand(dependencyCmd.NewDependencyCmd(dependencyService.NewAvailabilityService()))
+	calculateCmd.AddCommand(disruptionCmd.NewDisruptionCmd(disruptionService.NewDisruptionService()))
+	calculateCmd.AddCommand(feasibilityCmd.NewFeasibilityCmd(feasibilityService.NewFeasibilityService()))
 
-	burnRateSvc := burnrateService.NewBurnRateService()
-	burnrateCmd.SetService(burnRateSvc)
-	calculateCmd.AddCommand(burnrateCmd.NewBurnRateCmd())
-
-	depSvc := dependencyService.NewAvailabilityService()
-	dependencyCmd.SetService(depSvc)
-	calculateCmd.AddCommand(dependencyCmd.NewDependencyCmd())
-
-	convSvc := convertService.NewConvertService()
-	convertCmd.SetService(convSvc)
-	rootCmd.AddCommand(convertCmd.NewConvertCmd())
+	rootCmd.AddCommand(convertCmd.NewConvertCmd(convertService.NewConvertService()))
 
 	alertSvc := alertingService.NewAlertGeneratorService()
-	alertingTableCmd.SetService(alertSvc)
-	alertingTableCmd.SetRenderService(alertSvc)
-	generateCmd.AddCommand(alertingTableCmd.NewAlertTableCmd())
-	rootCmd.AddCommand(alertingTableCmd.NewRenderCmd())
-
-	disSvc := disruptionService.NewDisruptionService()
-	disruptionCmd.SetService(disSvc)
-	calculateCmd.AddCommand(disruptionCmd.NewDisruptionCmd())
-
-	feasSvc := feasibilityService.NewFeasibilityService()
-	feasibilityCmd.SetService(feasSvc)
-	calculateCmd.AddCommand(feasibilityCmd.NewFeasibilityCmd())
+	generateCmd.AddCommand(alertingTableCmd.NewAlertTableCmd(alertSvc))
+	rootCmd.AddCommand(alertingTableCmd.NewRenderCmd(alertSvc))
 }
 
 func initConfig() {

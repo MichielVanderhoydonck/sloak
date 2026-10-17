@@ -13,17 +13,13 @@ import (
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
 )
 
-var service domain.Service
-
-func SetService(s domain.Service) {
-	service = s
-}
-
-func NewDependencyCmd() *cobra.Command {
+func NewDependencyCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dependency",
 		Short: "Calculates composite availability for serial or parallel dependencies.",
-		Run:   runDependencyCmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			runDependencyCmd(cmd, args, service)
+		},
 	}
 
 	cmd.Flags().String("components", "", "Comma-separated list of availabilities (e.g. 99.9,99.5)")
@@ -32,7 +28,7 @@ func NewDependencyCmd() *cobra.Command {
 	return cmd
 }
 
-func runDependencyCmd(cmd *cobra.Command, args []string) {
+func runDependencyCmd(cmd *cobra.Command, args []string, service domain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	compStr := viper.GetString("components")
 	typeStr := viper.GetString("type")

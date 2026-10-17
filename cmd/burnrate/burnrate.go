@@ -14,18 +14,14 @@ import (
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
-var service burnrateDomain.Service
-
-func SetService(svc burnrateDomain.Service) {
-	service = svc
-}
-
-func NewBurnRateCmd() *cobra.Command {
+func NewBurnRateCmd(service burnrateDomain.Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "burnrate",
 		Short: "Calculates the current error budget burn rate (consumption speed).",
 		Long:  `Calculates the current burn rate against the ideal burn rate (1.0). A value > 1.0 indicates overspending.`,
-		Run:   runBurnRateCmd,
+		Run: func(cmd *cobra.Command, args []string) {
+			runBurnRateCmd(cmd, args, service)
+		},
 	}
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "The SLO target percentage (e.g., 99.9)")
@@ -36,7 +32,7 @@ func NewBurnRateCmd() *cobra.Command {
 	return cmd
 }
 
-func runBurnRateCmd(cmd *cobra.Command, args []string) {
+func runBurnRateCmd(cmd *cobra.Command, args []string, service burnrateDomain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	sloTarget := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")

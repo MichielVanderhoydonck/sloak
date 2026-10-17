@@ -33,11 +33,10 @@ func TestFeasibilityCommand(t *testing.T) {
 	}
 
 	svc := &mockFeasibilityService{res: mockRes}
-	feasibility.SetService(svc)
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := feasibility.NewFeasibilityCmd()
+	cmd := feasibility.NewFeasibilityCmd(svc)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--mttr=30m",
