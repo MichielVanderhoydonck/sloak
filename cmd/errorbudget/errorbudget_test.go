@@ -17,7 +17,7 @@ type mockCalculatorService struct {
 	MockError  error
 }
 
-func (m *mockCalculatorService) CalculateBudget(params errorbudgetDomain.CalculationParams) (errorbudgetDomain.BudgetResult, error) {
+func (m *mockCalculatorService) CalculateBudget(_ errorbudgetDomain.CalculationParams) (errorbudgetDomain.BudgetResult, error) {
 	return m.MockResult, m.MockError
 }
 

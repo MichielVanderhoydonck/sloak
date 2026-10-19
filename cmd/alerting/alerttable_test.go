@@ -17,7 +17,7 @@ type mockTableGenerator struct {
 
 var _ domain.TableGenerator = (*mockTableGenerator)(nil)
 
-func (m *mockTableGenerator) GenerateTable(params domain.GenerateParams) (domain.TableResult, error) {
+func (m *mockTableGenerator) GenerateTable(_ domain.GenerateParams) (domain.TableResult, error) {
 	return m.res, m.err
 }
 

@@ -14,7 +14,7 @@ type mockService struct {
 	err error
 }
 
-func (m *mockService) CalculateCompositeAvailability(params domain.CalculationParams) (domain.Result, error) {
+func (m *mockService) CalculateCompositeAvailability(_ domain.CalculationParams) (domain.Result, error) {
 	return m.res, m.err
 }
 

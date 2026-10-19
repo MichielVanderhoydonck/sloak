@@ -19,8 +19,8 @@ func NewBurnRateCmd(service burnrateDomain.Service) *cobra.Command {
 		Use:   "burnrate",
 		Short: "Calculates the current error budget burn rate (consumption speed).",
 		Long:  `Calculates the current burn rate against the ideal burn rate (1.0). A value > 1.0 indicates overspending.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			runBurnRateCmd(cmd, args, service)
+		Run: func(cmd *cobra.Command, _ []string) {
+			runBurnRateCmd(cmd, service)
 		},
 	}
 
@@ -32,7 +32,7 @@ func NewBurnRateCmd(service burnrateDomain.Service) *cobra.Command {
 	return cmd
 }
 
-func runBurnRateCmd(cmd *cobra.Command, args []string, service burnrateDomain.Service) {
+func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	sloTarget := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")

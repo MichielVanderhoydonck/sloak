@@ -19,8 +19,8 @@ func NewAlertTableCmd(service domain.TableGenerator) *cobra.Command {
 		Use:   "alert-table",
 		Short: "Generates the standard SRE Alerting Table.",
 		Long:  `Generates the Google SRE standard alerting table (Fast/Slow/Sustained burn rates).`,
-		Run: func(cmd *cobra.Command, args []string) {
-			runAlertRulesCmd(cmd, args, service)
+		Run: func(cmd *cobra.Command, _ []string) {
+			runAlertRulesCmd(cmd, service)
 		},
 	}
 
@@ -30,7 +30,7 @@ func NewAlertTableCmd(service domain.TableGenerator) *cobra.Command {
 	return cmd
 }
 
-func runAlertRulesCmd(cmd *cobra.Command, args []string, service domain.TableGenerator) {
+func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")

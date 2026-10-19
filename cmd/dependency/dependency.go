@@ -17,8 +17,8 @@ func NewDependencyCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dependency",
 		Short: "Calculates composite availability for serial or parallel dependencies.",
-		Run: func(cmd *cobra.Command, args []string) {
-			runDependencyCmd(cmd, args, service)
+		Run: func(cmd *cobra.Command, _ []string) {
+			runDependencyCmd(cmd, service)
 		},
 	}
 
@@ -28,7 +28,7 @@ func NewDependencyCmd(service domain.Service) *cobra.Command {
 	return cmd
 }
 
-func runDependencyCmd(cmd *cobra.Command, args []string, service domain.Service) {
+func runDependencyCmd(cmd *cobra.Command, service domain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	compStr := viper.GetString("components")
 	typeStr := viper.GetString("type")

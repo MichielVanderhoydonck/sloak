@@ -18,8 +18,8 @@ func NewDisruptionCmd(service domain.Service) *cobra.Command {
 		Use:   "max-disruption",
 		Short: "Calculates allowed deployment frequency based on disruption cost.",
 		Long:  `Determines how many disruptive events (e.g. deployments, restarts) fit into the error budget.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			runDisruptionCmd(cmd, args, service)
+		Run: func(cmd *cobra.Command, _ []string) {
+			runDisruptionCmd(cmd, service)
 		},
 	}
 
@@ -30,7 +30,7 @@ func NewDisruptionCmd(service domain.Service) *cobra.Command {
 	return cmd
 }
 
-func runDisruptionCmd(cmd *cobra.Command, args []string, service domain.Service) {
+func runDisruptionCmd(cmd *cobra.Command, service domain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")

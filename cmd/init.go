@@ -10,7 +10,7 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Prints a default .sloak.yaml configuration template",
 	Long:  `Prints a default .sloak.yaml template to standard output to help you get started with file-based configuration. You can redirect this to a file (e.g. sloak init > .sloak.yaml).`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		configContent := `# Default SLOAK Configuration File
 # This file can be placed in your home directory (~/.sloak.yaml) or your current working directory.
 

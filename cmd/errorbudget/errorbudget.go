@@ -18,8 +18,8 @@ func NewErrorBudgetCmd(service errorbudgetDomain.Service) *cobra.Command {
 		Use:   "errorbudget",
 		Short: "Calculates the total error budget (time) for a given SLO.",
 		Long:  `Calculates the allowed failure time based on an SLO percentage and a time window.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			runErrorBudgetCmd(cmd, args, service)
+		Run: func(cmd *cobra.Command, _ []string) {
+			runErrorBudgetCmd(cmd, service)
 		},
 	}
 
@@ -29,7 +29,7 @@ func NewErrorBudgetCmd(service errorbudgetDomain.Service) *cobra.Command {
 	return cmd
 }
 
-func runErrorBudgetCmd(cmd *cobra.Command, args []string, service errorbudgetDomain.Service) {
+func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	sloTarget := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")

@@ -22,8 +22,8 @@ func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 		Use:   "render",
 		Short: "Renders observability configuration from BYOT templates.",
 		Long:  `Renders actionable configurations by taking a provided BYOT CUE template and injecting generic SLO math.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			runRenderCmd(cmd, args, renderService)
+		Run: func(cmd *cobra.Command, _ []string) {
+			runRenderCmd(cmd, renderService)
 		},
 	}
 
@@ -38,7 +38,7 @@ func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 	return cmd
 }
 
-func runRenderCmd(cmd *cobra.Command, args []string, renderService domain.TemplateRenderer) {
+func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) {
 	viper.BindPFlags(cmd.Flags())
 	
 	templatePath := viper.GetString("template")

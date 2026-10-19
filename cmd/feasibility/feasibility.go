@@ -18,8 +18,8 @@ func NewFeasibilityCmd(service domain.Service) *cobra.Command {
 		Use:   "feasibility",
 		Short: "Calculates if an SLO is realistic given your MTTR.",
 		Long:  `Analyzes whether your target SLO is mathematically feasible based on your team's average Mean Time To Recover (MTTR).`,
-		Run: func(cmd *cobra.Command, args []string) {
-			runFeasibilityCmd(cmd, args, service)
+		Run: func(cmd *cobra.Command, _ []string) {
+			runFeasibilityCmd(cmd, service)
 		},
 	}
 
@@ -29,7 +29,7 @@ func NewFeasibilityCmd(service domain.Service) *cobra.Command {
 	return cmd
 }
 
-func runFeasibilityCmd(cmd *cobra.Command, args []string, service domain.Service) {
+func runFeasibilityCmd(cmd *cobra.Command, service domain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	mttrStr := viper.GetString("mttr")

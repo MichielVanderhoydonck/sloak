@@ -15,7 +15,7 @@ type mockService struct {
 	err error
 }
 
-func (m *mockService) Convert(params domain.ConversionParams) (domain.ConversionResult, error) {
+func (m *mockService) Convert(_ domain.ConversionParams) (domain.ConversionResult, error) {
 	return m.res, m.err
 }
 

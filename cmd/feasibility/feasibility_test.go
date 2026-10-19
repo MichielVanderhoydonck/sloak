@@ -17,7 +17,7 @@ type mockFeasibilityService struct {
 	err error
 }
 
-func (m *mockFeasibilityService) CalculateFeasibility(params domain.FeasibilityParams) (domain.FeasibilityResult, error) {
+func (m *mockFeasibilityService) CalculateFeasibility(_ domain.FeasibilityParams) (domain.FeasibilityResult, error) {
 	return m.res, m.err
 }
 

@@ -15,8 +15,8 @@ func NewConvertCmd(service domain.Service) *cobra.Command {
 		Use:   "convert",
 		Short: "Converts between Availability % and Downtime Duration.",
 		Long:  `Converts "Nines" (e.g. 99.9%) to allowed downtime per day/month/year, or converts a specific downtime duration back into a percentage.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			runConvertCmd(cmd, args, service)
+		Run: func(cmd *cobra.Command, _ []string) {
+			runConvertCmd(cmd, service)
 		},
 	}
 
@@ -27,7 +27,7 @@ func NewConvertCmd(service domain.Service) *cobra.Command {
 	return cmd
 }
 
-func runConvertCmd(cmd *cobra.Command, args []string, service domain.Service) {
+func runConvertCmd(cmd *cobra.Command, service domain.Service) {
 	viper.BindPFlags(cmd.Flags())
 	nines := viper.GetFloat64("nines")
 	downtimeStr := viper.GetString("downtime")

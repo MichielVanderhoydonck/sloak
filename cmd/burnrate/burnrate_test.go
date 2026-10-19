@@ -16,7 +16,7 @@ type mockBurnRateService struct {
 	MockError  error
 }
 
-func (m *mockBurnRateService) CalculateBurnRate(params burnrateDomain.CalculationParams) (burnrateDomain.BurnRateResult, error) {
+func (m *mockBurnRateService) CalculateBurnRate(_ burnrateDomain.CalculationParams) (burnrateDomain.BurnRateResult, error) {
 	return m.MockResult, m.MockError
 }
 
