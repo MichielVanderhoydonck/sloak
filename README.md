@@ -102,7 +102,7 @@ Budget Consumed: 69.44% (Time Elapsed: 23.33%)
 Burn Rate: 2.98x
 Budget Remaining: 13m12s
 
-Status: CRITICAL! Budget is burning faster than expected.
+Status: WARNING (Ticket). Budget is burning faster than sustainable.
 Forecast: Budget will be empty in 3.1d
 Predicted Exhaustion: Sun, 25 Oct 2026 23:45:12 CEST
 ```
@@ -162,11 +162,13 @@ THRESHOLD   SHORT WINDOW   LONG WINDOW   BURN RATE   NOTIFICATION
 Render turnkey alert definitions using built-in CUE templates, values overrides, or OpenSLO specifications:
 
 ```bash
-# Render Prometheus Operator PrometheusRule resource
+# Render Prometheus Operator PrometheusRule resource (with recording rules)
 sloak render \
   --template prometheus-operator \
   --slo 99.9 \
   --set metric_name=checkout_requests \
+  --set errors_query='http_requests_total{job="checkout",code=~"5.."}' \
+  --set total_query='http_requests_total{job="checkout"}' \
   --set namespace=monitoring > prometheus-rules.yaml
 
 # Render Datadog SLO JSON definition using a values file
@@ -246,7 +248,7 @@ sloak calculate errorbudget
 | :--- | :--- | :--- |
 | `convert` | `--nines` OR `--downtime`, `--window`, `-o` | Bidirectional conversion between availability % and allowed downtime. |
 | `generate alert-table` | `--slo`, `--window`, `-o` | Tabular display of Google SRE multi-window alerting thresholds. |
-| `render` | `--template`, `--slo`, `--spec`, `--values`, `--set`, `-o` / `--format` | Render observability alerting and SLO rules via CUE templates. |
+| `render` | `--template`, `--slo`, `--spec`, `--values`, `--set`, `--set-json`, `-o` / `--format` | Render observability alerting and SLO rules via CUE templates. |
 | `init` | *(None)* | Outputs default `.sloak.yaml` configuration to stdout. |
 
 ---

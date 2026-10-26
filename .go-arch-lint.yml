@@ -21,6 +21,8 @@ vendors:
         in: gopkg.in/yaml.v3
     3rd-openslo:
         in: ['github.com/OpenSLO/go-sdk/**']
+    3rd-prometheus:
+        in: ['github.com/prometheus/prometheus/**']
 
 components:
     Domain:
@@ -44,9 +46,6 @@ components:
     Util:
         in: ['internal/util/**']
 
-    TestUtil:
-        in: ['internal/testutil/**']
-
 deps:
     Domain:
         mayDependOn: [Domain, Util] 
@@ -59,7 +58,7 @@ deps:
 
     Service:
         mayDependOn: [Domain, Util, Templates]
-        canUse: [3rd-cue, 3rd-yaml]
+        canUse: [3rd-cue, 3rd-yaml, 3rd-prometheus]
 
     CLI:
         mayDependOn: [CLI, Domain, Util, Templates] 
@@ -75,11 +74,6 @@ deps:
         anyProjectDeps: true
 
     Util:
-        mayDependOn: []
-        canUse: []
-        anyVendorDeps: true
-
-    TestUtil:
         mayDependOn: []
         canUse: []
         anyVendorDeps: true

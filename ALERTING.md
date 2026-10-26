@@ -44,7 +44,7 @@ Provide your error and total metric queries to generate a complete turnkey setup
 > Evaluating `rate(counter[3d])` (or `[9d]` for 90d windows) directly over raw high-churn counters can be resource-intensive in very large Prometheus deployments. In such environments, consider chaining recording rules (evaluating longer windows from recorded 1h ratios, as popularized by Sloth and Pyrra) or configuring subquery caching.
 
 ### Lab / Verification Setup (Simulated Outage)
-To deterministically test alerts firing in Minikube without generating traffic, pass `sli_query="vector(0.2)"` (or `errors_query="vector(0.2)"`) to simulate a constant 20% error rate across all windows (> 14.4x burn rate):
+To deterministically test alerts firing in Minikube without generating traffic, pass `sli_query="vector(0.2)"` to simulate a constant 20% error rate across all windows (> 14.4x burn rate):
 ```bash
 ./sloak render \
   --template prometheus-operator \

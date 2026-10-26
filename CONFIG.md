@@ -29,7 +29,7 @@ A configuration file should not be a dumping ground for every possible flag. We 
 - **`nines` & `downtime`** *(from `convert`)*: These are the direct input values you want the tool to translate (e.g., "What is 99.95% in downtime?"). 
 
 ### 4. Third-Party Exporters
-- **`template`, `values`, `spec`, `set`, `format`** *(from `render`)*: These define the output structure and configuration for third-party systems like Prometheus Operator or Datadog. Because these are specific to the output target or manifest being generated, they are provided via explicit flags rather than a global config file.
+- **`template`, `values`, `spec`, `set`, `set-json`, `format`** *(from `render`)*: These define the output structure and configuration for third-party systems like Prometheus Operator or Datadog. Because these are specific to the output target or manifest being generated, they are provided via explicit flags rather than a global config file.
 
 ## Excluded: Universal CLI Mechanics
 
