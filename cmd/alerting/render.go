@@ -113,26 +113,34 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 	// 3. Read from --set flags (overrides file and OpenSLO defaults)
 	for _, setVal := range setVals {
 		parts := strings.SplitN(setVal, "=", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			val := strings.TrimSpace(parts[1])
-			parsedVal := parseSetVal(val)
-			setPath(configData, strings.Split(key, "."), parsedVal)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid --set flag %q: expected key=value format", setVal)
 		}
+		key := strings.TrimSpace(parts[0])
+		if key == "" {
+			return fmt.Errorf("invalid --set flag %q: key cannot be empty", setVal)
+		}
+		val := strings.TrimSpace(parts[1])
+		parsedVal := parseSetVal(val)
+		setPath(configData, strings.Split(key, "."), parsedVal)
 	}
 
 	// 4. Read from --set-json flags
 	for _, setJSONVal := range setJSONVals {
 		parts := strings.SplitN(setJSONVal, "=", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			rawVal := strings.TrimSpace(parts[1])
-			var parsedVal any
-			if err := yaml.Unmarshal([]byte(rawVal), &parsedVal); err != nil {
-				parsedVal = rawVal
-			}
-			setPath(configData, strings.Split(key, "."), cleanYAMLValue(parsedVal))
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid --set-json flag %q: expected key=value format", setJSONVal)
 		}
+		key := strings.TrimSpace(parts[0])
+		if key == "" {
+			return fmt.Errorf("invalid --set-json flag %q: key cannot be empty", setJSONVal)
+		}
+		rawVal := strings.TrimSpace(parts[1])
+		var parsedVal any
+		if err := yaml.Unmarshal([]byte(rawVal), &parsedVal); err != nil {
+			return fmt.Errorf("invalid json/yaml in --set-json %q: %w", setJSONVal, err)
+		}
+		setPath(configData, strings.Split(key, "."), cleanYAMLValue(parsedVal))
 	}
 
 	// 5. Determine output format (yaml or json)
@@ -145,19 +153,13 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 	}
 
 	if formatFlag == "" {
-		tmplLower := strings.ToLower(templatePath)
-		if strings.Contains(tmplLower, "datadog") || strings.Contains(tmplLower, "incident") {
-			formatFlag = "json"
-		} else {
-			formatFlag = "yaml"
-		}
+		formatFlag = templates.GetDefaultFormat(templatePath)
 	}
 
 	formatFlag = strings.ToLower(strings.TrimSpace(formatFlag))
 	if formatFlag != "yaml" && formatFlag != "json" {
 		return fmt.Errorf("invalid format %q: must be yaml or json", formatFlag)
 	}
-	configData["format"] = formatFlag
 
 	// Determine the CUE template content:
 	// 1. If templatePath exists on disk, load it as a custom file (custom templates take precedence).
@@ -195,6 +197,7 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 	params := domain.GenerateParams{
 		TargetSLO:   sloTarget,
 		TotalWindow: totalWindow,
+		Format:      formatFlag,
 	}
 
 	res, err := renderService.RenderTemplate(params, configData, templateContent)
@@ -233,19 +236,39 @@ func setPath(target map[string]any, path []string, value any) {
 }
 
 func parseSetVal(val string) any {
-	if !strings.Contains(val, "=") || strings.Contains(val, "://") {
-		return val
-	}
-	pairs := strings.Split(val, ",")
-	m := make(map[string]any)
-	for _, pair := range pairs {
-		k, v, ok := strings.Cut(pair, "=")
-		if !ok || k == "" {
-			return val
+	trimmed := strings.TrimSpace(val)
+	// Explicit map syntax: {k1=v1,k2=v2} or {k1: v1, k2: v2}
+	if strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
+		inner := strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+		if inner == "" {
+			return make(map[string]any)
 		}
-		m[strings.TrimSpace(k)] = strings.TrimSpace(v)
+		// Check comma-separated k=v pairs: {k1=v1,k2=v2}
+		if strings.Contains(inner, "=") {
+			pairs := strings.Split(inner, ",")
+			m := make(map[string]any)
+			validMap := true
+			for _, pair := range pairs {
+				k, v, ok := strings.Cut(pair, "=")
+				if !ok || strings.TrimSpace(k) == "" {
+					validMap = false
+					break
+				}
+				m[strings.TrimSpace(k)] = strings.TrimSpace(v)
+			}
+			if validMap && len(m) > 0 {
+				return m
+			}
+		}
+		// Otherwise try JSON/YAML map: {k1: v1, k2: v2}
+		var parsed any
+		if err := yaml.Unmarshal([]byte(trimmed), &parsed); err == nil {
+			if m, ok := parsed.(map[string]any); ok {
+				return cleanYAMLValue(m)
+			}
+		}
 	}
-	return m
+	return val
 }
 
 func cleanYAMLValue(v any) any {

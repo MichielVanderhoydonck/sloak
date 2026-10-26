@@ -18,6 +18,7 @@ const (
 type GenerateParams struct {
 	TargetSLO   common.SLOTarget
 	TotalWindow time.Duration
+	Format      string
 }
 
 type AlertDefinition struct {
@@ -47,7 +48,7 @@ type AlertingWindow struct {
 type AlertingContext struct {
 	TargetSLO          float64          `json:"slo_target"`
 	ErrorBudgetRatio   float64          `json:"error_budget_ratio"`
-	TotalWindowSeconds float64          `json:"total_window_seconds"`
+	TotalWindowSeconds int64            `json:"total_window_seconds"`
 	Windows            []AlertingWindow `json:"windows"`
 	Config             map[string]any   `json:"config,omitempty"`
 }

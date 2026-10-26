@@ -408,7 +408,7 @@ func TestRenderSetFlagsE2E(t *testing.T) {
 		"--template", "prometheus-operator",
 		"--slo=99.9",
 		"--set", "metric_name=api_errors",
-		"--set", "rule_labels=service=api,env=prod",
+		"--set", "rule_labels={service=api,env=prod}",
 		"--set", "meta_labels.release=prometheus",
 	)
 	output, err := cmd.CombinedOutput()
@@ -882,5 +882,42 @@ func TestRenderDatadogTimeframeValidationE2E(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "timeframe \"14d\" is invalid") {
 		t.Errorf("expected invalid timeframe error message, got: %s", stderr.String())
+	}
+}
+
+func TestRenderSetValidationAndScalarPreservationE2E(t *testing.T) {
+	// Case 1: --set without '=' must fail with non-zero exit code
+	var stderr bytes.Buffer
+	cmdNoEq := exec.Command(sloakBinaryPath, "render", "--template=datadog", "--slo=99.9", "--set", "invalidflag")
+	cmdNoEq.Stderr = &stderr
+	if err := cmdNoEq.Run(); err == nil {
+		t.Fatal("expected failure for --set without '='")
+	}
+	if !strings.Contains(stderr.String(), "expected key=value format") {
+		t.Errorf("expected key=value error message, got: %s", stderr.String())
+	}
+
+	// Case 2: --set-json with invalid JSON/YAML must fail
+	stderr.Reset()
+	cmdBadJSON := exec.Command(sloakBinaryPath, "render", "--template=datadog", "--slo=99.9", "--set-json", "tags={invalid json")
+	cmdBadJSON.Stderr = &stderr
+	if err := cmdBadJSON.Run(); err == nil {
+		t.Fatal("expected failure for invalid --set-json payload")
+	}
+	if !strings.Contains(stderr.String(), "invalid json/yaml in --set-json") {
+		t.Errorf("expected json/yaml parse error, got: %s", stderr.String())
+	}
+
+	// Case 3: --set preserves scalar values containing '=' like token=abc== or selector='job="api",env="prod"'
+	var stdout bytes.Buffer
+	cmdScalar := exec.Command(sloakBinaryPath, "render", "--template=datadog", "--slo=99.9",
+		"--set", "description=ratio=0.1,threshold=14.4",
+	)
+	cmdScalar.Stdout = &stdout
+	if err := cmdScalar.Run(); err != nil {
+		t.Fatalf("expected render with scalar set to succeed: %v", err)
+	}
+	if !strings.Contains(stdout.String(), `"description": "ratio=0.1,threshold=14.4"`) {
+		t.Errorf("expected description scalar to be preserved without map mangling, got: %s", stdout.String())
 	}
 }

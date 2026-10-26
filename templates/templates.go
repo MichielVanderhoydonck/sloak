@@ -9,14 +9,19 @@ import (
 //go:embed *.cue
 var FS embed.FS
 
-var builtIns = map[string]string{
-	"prometheus-operator":    "prometheus_operator_mwmbr.cue",
-	"datadog":                "datadog.cue",
-	"grafana-cloud":          "grafana_cloud_alerting.cue",
-	"grafana-cloud-alerting": "grafana_cloud_alerting.cue",
-	"otel-collector":         "otel_collector.cue",
-	"incident-io":            "incident_io.cue",
-	"incident_io":            "incident_io.cue",
+type BuiltInInfo struct {
+	FileName      string
+	DefaultFormat string
+}
+
+var builtIns = map[string]BuiltInInfo{
+	"prometheus-operator":    {"prometheus_operator_mwmbr.cue", "yaml"},
+	"datadog":                {"datadog.cue", "json"},
+	"grafana-cloud":          {"grafana_cloud_alerting.cue", "yaml"},
+	"grafana-cloud-alerting": {"grafana_cloud_alerting.cue", "yaml"},
+	"otel-collector":         {"otel_collector.cue", "yaml"},
+	"incident-io":            {"incident_io.cue", "json"},
+	"incident_io":            {"incident_io.cue", "json"},
 }
 
 // IsBuiltIn reports whether name is a recognized built-in template identifier.
@@ -25,15 +30,26 @@ func IsBuiltIn(name string) bool {
 	return ok
 }
 
+// GetDefaultFormat returns the default output format for a template identifier.
+// Built-in templates default to their designated format (e.g. json for Datadog and Incident.io);
+// custom templates default to yaml.
+func GetDefaultFormat(name string) string {
+	key := strings.ToLower(strings.TrimSpace(name))
+	if info, ok := builtIns[key]; ok {
+		return info.DefaultFormat
+	}
+	return "yaml"
+}
+
 // GetTemplate returns the content of an embedded built-in template.
 // It requires an exact match on the built-in identifier, preventing collisions
 // with filesystem paths or custom template files.
 func GetTemplate(name string) (string, error) {
 	key := strings.ToLower(strings.TrimSpace(name))
-	if embeddedFile, ok := builtIns[key]; ok {
-		bytes, err := FS.ReadFile(embeddedFile)
+	if info, ok := builtIns[key]; ok {
+		bytes, err := FS.ReadFile(info.FileName)
 		if err != nil {
-			return "", fmt.Errorf("failed to read embedded template %q: %w", embeddedFile, err)
+			return "", fmt.Errorf("failed to read embedded template %q: %w", info.FileName, err)
 		}
 		return string(bytes), nil
 	}

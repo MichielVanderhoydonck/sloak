@@ -289,7 +289,7 @@ func TestRenderCommand_SetDottedAndMapFlags(t *testing.T) {
 		"--template=prometheus-operator",
 		"--slo=99.9",
 		"--set", "metric_name=custom_api",
-		"--set", "rule_labels=service=api,env=prod",
+		"--set", "rule_labels={service=api,env=prod}",
 		"--set", "meta_labels.release=prometheus",
 		"--set", "meta_labels.role=alert-rules",
 	})

@@ -12,7 +12,7 @@
     "metric_name": "api_errors",
     "slo_target": 99.9,
     "error_budget_ratio": 0.001,
-    "total_window_seconds": 2.592E+6,
+    "total_window_seconds": 2592000,
     "windows": [
       {
         "window_long": "1h",

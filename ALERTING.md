@@ -55,8 +55,9 @@ Important: We add the `release=prometheus` label so the Prometheus Operator load
   --template prometheus-operator \
   --slo 99.9 \
   --set metric_name=api_errors \
-  --set "rule_labels=service=api,env=prod" \
-  --set "meta_labels=release=prometheus" \
+  --set rule_labels.service=api \
+  --set rule_labels.env=prod \
+  --set meta_labels.release=prometheus \
   --set namespace=monitoring \
   --window 30d > slo-alerts.yaml
 ```

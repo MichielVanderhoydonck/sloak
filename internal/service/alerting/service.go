@@ -133,7 +133,7 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 	contextData := domain.AlertingContext{
 		TargetSLO:          params.TargetSLO.Value,
 		ErrorBudgetRatio:   budget,
-		TotalWindowSeconds: params.TotalWindow.Seconds(),
+		TotalWindowSeconds: int64(params.TotalWindow.Seconds()),
 		Windows:            make([]domain.AlertingWindow, len(tableRes.Alerts)),
 		Config:             config,
 	}
@@ -210,8 +210,12 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 	}
 
 	// Check if JSON format was requested
-	format, _ := config["format"].(string)
-	format = strings.ToLower(strings.TrimSpace(format))
+	format := strings.ToLower(strings.TrimSpace(params.Format))
+	if format == "" {
+		if fmtVal, ok := config["format"].(string); ok {
+			format = strings.ToLower(strings.TrimSpace(fmtVal))
+		}
+	}
 
 	if format == "json" {
 		jsonBytes, err := outputVal.MarshalJSON()

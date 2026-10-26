@@ -10,7 +10,7 @@ package templates
 #Input: {
 	slo_target:           float
 	error_budget_ratio:   float
-	total_window_seconds: float
+	total_window_seconds: int | float
 	windows: [...#Alert]
 	config?: {[string]: _}
 }
