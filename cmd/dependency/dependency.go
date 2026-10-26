@@ -15,8 +15,12 @@ import (
 
 func NewDependencyCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "dependency",
-		Short:         "Calculates composite availability for serial or parallel dependencies.",
+		Use:   "dependency",
+		Short: "Calculates composite availability for serial or parallel dependencies.",
+		Long: `Calculates composite availability for serial or parallel dependencies.
+
+Note: In parallel mode, this calculation assumes independent failures between components
+(i.e. no correlated outages, shared network links, or common single points of failure).`,
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -25,7 +29,7 @@ func NewDependencyCmd(service domain.Service) *cobra.Command {
 	}
 
 	cmd.Flags().String("components", "", "Comma-separated list of availabilities (e.g. 99.9,99.5)")
-	cmd.Flags().String("type", "serial", "Calculation type: 'serial' or 'parallel'")
+	cmd.Flags().String("type", "serial", "Calculation type: 'serial' (all required) or 'parallel' (redundant, assumes independent failures)")
 
 	return cmd
 }
@@ -73,9 +77,16 @@ func runDependencyCmd(cmd *cobra.Command, service domain.Service) error {
 		return nil
 	}
 
-	fmt.Printf("\n--- Dependency Availability (%s) ---\n", strings.Title(string(res.CalculationType)))
+	fmt.Printf("\n--- Dependency Availability (%s) ---\n", capitalizeFirst(string(res.CalculationType)))
 	fmt.Printf("Components: %d\n", res.ComponentCount)
 	fmt.Printf("------------------------------------\n")
 	fmt.Printf("Total Availability: %.4f%%\n", res.TotalAvailability)
 	return nil
+}
+
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.ToUpper(s[:1]) + strings.ToLower(s[1:])
 }
