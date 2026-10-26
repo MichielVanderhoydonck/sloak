@@ -1,0 +1,46 @@
+connectors:
+  spanmetrics:
+    histogram:
+      explicit:
+        buckets:
+          - 10ms
+          - 50ms
+          - 100ms
+          - 250ms
+          - 500ms
+          - 1s
+          - 2s
+          - 5s
+          - 10s
+    dimensions:
+      - name: http.method
+      - name: http.request.method
+      - name: http.status_code
+      - name: http.response.status_code
+      - name: service.name
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+processors:
+  batch: {}
+receivers:
+  otlp:
+    protocols:
+      grpc: {}
+      http: {}
+service:
+  pipelines:
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - spanmetrics
+    metrics:
+      receivers:
+        - spanmetrics
+      processors:
+        - batch
+      exporters:
+        - prometheus
