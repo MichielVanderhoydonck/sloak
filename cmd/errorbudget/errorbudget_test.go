@@ -1,6 +1,7 @@
 package errorbudget_test
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -9,7 +10,6 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/errorbudget"
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/errorbudget"
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	"github.com/spf13/viper"
 )
@@ -24,6 +24,7 @@ func (m *mockCalculatorService) CalculateBudget(_ errorbudgetDomain.CalculationP
 }
 
 func TestErrorBudgetCommand(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	slo99_95, _ := common.NewSLOTarget(99.95)
 	mockResult := errorbudgetDomain.BudgetResult{
@@ -38,16 +39,16 @@ func TestErrorBudgetCommand(t *testing.T) {
 		MockError:  nil,
 	}
 
-	output, restoreStdout := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := errorbudget.NewErrorBudgetCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.95",
 		"--window=30d",
 	})
 
 	err := cmd.Execute()
-	restoreStdout()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -64,19 +65,20 @@ func TestErrorBudgetCommand(t *testing.T) {
 }
 
 func TestErrorBudgetCommand_InvalidWindow(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockSvc := &mockCalculatorService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := errorbudget.NewErrorBudgetCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.95",
 		"--window=bad_window",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid window, got nil")
 	}
@@ -88,19 +90,20 @@ func TestErrorBudgetCommand_InvalidWindow(t *testing.T) {
 }
 
 func TestErrorBudgetCommand_InvalidSLO(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockSvc := &mockCalculatorService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := errorbudget.NewErrorBudgetCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=-1.0",
 		"--window=30d",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid slo, got nil")
 	}
@@ -112,21 +115,22 @@ func TestErrorBudgetCommand_InvalidSLO(t *testing.T) {
 }
 
 func TestErrorBudgetCommand_ServiceError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockSvc := &mockCalculatorService{
 		MockError: errors.New("budget calculation failure"),
 	}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := errorbudget.NewErrorBudgetCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.95",
 		"--window=30d",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error from service error, got nil")
 	}

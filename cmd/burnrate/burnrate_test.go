@@ -1,6 +1,7 @@
 package burnrate_test
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/burnrate"
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/burnrate"
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	"github.com/spf13/viper"
 )
@@ -23,6 +23,7 @@ func (m *mockBurnRateService) CalculateBurnRate(_ burnrateDomain.CalculationPara
 }
 
 func TestBurnRateCommand(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	br := 2.98
 	mockResult := burnrateDomain.BurnRateResult{
@@ -38,9 +39,10 @@ func TestBurnRateCommand(t *testing.T) {
 		MockError:  nil,
 	}
 
-	output, restoreStdout := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -49,7 +51,6 @@ func TestBurnRateCommand(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restoreStdout()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -72,6 +73,7 @@ func TestBurnRateCommand(t *testing.T) {
 }
 
 func TestBurnRateCommand_ConsumedWithDayUnit(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	br := 1.0
 	mockResult := burnrateDomain.BurnRateResult{
@@ -80,9 +82,10 @@ func TestBurnRateCommand_ConsumedWithDayUnit(t *testing.T) {
 	}
 	mockSvc := &mockBurnRateService{MockResult: mockResult}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -91,7 +94,6 @@ func TestBurnRateCommand_ConsumedWithDayUnit(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("expected --consumed=1d to parse successfully, got error: %v", err)
 	}
@@ -99,6 +101,7 @@ func TestBurnRateCommand_ConsumedWithDayUnit(t *testing.T) {
 }
 
 func TestBurnRateCommand_Unbounded(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockResult := burnrateDomain.BurnRateResult{
 		TotalErrorBudget:  util.Duration(43 * time.Minute),
@@ -107,9 +110,10 @@ func TestBurnRateCommand_Unbounded(t *testing.T) {
 	}
 	mockSvc := &mockBurnRateService{MockResult: mockResult}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -118,7 +122,6 @@ func TestBurnRateCommand_Unbounded(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -133,6 +136,7 @@ func TestBurnRateCommand_Unbounded(t *testing.T) {
 }
 
 func TestBurnRateCommand_HighMessageSeverity(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	br := 7.5
 	mockResult := burnrateDomain.BurnRateResult{
@@ -141,9 +145,10 @@ func TestBurnRateCommand_HighMessageSeverity(t *testing.T) {
 	}
 	mockSvc := &mockBurnRateService{MockResult: mockResult}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -152,7 +157,6 @@ func TestBurnRateCommand_HighMessageSeverity(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -164,19 +168,20 @@ func TestBurnRateCommand_HighMessageSeverity(t *testing.T) {
 }
 
 func TestBurnRateCommand_InvalidWindow(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockSvc := &mockBurnRateService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=invalid",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid window, got nil")
 	}
@@ -188,12 +193,14 @@ func TestBurnRateCommand_InvalidWindow(t *testing.T) {
 }
 
 func TestBurnRateCommand_InvalidElapsed(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockSvc := &mockBurnRateService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -201,7 +208,6 @@ func TestBurnRateCommand_InvalidElapsed(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid elapsed, got nil")
 	}
@@ -213,12 +219,14 @@ func TestBurnRateCommand_InvalidElapsed(t *testing.T) {
 }
 
 func TestBurnRateCommand_InvalidConsumed(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockSvc := &mockBurnRateService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -227,7 +235,6 @@ func TestBurnRateCommand_InvalidConsumed(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid consumed, got nil")
 	}
@@ -239,12 +246,14 @@ func TestBurnRateCommand_InvalidConsumed(t *testing.T) {
 }
 
 func TestBurnRateCommand_InvalidSLO(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockSvc := &mockBurnRateService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=120.0",
 		"--window=30d",
@@ -253,7 +262,6 @@ func TestBurnRateCommand_InvalidSLO(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid slo, got nil")
 	}
@@ -265,14 +273,16 @@ func TestBurnRateCommand_InvalidSLO(t *testing.T) {
 }
 
 func TestBurnRateCommand_ServiceError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockSvc := &mockBurnRateService{
 		MockError: errors.New("burn rate calculation failed"),
 	}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -281,7 +291,6 @@ func TestBurnRateCommand_ServiceError(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error from service error, got nil")
 	}

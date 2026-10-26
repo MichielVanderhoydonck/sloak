@@ -1,6 +1,7 @@
 package alerting_test
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 )
 
 type mockRenderService struct {
@@ -45,19 +45,20 @@ func newTestRenderCmd(svc domain.TemplateRenderer) *cobra.Command {
 }
 
 func TestRenderCommand_Success(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "apiVersion: monitoring.coreos.com/v1\nkind: PrometheusRule\n"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=99.9",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -69,18 +70,19 @@ func TestRenderCommand_Success(t *testing.T) {
 }
 
 func TestRenderCommand_MissingTemplate(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for missing --template, got nil")
 	}
@@ -96,19 +98,20 @@ func TestRenderCommand_MissingTemplate(t *testing.T) {
 }
 
 func TestRenderCommand_NonExistentTemplateFile(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=/nonexistent/path/template.cue",
 		"--slo=99.9",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for nonexistent template file, got nil")
 	}
@@ -124,19 +127,20 @@ func TestRenderCommand_NonExistentTemplateFile(t *testing.T) {
 }
 
 func TestRenderCommand_RendererError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{err: errors.New("template execution failed")}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=99.9",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error from renderer failure, got nil")
 	}
@@ -152,19 +156,20 @@ func TestRenderCommand_RendererError(t *testing.T) {
 }
 
 func TestRenderCommand_InvalidWindow(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--window=invalid_window",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid window, got nil")
 	}
@@ -180,19 +185,20 @@ func TestRenderCommand_InvalidWindow(t *testing.T) {
 }
 
 func TestRenderCommand_InvalidSLO(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=150.0",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid slo, got nil")
 	}
@@ -204,6 +210,7 @@ func TestRenderCommand_InvalidSLO(t *testing.T) {
 }
 
 func TestRenderCommand_CustomTemplateTakesPrecedenceOverBuiltIn(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	customContent := `// custom datadog override content`
 	tmpDir := t.TempDir()
@@ -214,16 +221,16 @@ func TestRenderCommand_CustomTemplateTakesPrecedenceOverBuiltIn(t *testing.T) {
 
 	svc := &mockRenderService{res: "rendered yaml"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=" + customFile,
 		"--slo=99.9",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("expected command to succeed, got: %v", err)
 	}
@@ -239,19 +246,20 @@ func TestRenderCommand_CustomTemplateTakesPrecedenceOverBuiltIn(t *testing.T) {
 }
 
 func TestRenderCommand_NonExistentPathDoesNotFallbackToBuiltIn(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=./nonexistent/datadog.cue",
 		"--slo=99.9",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for nonexistent path, but command succeeded")
 	}
@@ -267,19 +275,20 @@ func TestRenderCommand_NonExistentPathDoesNotFallbackToBuiltIn(t *testing.T) {
 }
 
 func TestRenderCommand_UnknownBuiltIn(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=unknown-template-name",
 		"--slo=99.9",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for unknown template name, but command succeeded")
 	}
@@ -295,12 +304,14 @@ func TestRenderCommand_UnknownBuiltIn(t *testing.T) {
 }
 
 func TestRenderCommand_SetDottedAndMapFlags(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=99.9",
@@ -311,7 +322,6 @@ func TestRenderCommand_SetDottedAndMapFlags(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -343,12 +353,14 @@ func TestRenderCommand_SetDottedAndMapFlags(t *testing.T) {
 }
 
 func TestRenderCommand_SetJSONFlags(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
-	_, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := newTestRenderCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=99.9",
@@ -357,7 +369,6 @@ func TestRenderCommand_SetJSONFlags(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -376,6 +387,7 @@ func TestRenderCommand_SetJSONFlags(t *testing.T) {
 }
 
 func TestRenderCommand_WithSpecLoader(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockRenderService{res: "rendered with spec"}
 	loader := &mockSpecLoader{
@@ -388,15 +400,16 @@ func TestRenderCommand_WithSpecLoader(t *testing.T) {
 		},
 	}
 
+	var output bytes.Buffer
 	cmd := alerting.NewRenderCmd(svc, loader)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--spec=slo.yaml",
 	})
 
-	output, restore := testutil.CaptureOutput(t)
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("expected command with spec to succeed: %v", err)
 	}

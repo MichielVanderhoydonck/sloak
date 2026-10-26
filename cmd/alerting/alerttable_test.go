@@ -1,6 +1,7 @@
 package alerting_test
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	"github.com/spf13/viper"
 )
@@ -25,6 +25,7 @@ func (m *mockTableGenerator) GenerateTable(_ domain.GenerateParams) (domain.Tabl
 }
 
 func TestAlertRulesCommand(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockRes := domain.TableResult{
 		Alerts: []domain.AlertDefinition{
@@ -54,16 +55,16 @@ func TestAlertRulesCommand(t *testing.T) {
 
 	svc := &mockTableGenerator{res: mockRes}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := alerting.NewAlertTableCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -88,19 +89,20 @@ func TestAlertRulesCommand(t *testing.T) {
 }
 
 func TestAlertRulesCommand_InvalidWindow(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockTableGenerator{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := alerting.NewAlertTableCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=invalid_window",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid window, got nil")
 	}
@@ -112,19 +114,20 @@ func TestAlertRulesCommand_InvalidWindow(t *testing.T) {
 }
 
 func TestAlertRulesCommand_InvalidSLO(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockTableGenerator{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := alerting.NewAlertTableCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=150.0",
 		"--window=30d",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid slo, got nil")
 	}
@@ -136,19 +139,20 @@ func TestAlertRulesCommand_InvalidSLO(t *testing.T) {
 }
 
 func TestAlertRulesCommand_ServiceError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockTableGenerator{err: errors.New("table generation failed")}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := alerting.NewAlertTableCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for service error, got nil")
 	}

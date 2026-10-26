@@ -1,18 +1,17 @@
 package cmd
 
 import (
+	"bytes"
 	"strings"
 	"testing"
-
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 )
 
 func TestInitCmd(t *testing.T) {
-	buf, restoreStdout := testutil.CaptureOutput(t)
+	var buf bytes.Buffer
+	initCmd.SetOut(&buf)
 
 	// Run command
 	initCmd.Run(initCmd, []string{})
-	restoreStdout()
 
 	outStr := buf.String()
 

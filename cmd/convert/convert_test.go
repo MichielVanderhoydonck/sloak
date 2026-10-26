@@ -1,6 +1,7 @@
 package convert_test
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/convert"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/convert"
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	"github.com/spf13/viper"
 )
@@ -23,6 +23,7 @@ func (m *mockService) Convert(_ domain.ConversionParams) (domain.ConversionResul
 }
 
 func TestConvertCommand(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockRes := domain.ConversionResult{
 		AvailabilityPercent: 99.9,
@@ -32,13 +33,13 @@ func TestConvertCommand(t *testing.T) {
 
 	svc := &mockService{res: mockRes, err: nil}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := convert.NewConvertCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{"--nines=99.9"})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,16 +54,17 @@ func TestConvertCommand(t *testing.T) {
 }
 
 func TestConvertCommand_BothFlagsError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := convert.NewConvertCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{"--nines=99.9", "--downtime=10m"})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error when both flags are passed, got nil")
 	}
@@ -74,16 +76,17 @@ func TestConvertCommand_BothFlagsError(t *testing.T) {
 }
 
 func TestConvertCommand_NeitherFlagError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := convert.NewConvertCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error when neither flag is passed, got nil")
 	}
@@ -95,16 +98,17 @@ func TestConvertCommand_NeitherFlagError(t *testing.T) {
 }
 
 func TestConvertCommand_InvalidDowntime(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := convert.NewConvertCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{"--downtime=invalid"})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid downtime, got nil")
 	}
@@ -116,16 +120,17 @@ func TestConvertCommand_InvalidDowntime(t *testing.T) {
 }
 
 func TestConvertCommand_ServiceError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockService{err: errors.New("conversion failed")}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := convert.NewConvertCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{"--nines=99.9"})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error from service failure, got nil")
 	}

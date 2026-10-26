@@ -1,6 +1,7 @@
 package disruption_test
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/disruption"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/disruption"
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	"github.com/spf13/viper"
 )
@@ -23,6 +23,7 @@ func (m *mockDisruptionService) CalculateCapacity(_ domain.CalculationParams) (d
 }
 
 func TestDisruptionCommand_Success(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockRes := domain.Result{
 		TotalErrorBudget: util.Duration(43 * time.Minute),
@@ -31,9 +32,10 @@ func TestDisruptionCommand_Success(t *testing.T) {
 	}
 	svc := &mockDisruptionService{res: mockRes}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := disruption.NewDisruptionCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -41,7 +43,6 @@ func TestDisruptionCommand_Success(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -56,12 +57,14 @@ func TestDisruptionCommand_Success(t *testing.T) {
 }
 
 func TestDisruptionCommand_InvalidWindow(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockDisruptionService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := disruption.NewDisruptionCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=invalid_window",
@@ -69,7 +72,6 @@ func TestDisruptionCommand_InvalidWindow(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid window, got nil")
 	}
@@ -81,12 +83,14 @@ func TestDisruptionCommand_InvalidWindow(t *testing.T) {
 }
 
 func TestDisruptionCommand_InvalidCost(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockDisruptionService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := disruption.NewDisruptionCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -94,7 +98,6 @@ func TestDisruptionCommand_InvalidCost(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid cost, got nil")
 	}
@@ -106,12 +109,14 @@ func TestDisruptionCommand_InvalidCost(t *testing.T) {
 }
 
 func TestDisruptionCommand_InvalidSLO(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockDisruptionService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := disruption.NewDisruptionCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=150.0",
 		"--window=30d",
@@ -119,7 +124,6 @@ func TestDisruptionCommand_InvalidSLO(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid slo, got nil")
 	}
@@ -131,12 +135,14 @@ func TestDisruptionCommand_InvalidSLO(t *testing.T) {
 }
 
 func TestDisruptionCommand_ServiceError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockDisruptionService{err: errors.New("capacity calc failed")}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := disruption.NewDisruptionCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--window=30d",
@@ -144,7 +150,6 @@ func TestDisruptionCommand_ServiceError(t *testing.T) {
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for service error, got nil")
 	}

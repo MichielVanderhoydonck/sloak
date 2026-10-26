@@ -1,13 +1,13 @@
 package dependency_test
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/dependency"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	"github.com/spf13/viper"
 )
 
@@ -21,6 +21,7 @@ func (m *mockService) CalculateCompositeAvailability(_ domain.CalculationParams)
 }
 
 func TestDependencyCommand(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	mockRes := domain.Result{
 		TotalAvailability: 99.8001,
@@ -30,13 +31,13 @@ func TestDependencyCommand(t *testing.T) {
 
 	svc := &mockService{res: mockRes, err: nil}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := dependency.NewDependencyCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{"--components=99.9,99.9", "--type=serial"})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -48,16 +49,17 @@ func TestDependencyCommand(t *testing.T) {
 }
 
 func TestDependencyCommand_MissingComponents(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := dependency.NewDependencyCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{"--type=serial"})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for missing components, got nil")
 	}
@@ -69,16 +71,17 @@ func TestDependencyCommand_MissingComponents(t *testing.T) {
 }
 
 func TestDependencyCommand_InvalidComponent(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := dependency.NewDependencyCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{"--components=99.9,invalid", "--type=serial"})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid component, got nil")
 	}
@@ -90,16 +93,17 @@ func TestDependencyCommand_InvalidComponent(t *testing.T) {
 }
 
 func TestDependencyCommand_ServiceError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockService{err: errors.New("composite calculation failed")}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := dependency.NewDependencyCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{"--components=99.9,99.5", "--type=serial"})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error from service error, got nil")
 	}

@@ -1,6 +1,7 @@
 package feasibility_test
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -9,7 +10,6 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/feasibility"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/feasibility"
-	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	"github.com/spf13/viper"
 )
@@ -24,6 +24,7 @@ func (m *mockFeasibilityService) CalculateFeasibility(_ domain.FeasibilityParams
 }
 
 func TestFeasibilityCommand(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	targetSLO, _ := common.NewSLOTarget(99.9)
 	mockRes := domain.FeasibilityResult{
@@ -37,16 +38,16 @@ func TestFeasibilityCommand(t *testing.T) {
 
 	svc := &mockFeasibilityService{res: mockRes}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := feasibility.NewFeasibilityCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--mttr=30m",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err != nil {
 		t.Fatalf("Command failed: %v", err)
 	}
@@ -73,19 +74,20 @@ func TestFeasibilityCommand(t *testing.T) {
 }
 
 func TestFeasibilityCommand_InvalidMTTR(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockFeasibilityService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := feasibility.NewFeasibilityCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--mttr=bad_mttr",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid mttr, got nil")
 	}
@@ -97,19 +99,20 @@ func TestFeasibilityCommand_InvalidMTTR(t *testing.T) {
 }
 
 func TestFeasibilityCommand_InvalidSLO(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockFeasibilityService{}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := feasibility.NewFeasibilityCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=-5.0",
 		"--mttr=30m",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for invalid slo, got nil")
 	}
@@ -121,19 +124,20 @@ func TestFeasibilityCommand_InvalidSLO(t *testing.T) {
 }
 
 func TestFeasibilityCommand_ServiceError(t *testing.T) {
+	t.Parallel()
 	viper.Reset()
 	svc := &mockFeasibilityService{err: errors.New("feasibility calculation error")}
 
-	output, restore := testutil.CaptureOutput(t)
-
+	var output bytes.Buffer
 	cmd := feasibility.NewFeasibilityCmd(svc)
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 		"--mttr=30m",
 	})
 
 	err := cmd.Execute()
-	restore()
 	if err == nil {
 		t.Fatal("expected error for service error, got nil")
 	}
