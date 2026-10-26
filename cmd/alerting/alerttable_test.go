@@ -9,6 +9,7 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	"github.com/spf13/viper"
 )
 
@@ -29,22 +30,22 @@ func TestAlertRulesCommand(t *testing.T) {
 		Alerts: []domain.AlertDefinition{
 			{
 				ConsumptionTarget: 2.0,
-				ShortWindow:       5 * time.Minute,
-				LongWindow:        1 * time.Hour,
+				ShortWindow:       util.Duration(5 * time.Minute),
+				LongWindow:        util.Duration(1 * time.Hour),
 				BurnRate:          14.4,
 				NotificationType:  domain.Page,
 			},
 			{
 				ConsumptionTarget: 5.0,
-				ShortWindow:       30 * time.Minute,
-				LongWindow:        6 * time.Hour,
+				ShortWindow:       util.Duration(30 * time.Minute),
+				LongWindow:        util.Duration(6 * time.Hour),
 				BurnRate:          6.0,
-				NotificationType:  domain.Page,
+				NotificationType:  domain.Message,
 			},
 			{
 				ConsumptionTarget: 10.0,
-				ShortWindow:       6 * time.Hour,
-				LongWindow:        72 * time.Hour,
+				ShortWindow:       util.Duration(6 * time.Hour),
+				LongWindow:        util.Duration(72 * time.Hour),
 				BurnRate:          1.0,
 				NotificationType:  domain.Ticket,
 			},

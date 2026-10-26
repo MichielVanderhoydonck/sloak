@@ -68,7 +68,7 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) error {
 	}
 
 	fmt.Printf("\n--- SRE Alerting Table ---\n")
-	fmt.Printf("SLO: %.3f%% | Window: %s\n\n", res.TargetSLO.Value, util.FormatDuration(res.TotalWindow))
+	fmt.Printf("SLO: %.3f%% | Window: %s\n\n", res.TargetSLO.Value, res.TotalWindow.String())
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 
@@ -78,8 +78,8 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) error {
 	for _, rule := range res.Alerts {
 		fmt.Fprintf(w, "%.0f%%\t%s\t%s\t%.2fx\t%s\t\n",
 			rule.ConsumptionTarget,
-			util.FormatDuration(rule.ShortWindow),
-			util.FormatDuration(rule.LongWindow),
+			rule.ShortWindow.String(),
+			rule.LongWindow.String(),
 			rule.BurnRate,
 			rule.NotificationType,
 		)

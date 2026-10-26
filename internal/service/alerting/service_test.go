@@ -40,7 +40,7 @@ func TestGenerateMatrix(t *testing.T) {
 	if r1.NotificationType != domain.Page {
 		t.Errorf("R1 expected Page, got %s", r1.NotificationType)
 	}
-	if r1.LongWindow != 1*time.Hour || r1.ShortWindow != 5*time.Minute {
+	if time.Duration(r1.LongWindow) != 1*time.Hour || time.Duration(r1.ShortWindow) != 5*time.Minute {
 		t.Errorf("R1 expected 1h/5m, got %v/%v", r1.LongWindow, r1.ShortWindow)
 	}
 
@@ -49,7 +49,7 @@ func TestGenerateMatrix(t *testing.T) {
 	if r2.NotificationType != domain.Message {
 		t.Errorf("R2 expected Message, got %s", r2.NotificationType)
 	}
-	if r2.LongWindow != 6*time.Hour || r2.ShortWindow != 30*time.Minute {
+	if time.Duration(r2.LongWindow) != 6*time.Hour || time.Duration(r2.ShortWindow) != 30*time.Minute {
 		t.Errorf("R2 expected 6h/30m, got %v/%v", r2.LongWindow, r2.ShortWindow)
 	}
 
@@ -58,7 +58,7 @@ func TestGenerateMatrix(t *testing.T) {
 	if r3.NotificationType != domain.Ticket {
 		t.Errorf("R3 expected Ticket, got %s", r3.NotificationType)
 	}
-	if r3.LongWindow != 72*time.Hour || r3.ShortWindow != 6*time.Hour {
+	if time.Duration(r3.LongWindow) != 72*time.Hour || time.Duration(r3.ShortWindow) != 6*time.Hour {
 		t.Errorf("R3 expected 72h/6h, got %v/%v", r3.LongWindow, r3.ShortWindow)
 	}
 }
@@ -86,20 +86,20 @@ func TestGenerateMatrix_ScalesWithWindow(t *testing.T) {
 
 	// Page: 14m / 70s, 14.4x
 	assertFloat("7d R1 BurnRate", 14.4, res7d.Alerts[0].BurnRate)
-	if res7d.Alerts[0].LongWindow != 14*time.Minute {
+	if time.Duration(res7d.Alerts[0].LongWindow) != 14*time.Minute {
 		t.Errorf("7d R1 expected LongWindow 14m, got %v", res7d.Alerts[0].LongWindow)
 	}
 
 	// Message: 84m / 7m, 6.0x
 	assertFloat("7d R2 BurnRate", 6.0, res7d.Alerts[1].BurnRate)
-	if res7d.Alerts[1].LongWindow != 84*time.Minute {
+	if time.Duration(res7d.Alerts[1].LongWindow) != 84*time.Minute {
 		t.Errorf("7d R2 expected LongWindow 84m, got %v", res7d.Alerts[1].LongWindow)
 	}
 
 	// Ticket: 16h48m / 84m, 1.0x
 	assertFloat("7d R3 BurnRate", 1.0, res7d.Alerts[2].BurnRate)
 	expectedTicketLong := 16*time.Hour + 48*time.Minute
-	if res7d.Alerts[2].LongWindow != expectedTicketLong {
+	if time.Duration(res7d.Alerts[2].LongWindow) != expectedTicketLong {
 		t.Errorf("7d R3 expected LongWindow %v, got %v", expectedTicketLong, res7d.Alerts[2].LongWindow)
 	}
 }

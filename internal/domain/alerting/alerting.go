@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type NotificationType string
@@ -21,9 +22,9 @@ type GenerateParams struct {
 
 type AlertDefinition struct {
 	ConsumptionTarget  float64          `json:"consumption_target"`
-	LongWindow         time.Duration    `json:"long_window"`
+	LongWindow         util.Duration    `json:"long_window"`
 	LongWindowSeconds  float64          `json:"long_window_seconds"`
-	ShortWindow        time.Duration    `json:"short_window"`
+	ShortWindow        util.Duration    `json:"short_window"`
 	ShortWindowSeconds float64          `json:"short_window_seconds"`
 	BurnRate           float64          `json:"burn_rate"`
 	NotificationType   NotificationType `json:"notification_type"`
@@ -31,7 +32,7 @@ type AlertDefinition struct {
 
 type TableResult struct {
 	TargetSLO          common.SLOTarget  `json:"target_slo"`
-	TotalWindow        time.Duration     `json:"total_window"`
+	TotalWindow        util.Duration     `json:"total_window"`
 	TotalWindowSeconds float64           `json:"total_window_seconds"`
 	Alerts             []AlertDefinition `json:"alerts"`
 }

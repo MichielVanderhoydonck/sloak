@@ -15,6 +15,7 @@ import (
 	cueyaml "cuelang.org/go/encoding/yaml"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
 
@@ -61,9 +62,9 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 
 		return domain.AlertDefinition{
 			ConsumptionTarget:  consumptionThreshold * 100,
-			LongWindow:         longWindow,
+			LongWindow:         util.Duration(longWindow),
 			LongWindowSeconds:  longWindow.Seconds(),
-			ShortWindow:        shortWindow,
+			ShortWindow:        util.Duration(shortWindow),
 			ShortWindowSeconds: shortWindow.Seconds(),
 			BurnRate:           burnFactor,
 			NotificationType:   notif,
@@ -91,7 +92,7 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 
 	return domain.TableResult{
 		TargetSLO:          params.TargetSLO,
-		TotalWindow:        params.TotalWindow,
+		TotalWindow:        util.Duration(params.TotalWindow),
 		TotalWindowSeconds: params.TotalWindow.Seconds(),
 		Alerts:             rules,
 	}, nil
@@ -118,8 +119,8 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 
 	for i, alert := range tableRes.Alerts {
 		contextData.Windows[i] = domain.AlertingWindow{
-			LongWindow:       formatPrometheusDuration(alert.LongWindow),
-			ShortWindow:      formatPrometheusDuration(alert.ShortWindow),
+			LongWindow:       formatPrometheusDuration(time.Duration(alert.LongWindow)),
+			ShortWindow:      formatPrometheusDuration(time.Duration(alert.ShortWindow)),
 			BurnRate:         alert.BurnRate,
 			NotificationType: strings.ToLower(string(alert.NotificationType)),
 		}

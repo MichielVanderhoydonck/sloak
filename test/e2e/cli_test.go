@@ -8,6 +8,7 @@ package e2e
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -179,6 +180,24 @@ func TestAlertTableE2E(t *testing.T) {
 	out100, err100 := cmd100.CombinedOutput()
 	if err100 == nil {
 		t.Errorf("Expected failure for SLO 100, but command succeeded: %s", string(out100))
+	}
+
+	// Test -o json output formatting
+	cmdJSON := exec.Command(sloakBinaryPath, "generate", "alert-table",
+		"--slo=99.9",
+		"--window=30d",
+		"-o=json",
+	)
+	outJSON, errJSON := cmdJSON.CombinedOutput()
+	if errJSON != nil {
+		t.Fatalf("Expected alert-table -o json to succeed: %v\nOutput: %s", errJSON, string(outJSON))
+	}
+	var resMap map[string]any
+	if err := json.Unmarshal(outJSON, &resMap); err != nil {
+		t.Fatalf("Failed to parse JSON alert-table output: %v", err)
+	}
+	if totalWin, ok := resMap["total_window"].(string); !ok || !strings.Contains(totalWin, "d") {
+		t.Errorf("Expected total_window to be serialized as string with duration unit, got %v", resMap["total_window"])
 	}
 }
 
