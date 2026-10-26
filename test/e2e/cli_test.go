@@ -71,11 +71,27 @@ func TestBurnRateE2E(t *testing.T) {
 	if !strings.Contains(outStr, "Burn Rate: 2.98x") {
 		t.Errorf("Expected '2.98x' in output, got: %s", outStr)
 	}
-	if !strings.Contains(outStr, "Status: CRITICAL!") {
-		t.Errorf("Expected 'CRITICAL!' in output, got: %s", outStr)
+	if !strings.Contains(outStr, "Status: WARNING (Ticket)") {
+		t.Errorf("Expected 'Status: WARNING (Ticket)' in output, got: %s", outStr)
 	}
 	if !strings.Contains(outStr, "Forecast: Budget will be empty in") {
 		t.Errorf("Expected Forecast message in output, got: %s", outStr)
+	}
+
+	// Test page-level critical burn rate (>= 14.4x)
+	cmdPage := exec.Command(sloakBinaryPath, "calculate", "burnrate",
+		"--slo=99.9",
+		"--window=30d",
+		"--elapsed=1h",
+		"--consumed=15m",
+	)
+	outPage, errPage := cmdPage.CombinedOutput()
+	outPageStr := string(outPage)
+	if errPage != nil {
+		t.Fatalf("Page burnrate command failed: %v\nOutput: %s", errPage, outPageStr)
+	}
+	if !strings.Contains(outPageStr, "Status: CRITICAL (Page)!") {
+		t.Errorf("Expected 'Status: CRITICAL (Page)!' for high burn rate, got: %s", outPageStr)
 	}
 }
 
@@ -434,7 +450,7 @@ func TestBurnRateInvalidSLOFailureE2E(t *testing.T) {
 	}
 
 	stderrStr := stderr.String()
-	if !strings.Contains(stderrStr, "Error: SLO target must be between 0.0 and 100.0") {
+	if !strings.Contains(stderrStr, "Error: SLO target must be strictly between 0.0 and 100.0") {
 		t.Errorf("expected stderr to contain SLO error, got: %q", stderrStr)
 	}
 }

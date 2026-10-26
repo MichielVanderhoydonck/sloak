@@ -185,6 +185,9 @@ func TestBurnRateService(t *testing.T) {
 				if result.IsInfinite != tc.expectedInfinite {
 					t.Errorf("expected IsInfinite %v, got %v", tc.expectedInfinite, result.IsInfinite)
 				}
+				if result.NoBudgetConsumed != tc.expectedInfinite {
+					t.Errorf("expected NoBudgetConsumed %v, got %v", tc.expectedInfinite, result.NoBudgetConsumed)
+				}
 
 				if !tc.expectedInfinite && tc.expectedTTE > 0 {
 					if result.TimeToExhaustion.String() != tc.expectedTTE.String() {

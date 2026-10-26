@@ -45,10 +45,14 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 	budgetRemaining := totalBudgetDur - errorConsumed
 	consumedPercent := (errorConsumed.Seconds() / totalBudgetDur.Seconds()) * 100.0
 
+	timeElapsedPercent := 0.0
+	if totalWindow.Seconds() > 0 {
+		timeElapsedPercent = util.RoundValue((timeElapsed.Seconds() / totalWindow.Seconds()) * 100.0)
+	}
+
 	var burnRate *float64
 	var burnRateUnbounded bool
 	if timeElapsed.Seconds() > 0 {
-		timeElapsedPercent := (timeElapsed.Seconds() / totalWindow.Seconds()) * 100.0
 		val := util.RoundValue(consumedPercent / timeElapsedPercent)
 		burnRate = &val
 	} else {
@@ -79,10 +83,12 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 		BudgetRemaining:         util.Duration(budgetRemaining),
 		BudgetRemainingSeconds:  math.Round(budgetRemaining.Seconds()),
 		BudgetConsumed:          util.RoundPercentage(consumedPercent),
+		TimeElapsedPercent:      timeElapsedPercent,
 		BurnRate:                burnRate,
 		BurnRateUnbounded:       burnRateUnbounded,
 		TimeToExhaustion:        util.Duration(tte),
 		TimeToExhaustionSeconds: math.Round(tte.Seconds()),
+		NoBudgetConsumed:        errorConsumed == 0,
 		IsInfinite:              errorConsumed == 0,
 	}, nil
 }

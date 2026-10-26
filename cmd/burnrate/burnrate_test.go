@@ -63,8 +63,8 @@ func TestBurnRateCommand(t *testing.T) {
 	if !strings.Contains(outStr, "Budget Remaining: 13m12s") {
 		t.Error("Output string did not contain the expected remaining budget")
 	}
-	if !strings.Contains(outStr, "Status: CRITICAL!") {
-		t.Error("Output string did not contain the expected CRITICAL status")
+	if !strings.Contains(outStr, "Status: WARNING (Ticket)") {
+		t.Errorf("Output string did not contain the expected WARNING (Ticket) status, got:\n%s", outStr)
 	}
 	if !strings.Contains(outStr, "Forecast: Budget will be empty in") {
 		t.Error("Output string did not contain the Forecast prediction")
@@ -127,8 +127,39 @@ func TestBurnRateCommand_Unbounded(t *testing.T) {
 	if !strings.Contains(outStr, "Burn Rate: Unbounded") {
 		t.Errorf("expected unbounded burn rate in output, got: %s", outStr)
 	}
-	if !strings.Contains(outStr, "Status: CRITICAL!") {
-		t.Errorf("expected CRITICAL status, got: %s", outStr)
+	if !strings.Contains(outStr, "Status: CRITICAL (Page)!") {
+		t.Errorf("expected CRITICAL (Page)! status, got: %s", outStr)
+	}
+}
+
+func TestBurnRateCommand_HighMessageSeverity(t *testing.T) {
+	viper.Reset()
+	br := 7.5
+	mockResult := burnrateDomain.BurnRateResult{
+		TotalErrorBudget: util.Duration(43 * time.Minute),
+		BurnRate:         &br,
+	}
+	mockSvc := &mockBurnRateService{MockResult: mockResult}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetArgs([]string{
+		"--slo=99.9",
+		"--window=30d",
+		"--elapsed=2h",
+		"--consumed=15m",
+	})
+
+	err := cmd.Execute()
+	restore()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := output.String()
+	if !strings.Contains(outStr, "Status: HIGH (Message)") {
+		t.Errorf("expected HIGH (Message) status, got: %s", outStr)
 	}
 }
 
