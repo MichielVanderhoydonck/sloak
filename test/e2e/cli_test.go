@@ -338,9 +338,13 @@ spec:
 		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
 	}
 
-	// Should contain the metric name from metadata.name
-	if !strings.Contains(outStr, "test-openslo-metric") {
-		t.Errorf("Expected OpenSLO metadata name 'test-openslo-metric' in output, got:\n%s", outStr)
+	// Should contain the sanitized metric name in PromQL expressions
+	if !strings.Contains(outStr, "job:test_openslo_metric:") {
+		t.Errorf("Expected sanitized metric name 'test_openslo_metric' in PromQL expr, got:\n%s", outStr)
+	}
+	// PromQL must NOT contain invalid hyphenated metric name
+	if strings.Contains(outStr, "job:test-openslo-metric:") {
+		t.Errorf("Output contains invalid PromQL metric name with hyphens:\n%s", outStr)
 	}
 	// Should have correct SLO math based on 99.9%
 	if !strings.Contains(outStr, "0.001") {

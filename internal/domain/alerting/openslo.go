@@ -4,11 +4,38 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	v1 "github.com/OpenSLO/go-sdk/pkg/openslo/v1"
 	"github.com/OpenSLO/go-sdk/pkg/openslosdk"
 )
+
+// SanitizePrometheusMetricName sanitizes an arbitrary string (such as an OpenSLO DNS-1123 name)
+// so that it is a valid Prometheus metric name matching ^[a-zA-Z_:][a-zA-Z0-9_:]*$.
+func SanitizePrometheusMetricName(name string) string {
+	if name == "" {
+		return "slo_errors"
+	}
+	var b strings.Builder
+	for i, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' || r == ':' {
+			b.WriteRune(r)
+		} else if r >= '0' && r <= '9' {
+			if i == 0 {
+				b.WriteByte('_')
+			}
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('_')
+		}
+	}
+	res := b.String()
+	if res == "" || res == "_" {
+		return "slo_errors"
+	}
+	return res
+}
 
 func ParseOpenSLO(filePath string) (float64, time.Duration, string, map[string]any, error) {
 	bytesData, err := os.ReadFile(filePath)
@@ -69,8 +96,13 @@ func ParseOpenSLO(filePath string) (float64, time.Duration, string, map[string]a
 	tw := slo.Spec.TimeWindow[0]
 	parsedWindow := tw.Duration.Duration()
 
+	rawMetric := slo.Metadata.Name
+	if slo.Spec.Indicator != nil && slo.Spec.Indicator.Metadata.Name != "" {
+		rawMetric = slo.Spec.Indicator.Metadata.Name
+	}
+
 	metaConfig := make(map[string]any)
-	metaConfig["metric_name"] = slo.Metadata.Name
+	metaConfig["metric_name"] = SanitizePrometheusMetricName(rawMetric)
 	if slo.Metadata.DisplayName != "" {
 		metaConfig["name"] = slo.Metadata.DisplayName
 	} else {

@@ -39,7 +39,7 @@ spec:
 			wantWindow:  30 * 24 * time.Hour,
 			wantSLOName: "billing-success",
 			wantConfig: map[string]any{
-				"metric_name": "billing-success",
+				"metric_name": "billing_success",
 				"name":        "Billing Success Rate",
 				"service":     "billing-service",
 			},
@@ -66,7 +66,7 @@ spec:
 			wantWindow:  7 * 24 * time.Hour,
 			wantSLOName: "latency-slo",
 			wantConfig: map[string]any{
-				"metric_name": "latency-slo",
+				"metric_name": "latency_slo",
 				"name":        "latency-slo",
 				"service":     "api-gateway",
 			},
@@ -171,6 +171,31 @@ spec:
 						}
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestSanitizePrometheusMetricName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"billing-success", "billing_success"},
+		{"test-openslo-metric", "test_openslo_metric"},
+		{"api.latency/errors", "api_latency_errors"},
+		{"valid_metric:name", "valid_metric:name"},
+		{"123start_with_digit", "_123start_with_digit"},
+		{"", "slo_errors"},
+		{"___", "___"},
+		{"-", "slo_errors"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := SanitizePrometheusMetricName(tt.input)
+			if got != tt.expected {
+				t.Errorf("SanitizePrometheusMetricName(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
 		})
 	}
