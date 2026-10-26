@@ -1,23 +1,15 @@
 # internal/adapter
 
-This directory holds our **Driven (Secondary) Adapters**.
+This directory holds our **Adapters** for external specifications and systems.
 
-In Hexagonal Architecture, these components are "driven by" our application's core.   
-They provide concrete implementations for the interfaces (Ports) defined in `internal/core/port/`.
+In Hexagonal / Clean Architecture, adapters translate external representations into domain models.
 
-## Purpose
+## OpenSLO Adapter
 
-This folder contains all the code that talks to external infrastructure.   
-It's the "edge" of our application where we interact with the "real world."
-
-### Examples
-
-* External API clients (e.g., Prometheus, Datadog)
-* Notification services (e.g., Slack, PagerDuty)
+The `openslo` adapter reads and validates external OpenSLO YAML specifications (using the official OpenSLO Go SDK) and maps them into domain `SLOSpec` models.
 
 ## Rule of Thumb
 
-**Dependencies MUST point inward.**
-
-* **OK:** `internal/adapter` imports `internal/core/port`
-* **NEVER:** `internal/core` imports `internal/adapter`
+* **Dependencies MUST point inward.**
+* `internal/adapter` may depend on `internal/domain` and external vendor SDKs.
+* `internal/domain` MUST NOT depend on `internal/adapter` or external vendor SDKs (pure Go, zero external dependencies).

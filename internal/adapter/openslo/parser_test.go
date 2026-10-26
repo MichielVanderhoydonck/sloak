@@ -1,19 +1,20 @@
-package alerting
+package openslo_test
 
 import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/MichielVanderhoydonck/sloak/internal/adapter/openslo"
 )
 
-func TestParseOpenSLO(t *testing.T) {
+func TestParseFile(t *testing.T) {
 	tests := []struct {
 		name        string
 		yamlContent string
 		wantErr     bool
 		wantTarget  float64
 		wantWindow  time.Duration
-		wantSLOName string
 		wantConfig  map[string]any
 	}{
 		{
@@ -34,10 +35,9 @@ spec:
     - duration: 30d
       isRolling: true
 `,
-			wantErr:     false,
-			wantTarget:  99.9,
-			wantWindow:  30 * 24 * time.Hour,
-			wantSLOName: "billing-success",
+			wantErr:    false,
+			wantTarget: 99.9,
+			wantWindow: 30 * 24 * time.Hour,
 			wantConfig: map[string]any{
 				"metric_name": "billing_success",
 				"name":        "Billing Success Rate",
@@ -61,10 +61,9 @@ spec:
     - duration: 7d
       isRolling: true
 `,
-			wantErr:     false,
-			wantTarget:  99.5,
-			wantWindow:  7 * 24 * time.Hour,
-			wantSLOName: "latency-slo",
+			wantErr:    false,
+			wantTarget: 99.5,
+			wantWindow: 7 * 24 * time.Hour,
 			wantConfig: map[string]any{
 				"metric_name": "latency_slo",
 				"name":        "latency-slo",
@@ -149,53 +148,25 @@ spec:
 			}
 			tmpFile.Close()
 
-			target, window, name, config, err := ParseOpenSLO(tmpFile.Name())
+			spec, err := openslo.ParseFile(tmpFile.Name())
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("ParseOpenSLO() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("ParseFile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if !tt.wantErr {
-				if target != tt.wantTarget {
-					t.Errorf("expected target %f, got %f", tt.wantTarget, target)
+				if spec.TargetSLO != tt.wantTarget {
+					t.Errorf("expected target %f, got %f", tt.wantTarget, spec.TargetSLO)
 				}
-				if window != tt.wantWindow {
-					t.Errorf("expected window %s, got %s", tt.wantWindow, window)
-				}
-				if name != tt.wantSLOName {
-					t.Errorf("expected name %q, got %q", tt.wantSLOName, name)
+				if spec.TotalWindow != tt.wantWindow {
+					t.Errorf("expected window %s, got %s", tt.wantWindow, spec.TotalWindow)
 				}
 				if tt.wantConfig != nil {
 					for k, v := range tt.wantConfig {
-						if gotVal, ok := config[k]; !ok || gotVal != v {
+						if gotVal, ok := spec.Config[k]; !ok || gotVal != v {
 							t.Errorf("expected config[%q] = %v, got %v", k, v, gotVal)
 						}
 					}
 				}
-			}
-		})
-	}
-}
-
-func TestSanitizePrometheusMetricName(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"billing-success", "billing_success"},
-		{"test-openslo-metric", "test_openslo_metric"},
-		{"api.latency/errors", "api_latency_errors"},
-		{"valid_metric:name", "valid_metric:name"},
-		{"123start_with_digit", "_123start_with_digit"},
-		{"", "slo_errors"},
-		{"___", "___"},
-		{"-", "slo_errors"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := SanitizePrometheusMetricName(tt.input)
-			if got != tt.expected {
-				t.Errorf("SanitizePrometheusMetricName(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
 		})
 	}

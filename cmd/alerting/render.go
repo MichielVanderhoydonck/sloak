@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
+	openslo "github.com/MichielVanderhoydonck/sloak/internal/adapter/openslo"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
@@ -70,14 +71,13 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 	var err error
 
 	if specFile != "" {
-		var target float64
-		var metaConfig map[string]any
-		target, totalWindow, _, metaConfig, err = domain.ParseOpenSLO(specFile)
+		spec, err := openslo.ParseFile(specFile)
 		if err != nil {
 			return fmt.Errorf("parsing OpenSLO spec: %w", err)
 		}
-		sloVal = target
-		openSLOConfig = metaConfig
+		sloVal = spec.TargetSLO
+		totalWindow = spec.TotalWindow
+		openSLOConfig = spec.Config
 	} else {
 		totalWindow, err = util.ParseTimeWindow(windowStr)
 		if err != nil {

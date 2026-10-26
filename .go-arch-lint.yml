@@ -16,7 +16,7 @@ vendors:
     3rd-viper:
         in: github.com/spf13/viper
     3rd-cue:
-        in: ['cuelang.org/go/cue', 'cuelang.org/go/cue/**']
+        in: ['cuelang.org/go/**']
     3rd-yaml:
         in: gopkg.in/yaml.v3
     3rd-openslo:
@@ -38,6 +38,9 @@ components:
     Templates:
         in: ['templates/**']
 
+    Adapter:
+        in: ['internal/adapter/**']
+
     Util:
         in: ['internal/util/**']
 
@@ -48,18 +51,22 @@ deps:
     Domain:
         mayDependOn: [Domain, Util] 
         canUse: []
-        anyVendorDeps: true
+        anyVendorDeps: false
+
+    Adapter:
+        mayDependOn: [Domain, Util]
+        canUse: [3rd-openslo]
 
     Service:
         mayDependOn: [Domain, Util, Templates]
-        canUse: [3rd-cue, 3rd-yaml, 3rd-openslo]
+        canUse: [3rd-cue, 3rd-yaml]
 
     CLI:
-        mayDependOn: [CLI, Domain, Util, Templates, Service] 
+        mayDependOn: [CLI, Domain, Adapter, Util, Templates] 
         canUse: [3rd-cobra, 3rd-viper, 3rd-yaml]
 
     CLI-Root:
-        mayDependOn: [CLI-Root, CLI, Domain, Service, Util, Templates]
+        mayDependOn: [CLI-Root, CLI, Domain, Adapter, Service, Util, Templates]
         canUse: [3rd-cobra, 3rd-viper, 3rd-yaml]
 
     Templates:

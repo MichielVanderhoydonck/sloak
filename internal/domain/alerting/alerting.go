@@ -63,3 +63,37 @@ type Service interface {
 	TableGenerator
 	TemplateRenderer
 }
+
+// SLOSpec represents a parsed SLO specification from an external definition (such as OpenSLO).
+type SLOSpec struct {
+	TargetSLO   float64
+	TotalWindow time.Duration
+	Config      map[string]any
+}
+
+// SanitizePrometheusMetricName sanitizes an arbitrary string (such as an OpenSLO DNS-1123 name)
+// so that it is a valid Prometheus metric name matching ^[a-zA-Z_:][a-zA-Z0-9_:]*$.
+func SanitizePrometheusMetricName(name string) string {
+	if name == "" {
+		return "slo_errors"
+	}
+	var b []byte
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == ':' {
+			b = append(b, c)
+		} else if c >= '0' && c <= '9' {
+			if len(b) == 0 {
+				b = append(b, '_')
+			}
+			b = append(b, c)
+		} else {
+			b = append(b, '_')
+		}
+	}
+	res := string(b)
+	if res == "" || res == "_" {
+		return "slo_errors"
+	}
+	return res
+}

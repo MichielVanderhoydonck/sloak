@@ -240,17 +240,38 @@ func injectSharedSchema(templateContent string) string {
 
 	schemaDef := strings.TrimSpace(strings.TrimPrefix(schemaContent, "package templates"))
 	lines := strings.Split(templateContent, "\n")
-	var out []string
-	injected := false
-	for _, line := range lines {
-		out = append(out, line)
-		if !injected && strings.HasPrefix(strings.TrimSpace(line), "package ") {
-			out = append(out, "\n"+schemaDef+"\n")
-			injected = true
+	insertIdx := 0
+	inImportBlock := false
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "package ") {
+			insertIdx = i + 1
+			continue
+		}
+		if strings.HasPrefix(trimmed, "import (") {
+			inImportBlock = true
+			continue
+		}
+		if inImportBlock {
+			if strings.HasPrefix(trimmed, ")") {
+				inImportBlock = false
+				insertIdx = i + 1
+			}
+			continue
+		}
+		if strings.HasPrefix(trimmed, "import ") {
+			insertIdx = i + 1
+			continue
+		}
+		if trimmed != "" && !strings.HasPrefix(trimmed, "//") && !strings.HasPrefix(trimmed, "/*") {
+			break
 		}
 	}
-	if !injected {
-		return schemaDef + "\n\n" + templateContent
-	}
+
+	var out []string
+	out = append(out, lines[:insertIdx]...)
+	out = append(out, "\n"+schemaDef+"\n")
+	out = append(out, lines[insertIdx:]...)
 	return strings.Join(out, "\n")
 }
