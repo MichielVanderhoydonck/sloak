@@ -106,17 +106,24 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 		}
 	}
 
-	// Determine the CUE template content (check built-in templates first)
+	// Determine the CUE template content:
+	// 1. If templatePath exists on disk, load it as a custom file (custom templates take precedence).
+	// 2. Otherwise, check if templatePath matches an exact built-in template identifier.
+	// 3. If neither, return a descriptive error.
 	var templateContent string
-	builtInContent, err := templates.GetTemplate(templatePath)
-	if err == nil {
-		templateContent = builtInContent
-	} else {
+	if _, statErr := os.Stat(templatePath); statErr == nil {
 		bytes, err := os.ReadFile(templatePath)
 		if err != nil {
 			return fmt.Errorf("reading template file: %w", err)
 		}
 		templateContent = string(bytes)
+	} else if builtInContent, err := templates.GetTemplate(templatePath); err == nil {
+		templateContent = builtInContent
+	} else {
+		if strings.ContainsAny(templatePath, `/\`) || strings.HasSuffix(templatePath, ".cue") {
+			return fmt.Errorf("reading template file: %w", statErr)
+		}
+		return fmt.Errorf("unknown template %q (not a built-in template and file does not exist)", templatePath)
 	}
 
 	params := domain.GenerateParams{

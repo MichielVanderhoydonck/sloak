@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -235,6 +236,41 @@ func TestRenderBuiltInTemplatesE2E(t *testing.T) {
 				t.Errorf("Template %s output missing %q. Got:\n%s", tt.name, tt.wantString, outStr)
 			}
 		})
+	}
+}
+
+func TestRenderCustomTemplatePrecedenceE2E(t *testing.T) {
+	// Create a custom template file named datadog.cue in a temp dir.
+	// It should render custom output and NOT the built-in datadog template.
+	tmpDir := t.TempDir()
+	customPath := filepath.Join(tmpDir, "datadog.cue")
+	customContent := `package templates
+
+data: _
+
+custom_marker: "my-custom-datadog-override"
+name: "Custom Datadog SLO"
+`
+	if err := os.WriteFile(customPath, []byte(customContent), 0644); err != nil {
+		t.Fatalf("failed to write custom template: %v", err)
+	}
+
+	cmd := exec.Command(sloakBinaryPath, "render",
+		"--template", customPath,
+		"--slo=99.9",
+	)
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+	if err != nil {
+		t.Fatalf("Custom template render failed: %v\nOutput: %s", err, outStr)
+	}
+
+	if !strings.Contains(outStr, "my-custom-datadog-override") {
+		t.Errorf("Expected custom template content in output, got:\n%s", outStr)
+	}
+	// Verify it does NOT contain the built-in datadog output
+	if strings.Contains(outStr, "type: metric") {
+		t.Errorf("Output contains built-in datadog content when custom template was provided:\n%s", outStr)
 	}
 }
 
