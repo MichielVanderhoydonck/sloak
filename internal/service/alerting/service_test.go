@@ -247,13 +247,84 @@ func TestRenderRecordingRules(t *testing.T) {
 			if !strings.Contains(out, expectedRecord) {
 				t.Errorf("missing recording rule for %s: expected %q in output", w, expectedRecord)
 			}
-			expectedExpr := "expr: sum(rate(http_requests_total{job=\"api\",code=~\"5..\"}[" + w + "])) / sum(rate(http_requests_total{job=\"api\"}[" + w + "]))"
+			expectedExpr := "expr: sum by (job) (rate(http_requests_total{job=\"api\",code=~\"5..\"}[" + w + "])) / sum by (job) (rate(http_requests_total{job=\"api\"}[" + w + "]))"
 			if !strings.Contains(out, expectedExpr) {
 				t.Errorf("missing expected recording expr for %s: expected %q in output", w, expectedExpr)
 			}
 		}
 		if !strings.Contains(out, "name: slo-alerts") {
 			t.Errorf("expected slo-alerts group alongside recording rules, got:\n%s", out)
+		}
+	})
+
+	t.Run("prometheus with regex label matcher containing brackets", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":  "api_errors",
+			"errors_query": `http_requests_total{code=~"[45].."}`,
+			"total_query":  `http_requests_total{status=~"5[0-9]{2}"}`,
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expectedExpr := `expr: sum by (job) (rate(http_requests_total{code=~"[45].."}[5m])) / sum by (job) (rate(http_requests_total{status=~"5[0-9]{2}"}[5m]))`
+		if !strings.Contains(out, expectedExpr) {
+			t.Errorf("expected regex character classes to be wrapped with rate, got:\n%s", out)
+		}
+	})
+
+	t.Run("prometheus with custom aggregation_labels list", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":        "api_errors",
+			"errors_query":       `http_requests_total{code=~"5.."}`,
+			"total_query":        `http_requests_total`,
+			"aggregation_labels": []string{"job", "service"},
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expectedExpr := `expr: sum by (job, service) (rate(http_requests_total{code=~"5.."}[5m])) / sum by (job, service) (rate(http_requests_total[5m]))`
+		if !strings.Contains(out, expectedExpr) {
+			t.Errorf("expected sum by (job, service), got:\n%s", out)
+		}
+	})
+
+	t.Run("prometheus with empty aggregation_labels disables by clause", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":        "api_errors",
+			"errors_query":       `http_requests_total{code=~"5.."}`,
+			"total_query":        `http_requests_total`,
+			"aggregation_labels": "",
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expectedExpr := `expr: sum(rate(http_requests_total{code=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))`
+		if !strings.Contains(out, expectedExpr) {
+			t.Errorf("expected bare sum(rate(...)), got:\n%s", out)
 		}
 	})
 
@@ -310,6 +381,86 @@ func TestRenderRecordingRules(t *testing.T) {
 		}
 		if !strings.Contains(out, "expr: sum(rate(errors[5m])) / sum(rate(total[5m]))") {
 			t.Errorf("expected interpolated expr for 5m, got:\n%s", out)
+		}
+	})
+
+	t.Run("reject query with hardcoded range without placeholder", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":  "api_errors",
+			"errors_query": "sum(rate(http_requests_total[5m]))",
+			"total_query":  "sum(rate(http_requests_total[5m]))",
+		}
+
+		_, err := svc.RenderTemplate(params, config, promTpl)
+		if err == nil {
+			t.Fatal("expected error for hardcoded range selector without placeholder, got nil")
+		}
+		if !strings.Contains(err.Error(), "contains a fixed range selector without a window placeholder") {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("reject errors_query without total_query", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":  "api_errors",
+			"errors_query": "http_requests_total{code=~\"5..\"}",
+		}
+
+		_, err := svc.RenderTemplate(params, config, promTpl)
+		if err == nil {
+			t.Fatal("expected error for errors_query without total_query, got nil")
+		}
+		if !strings.Contains(err.Error(), "errors_query requires total_query to compute the error ratio") {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("reject total_query without errors_query", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name": "api_errors",
+			"total_query": "http_requests_total",
+		}
+
+		_, err := svc.RenderTemplate(params, config, promTpl)
+		if err == nil {
+			t.Fatal("expected error for total_query without errors_query, got nil")
+		}
+		if !strings.Contains(err.Error(), "total_query provided without errors_query") {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("format param overrides config format", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"format": "json", // should be ignored in favor of params.Format
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+		if strings.HasPrefix(strings.TrimSpace(out), "{") {
+			t.Errorf("expected YAML output because params.Format is yaml, but got JSON:\n%s", out)
 		}
 	})
 }

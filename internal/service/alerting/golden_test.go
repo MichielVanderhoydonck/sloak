@@ -86,13 +86,9 @@ func TestRenderGoldenFiles(t *testing.T) {
 				t.Fatalf("GetTemplate(%q) failed: %v", tc.templateName, err)
 			}
 
-			cfgCopy := make(map[string]any)
-			for k, v := range config {
-				cfgCopy[k] = v
-			}
-			cfgCopy["format"] = tc.format
-
-			rendered, err := svc.RenderTemplate(params, cfgCopy, tmplContent)
+			p := params
+			p.Format = tc.format
+			rendered, err := svc.RenderTemplate(p, config, tmplContent)
 			if err != nil {
 				t.Fatalf("RenderTemplate failed: %v", err)
 			}

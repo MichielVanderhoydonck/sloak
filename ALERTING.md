@@ -26,21 +26,32 @@ Provide your error and total metric queries to generate a complete turnkey setup
   --set metric_name=api_errors \
   --set errors_query='http_requests_total{job="api",code=~"5.."}' \
   --set total_query='http_requests_total{job="api"}' \
+  --set aggregation_labels=job \
   --set rule_labels.service=api \
   --set rule_labels.env=prod \
   --set meta_labels.release=prometheus \
   --set namespace=monitoring > slo-alerts.yaml
 ```
 
+> [!NOTE]
+> **Query Ratio Contract & Aggregation Labels:**
+> - `errors_query` and `total_query` are paired together to compute the error ratio `sum by (job) (rate(errors[w])) / sum by (job) (rate(total[w]))`.
+> - If your metric is already an error ratio (e.g. from an SLI generator), use `sli_query` instead.
+> - Recording rules aggregate by `job` by default (`sum by (job) (rate(...))`), preserving the metric prefix `job:<metric>:rate<w>`. Customize this via `--set aggregation_labels="job,service"`, or disable grouping via `--set aggregation_labels=""`.
+
+> [!TIP]
+> **Recording Rule Performance on Large Clusters:**
+> Evaluating `rate(counter[3d])` (or `[9d]` for 90d windows) directly over raw high-churn counters can be resource-intensive in very large Prometheus deployments. In such environments, consider chaining recording rules (evaluating longer windows from recorded 1h ratios, as popularized by Sloth and Pyrra) or configuring subquery caching.
+
 ### Lab / Verification Setup (Simulated Outage)
-To deterministically test alerts firing in Minikube without generating traffic, pass `errors_query="vector(0.2)"` to simulate a constant 20% error rate across all windows (> 14.4x burn rate):
+To deterministically test alerts firing in Minikube without generating traffic, pass `sli_query="vector(0.2)"` (or `errors_query="vector(0.2)"`) to simulate a constant 20% error rate across all windows (> 14.4x burn rate):
 ```bash
 ./sloak render \
   --template prometheus-operator \
   --slo 99.9 \
   --window 30d \
   --set metric_name=api_errors \
-  --set errors_query="vector(0.2)" \
+  --set sli_query="vector(0.2)" \
   --set rule_labels.service=api \
   --set rule_labels.env=prod \
   --set meta_labels.release=prometheus \

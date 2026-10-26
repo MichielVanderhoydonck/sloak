@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -121,6 +122,10 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 }
 
 func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error) {
+	if err := validateQueryConfig(config); err != nil {
+		return "", err
+	}
+
 	// 1. Generate the table result first to get the windows and burn rates
 	tableRes, err := s.GenerateTable(params)
 	if err != nil {
@@ -151,13 +156,19 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 		recordingWindows[i] = uniqueWindowsMap[d]
 	}
 
+	cfgCopy := make(map[string]any)
+	for k, v := range config {
+		cfgCopy[k] = v
+	}
+	normalizeAggregationLabels(cfgCopy)
+
 	contextData := domain.AlertingContext{
 		TargetSLO:          params.TargetSLO.Value,
 		ErrorBudgetRatio:   budget,
 		TotalWindowSeconds: int64(params.TotalWindow.Seconds()),
 		Windows:            make([]domain.AlertingWindow, len(tableRes.Alerts)),
 		RecordingWindows:   recordingWindows,
-		Config:             config,
+		Config:             cfgCopy,
 	}
 
 	for i, alert := range tableRes.Alerts {
@@ -242,11 +253,6 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 
 	// Check if JSON format was requested
 	format := strings.ToLower(strings.TrimSpace(params.Format))
-	if format == "" {
-		if fmtVal, ok := config["format"].(string); ok {
-			format = strings.ToLower(strings.TrimSpace(fmtVal))
-		}
-	}
 
 	if format == "json" {
 		jsonBytes, err := outputVal.MarshalJSON()
@@ -283,4 +289,96 @@ func formatPrometheusDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", d/time.Minute)
 	}
 	return fmt.Sprintf("%ds", int(d.Seconds()))
+}
+
+var fixedRangeRegex = regexp.MustCompile(`\[\s*[0-9]+[smhdwy]\s*\]`)
+
+func validateQueryPart(name, q string) error {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return nil
+	}
+	hasPlaceholder := strings.Contains(q, "$window") || strings.Contains(q, "{{window}}") || strings.Contains(q, "[window]")
+	if fixedRangeRegex.MatchString(q) && !hasPlaceholder {
+		return fmt.Errorf("%s %q contains a fixed range selector without a window placeholder; queries with a range selector must use $window or {{window}}", name, q)
+	}
+	return nil
+}
+
+func validateQueryConfig(config map[string]any) error {
+	if config == nil {
+		return nil
+	}
+	errQ, _ := config["errors_query"].(string)
+	totQ, _ := config["total_query"].(string)
+	sliQ, _ := config["sli_query"].(string)
+
+	errQ = strings.TrimSpace(errQ)
+	totQ = strings.TrimSpace(totQ)
+	sliQ = strings.TrimSpace(sliQ)
+
+	if sliQ != "" {
+		if err := validateQueryPart("sli_query", sliQ); err != nil {
+			return err
+		}
+	}
+	if errQ != "" {
+		if err := validateQueryPart("errors_query", errQ); err != nil {
+			return err
+		}
+	}
+	if totQ != "" {
+		if err := validateQueryPart("total_query", totQ); err != nil {
+			return err
+		}
+	}
+
+	if errQ != "" && totQ == "" && sliQ == "" {
+		if !strings.HasPrefix(errQ, "vector(") {
+			return fmt.Errorf("errors_query requires total_query to compute the error ratio; if your query is already an error ratio, use sli_query instead")
+		}
+	}
+	if totQ != "" && errQ == "" && sliQ == "" {
+		return fmt.Errorf("total_query provided without errors_query; both errors_query and total_query are required to compute the error ratio")
+	}
+
+	return nil
+}
+
+func normalizeAggregationLabels(config map[string]any) {
+	if config == nil {
+		return
+	}
+	val, ok := config["aggregation_labels"]
+	if !ok {
+		config["aggregation_labels"] = "job"
+		return
+	}
+	switch v := val.(type) {
+	case string:
+		parts := strings.Split(v, ",")
+		var cleaned []string
+		for _, p := range parts {
+			if s := strings.TrimSpace(p); s != "" {
+				cleaned = append(cleaned, s)
+			}
+		}
+		if len(cleaned) == 0 && strings.TrimSpace(v) == "" {
+			config["aggregation_labels"] = ""
+		} else {
+			config["aggregation_labels"] = strings.Join(cleaned, ", ")
+		}
+	case []string:
+		config["aggregation_labels"] = strings.Join(v, ", ")
+	case []any:
+		var items []string
+		for _, item := range v {
+			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+				items = append(items, strings.TrimSpace(s))
+			}
+		}
+		config["aggregation_labels"] = strings.Join(items, ", ")
+	default:
+		config["aggregation_labels"] = fmt.Sprintf("%v", v)
+	}
 }

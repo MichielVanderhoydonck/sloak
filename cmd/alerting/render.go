@@ -183,7 +183,7 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loa
 		return fmt.Errorf("unknown template %q (not a built-in template and file does not exist)", templatePath)
 	}
 
-	if templatePath == "datadog" {
+	if strings.EqualFold(templatePath, "datadog") {
 		if tf, ok := configData["timeframe"].(string); ok && tf != "" {
 			if tf != "7d" && tf != "30d" && tf != "90d" {
 				return fmt.Errorf("datadog SLO timeframe %q is invalid: must be 7d, 30d, or 90d", tf)

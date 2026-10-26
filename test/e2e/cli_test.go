@@ -883,6 +883,18 @@ func TestRenderDatadogTimeframeValidationE2E(t *testing.T) {
 	if !strings.Contains(stderr.String(), "timeframe \"14d\" is invalid") {
 		t.Errorf("expected invalid timeframe error message, got: %s", stderr.String())
 	}
+
+	// Case 3: Case-insensitive template name (--template=Datadog) also triggers friendly error
+	stderr.Reset()
+	cmdCase := exec.Command(sloakBinaryPath, "render", "--template=Datadog", "--slo=99.9", "--window=14d")
+	cmdCase.Stderr = &stderr
+	errCase := cmdCase.Run()
+	if errCase == nil {
+		t.Fatal("expected failure for 14d window with Datadog template name")
+	}
+	if !strings.Contains(stderr.String(), "datadog SLOs only support 7d, 30d, or 90d timeframes") {
+		t.Errorf("expected actionable error message for Datadog, got: %s", stderr.String())
+	}
 }
 
 func TestRenderSetValidationAndScalarPreservationE2E(t *testing.T) {
@@ -923,13 +935,13 @@ func TestRenderSetValidationAndScalarPreservationE2E(t *testing.T) {
 }
 
 func TestRenderRecordingRulesE2E(t *testing.T) {
-	// Case 1: 30d window with errors_query and total_query
+	// Case 1: 30d window with regex character class in query and default aggregation_labels=job
 	cmd := exec.Command(sloakBinaryPath, "render",
 		"--template=prometheus-operator",
 		"--slo=99.9",
 		"--window=30d",
 		"--set", "metric_name=api_errors",
-		"--set", "errors_query=http_requests_total{code=~\"5..\"}",
+		"--set", `errors_query=http_requests_total{code=~"[45].."}`,
 		"--set", "total_query=http_requests_total",
 	)
 	output, err := cmd.CombinedOutput()
@@ -946,14 +958,18 @@ func TestRenderRecordingRulesE2E(t *testing.T) {
 			t.Errorf("expected %s in output", expectedRec)
 		}
 	}
+	expectedExpr := `expr: sum by (job) (rate(http_requests_total{code=~"[45].."}[5m])) / sum by (job) (rate(http_requests_total[5m]))`
+	if !strings.Contains(outStr, expectedExpr) {
+		t.Errorf("expected regex character class wrapped with rate and aggregation label job, got:\n%s", outStr)
+	}
 
-	// Case 2: 7d window scaled recording rules
+	// Case 2: 7d window scaled recording rules with vector query
 	cmd7d := exec.Command(sloakBinaryPath, "render",
 		"--template=prometheus-operator",
 		"--slo=99.9",
 		"--window=7d",
 		"--set", "metric_name=api_errors",
-		"--set", "errors_query=vector(0.2)",
+		"--set", "sli_query=vector(0.2)",
 	)
 	output7d, err := cmd7d.CombinedOutput()
 	if err != nil {
@@ -965,6 +981,59 @@ func TestRenderRecordingRulesE2E(t *testing.T) {
 		if !strings.Contains(out7dStr, expectedRec) {
 			t.Errorf("expected %s in 7d output, got:\n%s", expectedRec, out7dStr)
 		}
+	}
+
+	// Case 3: Custom aggregation labels: --set aggregation_labels="job, service"
+	cmdCustomAgg := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=30d",
+		"--set", "metric_name=api_errors",
+		"--set", `errors_query=http_requests_total{code=~"5.."}`,
+		"--set", "total_query=http_requests_total",
+		"--set", "aggregation_labels=job,service",
+	)
+	outCustomAgg, err := cmdCustomAgg.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected render with custom aggregation labels to succeed: %v, output: %s", err, string(outCustomAgg))
+	}
+	if !strings.Contains(string(outCustomAgg), "sum by (job, service)") {
+		t.Errorf("expected sum by (job, service) in output, got:\n%s", string(outCustomAgg))
+	}
+
+	// Case 4: Reject fixed range selector without window placeholder
+	var stderr bytes.Buffer
+	cmdFixed := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=30d",
+		"--set", "metric_name=api_errors",
+		"--set", "errors_query=sum(rate(http_requests_total[5m]))",
+		"--set", "total_query=sum(rate(http_requests_total[5m]))",
+	)
+	cmdFixed.Stderr = &stderr
+	if err := cmdFixed.Run(); err == nil {
+		t.Fatal("expected failure for fixed range selector without placeholder")
+	}
+	if !strings.Contains(stderr.String(), "contains a fixed range selector without a window placeholder") {
+		t.Errorf("expected fixed range error message, got: %s", stderr.String())
+	}
+
+	// Case 5: Reject errors_query without total_query
+	stderr.Reset()
+	cmdNoTot := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=30d",
+		"--set", "metric_name=api_errors",
+		"--set", `errors_query=http_requests_total{job="api"}`,
+	)
+	cmdNoTot.Stderr = &stderr
+	if err := cmdNoTot.Run(); err == nil {
+		t.Fatal("expected failure for errors_query without total_query")
+	}
+	if !strings.Contains(stderr.String(), "errors_query requires total_query to compute the error ratio") {
+		t.Errorf("expected ratio contract error message, got: %s", stderr.String())
 	}
 }
 

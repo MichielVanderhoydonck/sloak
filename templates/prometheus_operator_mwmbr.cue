@@ -1,22 +1,19 @@
 package templates
 
-import (
-	"strings"
-)
-
 // Data input
 data: #Input
 
 // Helper to extract config with defaults
 _config: {
-	metric_name:  *data.config.metric_name | "slo_errors"
-	namespace:    *data.config.namespace | "monitoring"
-	runbook_url:  *data.config.runbook_url | ""
-	rule_labels:  *data.config.rule_labels | {}
-	meta_labels:  *data.config.meta_labels | {"role": "alert-rules"}
-	errors_query: *data.config.errors_query | ""
-	total_query:  *data.config.total_query | ""
-	sli_query:    *data.config.sli_query | ""
+	metric_name:        *data.config.metric_name | "slo_errors"
+	namespace:          *data.config.namespace | "monitoring"
+	runbook_url:        *data.config.runbook_url | ""
+	rule_labels:        *data.config.rule_labels | {}
+	meta_labels:        *data.config.meta_labels | {"role": "alert-rules"}
+	errors_query:       *data.config.errors_query | ""
+	total_query:        *data.config.total_query | ""
+	sli_query:          *data.config.sli_query | ""
+	aggregation_labels: *data.config.aggregation_labels | "job"
 
 	rule_annotations: *data.config.rule_annotations | {}
 
@@ -33,80 +30,25 @@ _config: {
 	}
 }
 
-// Helper to filter and format alerts
-#FormatAlerts: {
+// Alert rule formatters using shared helper
+_alerts: {
 	sev: string
-	_match: [for a in data.windows if a.severity == sev {a}]
-	_list: [for a in _match {
-		"(job:\(_config.metric_name):rate\(a.long) > (\(a.burn) * \(data.error_budget_ratio)) and job:\(_config.metric_name):rate\(a.short) > (\(a.burn) * \(data.error_budget_ratio)))"
-	}]
-	exists: len(_list) > 0
-	out:    strings.Join(_list, "\n or \n")
-	
-	labels: _config.rule_labels & _config.severity_labels[sev] & {severity: sev}
-
-	annotations: _config.rule_annotations & _config.severity_annotations[sev] & {
-		summary:     "High burn rate for \(sev) alerts"
-		description: "The \(sev) error budget is burning too fast for metric \(_config.metric_name). Current burn rate exceeds SRE thresholds."
-		if _config.runbook_url != "" {
-			runbook_url: _config.runbook_url
-		}
+	#FormatAlerts & {
+		"sev":                 sev
+		windows:              data.windows
+		budget_ratio:         data.error_budget_ratio
+		metric_name:          _config.metric_name
+		runbook_url:          _config.runbook_url
+		rule_labels:          _config.rule_labels
+		rule_annotations:     _config.rule_annotations
+		severity_labels:      _config.severity_labels[sev]
+		severity_annotations: _config.severity_annotations[sev]
 	}
 }
 
-_pages:    #FormatAlerts & {sev: "page"}
-_messages: #FormatAlerts & {sev: "message"}
-_tickets:  #FormatAlerts & {sev: "ticket"}
-
-#FormatQueryPart: {
-	q: string
-	w: string
-	out: string
-	if strings.Contains(q, "$window") {
-		out: strings.Replace(q, "$window", w, -1)
-	}
-	if strings.Contains(q, "{{window}}") {
-		out: strings.Replace(q, "{{window}}", w, -1)
-	}
-	if strings.Contains(q, "[window]") {
-		out: strings.Replace(q, "[window]", "[\(w)]", -1)
-	}
-	if !strings.Contains(q, "$window") && !strings.Contains(q, "{{window}}") && !strings.Contains(q, "[window]") {
-		if strings.HasPrefix(q, "vector(") {
-			out: q
-		}
-		if !strings.HasPrefix(q, "vector(") {
-			if strings.Contains(q, "[") {
-				out: q
-			}
-			if !strings.Contains(q, "[") {
-				out: "sum(rate(\(q)[\(w)]))"
-			}
-		}
-	}
-}
-
-#FormatRecordingExpr: {
-	w: string
-	out: string
-	if _config.sli_query != "" {
-		_sli: #FormatQueryPart & {q: _config.sli_query, "w": w}
-		out: _sli.out
-	}
-	if _config.sli_query == "" && _config.errors_query != "" {
-		_err: #FormatQueryPart & {q: _config.errors_query, "w": w}
-		if _config.total_query != "" {
-			_tot: #FormatQueryPart & {q: _config.total_query, "w": w}
-			out: "\(_err.out) / \(_tot.out)"
-		}
-		if _config.total_query == "" {
-			out: _err.out
-		}
-	}
-	if _config.sli_query == "" && _config.errors_query == "" {
-		out: ""
-	}
-}
+_pages:    _alerts & {sev: "page"}
+_messages: _alerts & {sev: "message"}
+_tickets:  _alerts & {sev: "ticket"}
 
 _has_recordings: (_config.errors_query != "" || _config.sli_query != "") && (data.recording_windows != _|_) && len(data.recording_windows) > 0
 
@@ -125,7 +67,13 @@ spec: {
 			rules: [
 				for w in data.recording_windows {
 					record: "job:\(_config.metric_name):rate\(w)"
-					expr:   (#FormatRecordingExpr & {"w": w}).out
+					expr:   (#FormatRecordingExpr & {
+						"w":                 w
+						sli_query:          _config.sli_query
+						errors_query:       _config.errors_query
+						total_query:        _config.total_query
+						aggregation_labels: _config.aggregation_labels
+					}).out
 					if len(_config.rule_labels) > 0 {
 						labels: _config.rule_labels
 					}
