@@ -117,14 +117,51 @@ func TestAlertTableE2E(t *testing.T) {
 	cmd := exec.Command(sloakBinaryPath, "generate", "alert-table",
 		"--slo=99.9",
 	)
-	output, _ := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	outStr := string(output)
+	if err != nil {
+		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
+	}
 
 	if !strings.Contains(outStr, "14.40x") {
 		t.Error("Missing Burn Rate")
 	}
 	if !strings.Contains(outStr, "Page") {
 		t.Error("Missing 'Page' notification type")
+	}
+
+	// Test 7-day window scaling
+	cmd7d := exec.Command(sloakBinaryPath, "generate", "alert-table",
+		"--slo=99.9",
+		"--window=7d",
+	)
+	output7d, err := cmd7d.CombinedOutput()
+	outStr7d := string(output7d)
+	if err != nil {
+		t.Fatalf("7d alert-table failed: %v\nOutput: %s", err, outStr7d)
+	}
+	if !strings.Contains(outStr7d, "14.40x") || !strings.Contains(outStr7d, "6.00x") || !strings.Contains(outStr7d, "1.00x") {
+		t.Errorf("Expected scaled burn rates 14.40x, 6.00x, 1.00x for 7d window, got:\n%s", outStr7d)
+	}
+
+	// Test window under 24h fails
+	cmdShort := exec.Command(sloakBinaryPath, "generate", "alert-table",
+		"--slo=99.9",
+		"--window=1h",
+	)
+	outShort, errShort := cmdShort.CombinedOutput()
+	if errShort == nil {
+		t.Errorf("Expected failure for 1h window, but command succeeded: %s", string(outShort))
+	}
+
+	// Test SLO = 100 fails
+	cmd100 := exec.Command(sloakBinaryPath, "generate", "alert-table",
+		"--slo=100",
+		"--window=30d",
+	)
+	out100, err100 := cmd100.CombinedOutput()
+	if err100 == nil {
+		t.Errorf("Expected failure for SLO 100, but command succeeded: %s", string(out100))
 	}
 }
 

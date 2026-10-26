@@ -1,6 +1,7 @@
 package alerting
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -15,9 +16,9 @@ import (
 
 const (
 	ShortWindowRatio = 12.0
-	WinFast          = 1 * time.Hour
-	WinSlow          = 6 * time.Hour
-	WinSustained     = 72 * time.Hour
+	FastWindowRatio  = 720.0
+	SlowWindowRatio  = 120.0
+	SustainedRatio   = 10.0
 )
 
 type AlertGeneratorService struct{}
@@ -29,11 +30,30 @@ func NewAlertGeneratorService() *AlertGeneratorService {
 }
 
 func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (domain.TableResult, error) {
+	if params.TotalWindow <= 0 {
+		return domain.TableResult{}, errors.New("total window must be greater than zero")
+	}
+	if params.TotalWindow < 24*time.Hour {
+		return domain.TableResult{}, errors.New("total window must be at least 24h for multi-window multi-burn-rate alerting")
+	}
+	if params.TargetSLO.Value <= 0 || params.TargetSLO.Value >= 100 {
+		return domain.TableResult{}, errors.New("SLO target must be strictly between 0 and 100")
+	}
 
-	createRule := func(consumptionThreshold float64, longWindow time.Duration, notif domain.NotificationType) domain.AlertDefinition {
+	createRule := func(consumptionThreshold float64, windowRatio float64, notif domain.NotificationType) (domain.AlertDefinition, error) {
+		longWindow := time.Duration(math.Round(float64(params.TotalWindow) / windowRatio)).Round(time.Second)
+		if longWindow >= params.TotalWindow {
+			return domain.AlertDefinition{}, fmt.Errorf("alert long window (%v) must be smaller than total window (%v)", longWindow, params.TotalWindow)
+		}
 		consumptionWindows := float64(params.TotalWindow) / float64(longWindow)
 		burnFactor := consumptionWindows * consumptionThreshold
-		shortWindow := time.Duration(math.Round(float64(longWindow) / ShortWindowRatio))
+		if burnFactor < 1.0 {
+			return domain.AlertDefinition{}, fmt.Errorf("resulting burn rate (%.2fx) is less than 1.0x for %s alert", burnFactor, notif)
+		}
+		shortWindow := time.Duration(math.Round(float64(longWindow) / ShortWindowRatio)).Round(time.Second)
+		if shortWindow <= 0 {
+			return domain.AlertDefinition{}, fmt.Errorf("alert short window (%v) must be greater than zero", shortWindow)
+		}
 
 		return domain.AlertDefinition{
 			ConsumptionTarget:  consumptionThreshold * 100,
@@ -43,13 +63,26 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 			ShortWindowSeconds: shortWindow.Seconds(),
 			BurnRate:           burnFactor,
 			NotificationType:   notif,
-		}
+		}, nil
+	}
+
+	fastRule, err := createRule(0.02, FastWindowRatio, domain.Page)
+	if err != nil {
+		return domain.TableResult{}, err
+	}
+	slowRule, err := createRule(0.05, SlowWindowRatio, domain.Message)
+	if err != nil {
+		return domain.TableResult{}, err
+	}
+	sustainedRule, err := createRule(0.10, SustainedRatio, domain.Ticket)
+	if err != nil {
+		return domain.TableResult{}, err
 	}
 
 	rules := []domain.AlertDefinition{
-		createRule(0.02, WinFast, domain.Page),
-		createRule(0.05, WinSlow, domain.Message),
-		createRule(0.10, WinSustained, domain.Ticket),
+		fastRule,
+		slowRule,
+		sustainedRule,
 	}
 
 	return domain.TableResult{
