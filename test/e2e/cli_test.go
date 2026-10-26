@@ -921,3 +921,49 @@ func TestRenderSetValidationAndScalarPreservationE2E(t *testing.T) {
 		t.Errorf("expected description scalar to be preserved without map mangling, got: %s", stdout.String())
 	}
 }
+
+func TestRenderRecordingRulesE2E(t *testing.T) {
+	// Case 1: 30d window with errors_query and total_query
+	cmd := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=30d",
+		"--set", "metric_name=api_errors",
+		"--set", "errors_query=http_requests_total{code=~\"5..\"}",
+		"--set", "total_query=http_requests_total",
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected render to succeed, got error: %v, output: %s", err, string(output))
+	}
+	outStr := string(output)
+	if !strings.Contains(outStr, "name: slo-recording-rules") {
+		t.Errorf("expected slo-recording-rules group in output, got: %s", outStr)
+	}
+	for _, w := range []string{"5m", "30m", "1h", "6h", "3d"} {
+		expectedRec := "record: job:api_errors:rate" + w
+		if !strings.Contains(outStr, expectedRec) {
+			t.Errorf("expected %s in output", expectedRec)
+		}
+	}
+
+	// Case 2: 7d window scaled recording rules
+	cmd7d := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=7d",
+		"--set", "metric_name=api_errors",
+		"--set", "errors_query=vector(0.2)",
+	)
+	output7d, err := cmd7d.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected 7d render to succeed, got error: %v, output: %s", err, string(output7d))
+	}
+	out7dStr := string(output7d)
+	for _, w := range []string{"5m", "7m", "14m", "84m", "1008m"} {
+		expectedRec := "record: job:api_errors:rate" + w
+		if !strings.Contains(out7dStr, expectedRec) {
+			t.Errorf("expected %s in 7d output, got:\n%s", expectedRec, out7dStr)
+		}
+	}
+}

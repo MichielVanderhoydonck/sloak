@@ -189,8 +189,8 @@ SLOAK features embedded [CUE](https://cuelang.org/) templates ready for producti
 
 | Template Name | Flag Identifier | Target Output | Description |
 | :--- | :--- | :--- | :--- |
-| **Prometheus Operator** | `prometheus-operator` | YAML (`PrometheusRule`) | Multi-window multi-burn-rate alerting rules querying `job:<metric>:rate<window>`. |
-| **Grafana Cloud** | `grafana-cloud` | YAML (Mimir/Loki Ruler) | Multi-window multi-burn-rate alerting rules compatible with `mimirtool`. |
+| **Prometheus Operator** | `prometheus-operator` | YAML (`PrometheusRule`) | Multi-window multi-burn-rate alerting and recording rules (`job:<metric>:rate<window>`). |
+| **Grafana Cloud** | `grafana-cloud` | YAML (Mimir/Loki Ruler) | Multi-window multi-burn-rate alerting and recording rules compatible with `mimirtool`. |
 | **OpenTelemetry** | `otel-collector` | YAML (`config.yaml`) | Metric processor configuration for OpenTelemetry Contrib collector. |
 | **Datadog** | `datadog` | JSON / YAML | Datadog Service Level Objective API payload / Terraform resource. |
 | **Incident.io** | `incident-io` | JSON / YAML | Starter alert source schema mapping multi-window severities to incident handling. |

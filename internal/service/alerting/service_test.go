@@ -9,6 +9,7 @@ import (
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	service "github.com/MichielVanderhoydonck/sloak/internal/service/alerting"
+	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
 
 func TestGenerateMatrix(t *testing.T) {
@@ -160,4 +161,108 @@ func TestGenerateMatrix_Validation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRenderRecordingRules(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	promTpl, err := templates.GetTemplate("prometheus-operator")
+	if err != nil {
+		t.Fatalf("failed to get prometheus-operator template: %v", err)
+	}
+
+	t.Run("prometheus with errors_query and total_query", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":  "api_errors",
+			"errors_query": "http_requests_total{job=\"api\",code=~\"5..\"}",
+			"total_query":  "http_requests_total{job=\"api\"}",
+			"rule_labels": map[string]any{
+				"service": "api",
+			},
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		if !strings.Contains(out, "name: slo-recording-rules") {
+			t.Errorf("expected recording-rules group, got:\n%s", out)
+		}
+		for _, w := range []string{"5m", "30m", "1h", "6h", "3d"} {
+			expectedRecord := "record: job:api_errors:rate" + w
+			if !strings.Contains(out, expectedRecord) {
+				t.Errorf("missing recording rule for %s: expected %q in output", w, expectedRecord)
+			}
+			expectedExpr := "expr: sum(rate(http_requests_total{job=\"api\",code=~\"5..\"}[" + w + "])) / sum(rate(http_requests_total{job=\"api\"}[" + w + "]))"
+			if !strings.Contains(out, expectedExpr) {
+				t.Errorf("missing expected recording expr for %s: expected %q in output", w, expectedExpr)
+			}
+		}
+		if !strings.Contains(out, "name: slo-alerts") {
+			t.Errorf("expected slo-alerts group alongside recording rules, got:\n%s", out)
+		}
+	})
+
+	t.Run("prometheus with vector simulation query", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":  "api_errors",
+			"errors_query": "vector(0.2)",
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		if !strings.Contains(out, "record: job:api_errors:rate5m") {
+			t.Errorf("expected recording rule for 5m, got:\n%s", out)
+		}
+		if !strings.Contains(out, "expr: vector(0.2)") {
+			t.Errorf("expected expr: vector(0.2), got:\n%s", out)
+		}
+	})
+
+	t.Run("grafana cloud with sli_query", func(t *testing.T) {
+		grafanaTpl, err := templates.GetTemplate("grafana-cloud")
+		if err != nil {
+			t.Fatalf("failed to get grafana-cloud template: %v", err)
+		}
+
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name": "checkout_errors",
+			"sli_query":   "sum(rate(errors[$window])) / sum(rate(total[$window]))",
+		}
+
+		out, err := svc.RenderTemplate(params, config, grafanaTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		if !strings.Contains(out, "name: slo-recording-rules") {
+			t.Errorf("expected slo-recording-rules, got:\n%s", out)
+		}
+		if !strings.Contains(out, "record: job:checkout_errors:rate5m") {
+			t.Errorf("expected recording rule for rate5m, got:\n%s", out)
+		}
+		if !strings.Contains(out, "expr: sum(rate(errors[5m])) / sum(rate(total[5m]))") {
+			t.Errorf("expected interpolated expr for 5m, got:\n%s", out)
+		}
+	})
 }

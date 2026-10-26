@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -130,11 +131,32 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 	budget := 1 - (params.TargetSLO.Value / 100)
 	budget = math.Round(budget*1e10) / 1e10
 
+	// Collect unique recording windows in ascending order of duration
+	uniqueWindowsMap := make(map[time.Duration]string)
+	for _, rule := range tableRes.Alerts {
+		dLong := time.Duration(rule.LongWindow)
+		dShort := time.Duration(rule.ShortWindow)
+		uniqueWindowsMap[dLong] = formatPrometheusDuration(dLong)
+		uniqueWindowsMap[dShort] = formatPrometheusDuration(dShort)
+	}
+	sortedDurations := make([]time.Duration, 0, len(uniqueWindowsMap))
+	for d := range uniqueWindowsMap {
+		sortedDurations = append(sortedDurations, d)
+	}
+	sort.Slice(sortedDurations, func(i, j int) bool {
+		return sortedDurations[i] < sortedDurations[j]
+	})
+	recordingWindows := make([]string, len(sortedDurations))
+	for i, d := range sortedDurations {
+		recordingWindows[i] = uniqueWindowsMap[d]
+	}
+
 	contextData := domain.AlertingContext{
 		TargetSLO:          params.TargetSLO.Value,
 		ErrorBudgetRatio:   budget,
 		TotalWindowSeconds: int64(params.TotalWindow.Seconds()),
 		Windows:            make([]domain.AlertingWindow, len(tableRes.Alerts)),
+		RecordingWindows:   recordingWindows,
 		Config:             config,
 	}
 

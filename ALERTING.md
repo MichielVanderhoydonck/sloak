@@ -12,57 +12,44 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace
 ```
-## 2. Inject Mock Data (The Fixture)
+## 2. Generate Turnkey Alerts & Recording Rules
 
-Instead of generating fake traffic, we inject Recording Rules that force specific metric values. This deterministically simulates an outage (e.g., a 20% error rate).
+SLOAK automatically generates both the multi-window multi-burn-rate alerting rules and the underlying recording rules (`job:<metric>:rate<window>`) directly from your SLI queries.
 
-Save this as fixtures.yaml:
-```YAML
-
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  name: slo-fixtures
-  namespace: monitoring
-  labels:
-    release: prometheus # Required for Operator to pick it up
-spec:
-  groups:
-    - name: mock-data-generator
-      rules:
-        # Simulate a 20% error rate (0.2) across all windows
-        # This > 14.4x burn rate, triggering Page, Message, and Ticket alerts.
-        - record: job:api_errors:rate5m
-          expr: vector(0.2)
-        - record: job:api_errors:rate30m
-          expr: vector(0.2)
-        - record: job:api_errors:rate1h
-          expr: vector(0.2)
-        - record: job:api_errors:rate6h
-          expr: vector(0.2)
-        - record: job:api_errors:rate3d
-          expr: vector(0.2)
-```
-Apply it: `kubectl apply -f fixtures.yaml`
-## 3. Generate & Apply Alerts
-
-Run sloak to generate the alerting rules.
-Important: We add the `release=prometheus` label so the Prometheus Operator loads the rule file.
-
-### Render the YAML
+### Production Setup (Real Metrics)
+Provide your error and total metric queries to generate a complete turnkey setup:
 ```bash
 ./sloak render \
   --template prometheus-operator \
   --slo 99.9 \
+  --window 30d \
   --set metric_name=api_errors \
+  --set errors_query='http_requests_total{job="api",code=~"5.."}' \
+  --set total_query='http_requests_total{job="api"}' \
   --set rule_labels.service=api \
   --set rule_labels.env=prod \
   --set meta_labels.release=prometheus \
-  --set namespace=monitoring \
-  --window 30d > slo-alerts.yaml
+  --set namespace=monitoring > slo-alerts.yaml
 ```
 
-### Apply to Cluster
+### Lab / Verification Setup (Simulated Outage)
+To deterministically test alerts firing in Minikube without generating traffic, pass `errors_query="vector(0.2)"` to simulate a constant 20% error rate across all windows (> 14.4x burn rate):
+```bash
+./sloak render \
+  --template prometheus-operator \
+  --slo 99.9 \
+  --window 30d \
+  --set metric_name=api_errors \
+  --set errors_query="vector(0.2)" \
+  --set rule_labels.service=api \
+  --set rule_labels.env=prod \
+  --set meta_labels.release=prometheus \
+  --set namespace=monitoring > slo-alerts.yaml
+```
+
+## 3. Apply to Cluster
+
+Apply the generated file:
 ```bash
 kubectl apply -f slo-alerts.yaml
 ```

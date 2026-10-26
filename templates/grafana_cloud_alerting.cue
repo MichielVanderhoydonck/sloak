@@ -9,9 +9,12 @@ data: #Input
 
 // Helper to extract config with defaults
 _config: {
-	metric_name: *data.config.metric_name | "slo_errors"
-	runbook_url: *data.config.runbook_url | ""
-	rule_labels: *data.config.rule_labels | {}
+	metric_name:  *data.config.metric_name | "slo_errors"
+	runbook_url:  *data.config.runbook_url | ""
+	rule_labels:  *data.config.rule_labels | {}
+	errors_query: *data.config.errors_query | ""
+	total_query:  *data.config.total_query | ""
+	sli_query:    *data.config.sli_query | ""
 
 	rule_annotations: *data.config.rule_annotations | {}
 
@@ -53,8 +56,72 @@ _pages:    #FormatAlerts & {sev: "page"}
 _messages: #FormatAlerts & {sev: "message"}
 _tickets:  #FormatAlerts & {sev: "ticket"}
 
+#FormatQueryPart: {
+	q: string
+	w: string
+	out: string
+	if strings.Contains(q, "$window") {
+		out: strings.Replace(q, "$window", w, -1)
+	}
+	if strings.Contains(q, "{{window}}") {
+		out: strings.Replace(q, "{{window}}", w, -1)
+	}
+	if strings.Contains(q, "[window]") {
+		out: strings.Replace(q, "[window]", "[\(w)]", -1)
+	}
+	if !strings.Contains(q, "$window") && !strings.Contains(q, "{{window}}") && !strings.Contains(q, "[window]") {
+		if strings.HasPrefix(q, "vector(") {
+			out: q
+		}
+		if !strings.HasPrefix(q, "vector(") {
+			if strings.Contains(q, "[") {
+				out: q
+			}
+			if !strings.Contains(q, "[") {
+				out: "sum(rate(\(q)[\(w)]))"
+			}
+		}
+	}
+}
+
+#FormatRecordingExpr: {
+	w: string
+	out: string
+	if _config.sli_query != "" {
+		_sli: #FormatQueryPart & {q: _config.sli_query, "w": w}
+		out: _sli.out
+	}
+	if _config.sli_query == "" && _config.errors_query != "" {
+		_err: #FormatQueryPart & {q: _config.errors_query, "w": w}
+		if _config.total_query != "" {
+			_tot: #FormatQueryPart & {q: _config.total_query, "w": w}
+			out: "\(_err.out) / \(_tot.out)"
+		}
+		if _config.total_query == "" {
+			out: _err.out
+		}
+	}
+	if _config.sli_query == "" && _config.errors_query == "" {
+		out: ""
+	}
+}
+
+_has_recordings: (_config.errors_query != "" || _config.sli_query != "") && (data.recording_windows != _|_) && len(data.recording_windows) > 0
+
 // Standard Mimir/Loki ruler format
 groups: [
+	if _has_recordings {
+		name: "slo-recording-rules"
+		rules: [
+			for w in data.recording_windows {
+				record: "job:\(_config.metric_name):rate\(w)"
+				expr:   (#FormatRecordingExpr & {"w": w}).out
+				if len(_config.rule_labels) > 0 {
+					labels: _config.rule_labels
+				}
+			},
+		]
+	},
 	{
 		name: "slo-alerts"
 		rules: [
