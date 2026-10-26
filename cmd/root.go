@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -29,7 +30,10 @@ import (
 	feasibilityService "github.com/MichielVanderhoydonck/sloak/internal/service/feasibility"
 )
 
-var cfgFile string
+var (
+	cfgFile   string
+	configErr error
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "sloak",
@@ -38,6 +42,12 @@ var rootCmd = &cobra.Command{
            SLI attainment, burn rates, and more, following strict SRE principles.`,
 	SilenceErrors: true,
 	SilenceUsage:  true,
+	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+		if configErr != nil {
+			return configErr
+		}
+		return nil
+	},
 }
 
 func Execute() {
@@ -68,6 +78,7 @@ func init() {
 }
 
 func initConfig() {
+	configErr = nil
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
@@ -83,5 +94,14 @@ func initConfig() {
 	viper.SetEnvPrefix("SLOAK")
 	viper.AutomaticEnv()
 
-	_ = viper.ReadInConfig()
+	if err := viper.ReadInConfig(); err != nil {
+		if cfgFile != "" {
+			configErr = fmt.Errorf("reading config file %q: %w", cfgFile, err)
+		} else {
+			var configFileNotFoundError viper.ConfigFileNotFoundError
+			if !errors.As(err, &configFileNotFoundError) {
+				configErr = fmt.Errorf("reading config file: %w", err)
+			}
+		}
+	}
 }

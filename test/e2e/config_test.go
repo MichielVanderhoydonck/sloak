@@ -64,3 +64,42 @@ func TestEnvOverrideE2E(t *testing.T) {
 		t.Errorf("Expected 'Time Window: 7.0d' in output, got: %s", outStr)
 	}
 }
+
+func TestMissingExplicitConfigFileE2E(t *testing.T) {
+	cmd := exec.Command(sloakBinaryPath, "calculate", "errorbudget", "--config", "nonexistent_config_file.yaml")
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+
+	if err == nil {
+		t.Fatal("Expected command to fail on missing explicit config file, but it succeeded")
+	}
+
+	if !strings.Contains(outStr, "reading config file") {
+		t.Errorf("Expected error to mention reading config file, got:\n%s", outStr)
+	}
+}
+
+func TestMalformedConfigFileE2E(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "malformed-*.yaml")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString("slo: [invalid yaml\n  unbalanced"); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	cmd := exec.Command(sloakBinaryPath, "calculate", "errorbudget", "--config", tmpFile.Name())
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+
+	if err == nil {
+		t.Fatal("Expected command to fail on malformed config file, but it succeeded")
+	}
+
+	if !strings.Contains(outStr, "reading config file") {
+		t.Errorf("Expected error to mention reading config file, got:\n%s", outStr)
+	}
+}
