@@ -11,19 +11,24 @@ _config: {
 	tags:        *data.config.tags | ["env:prod", "service:my-service"]
 }
 
-_timeframe: *data.config.timeframe | [
-	if data.total_window_seconds <= 604800 { "7d" },
-	if data.total_window_seconds <= 2592000 { "30d" },
-	"90d"
+_allowedTimeframe: "7d" | "30d" | "90d"
+
+_defaultTimeframe: [
+	if data.total_window_seconds == 604800 { "7d" },
+	if data.total_window_seconds == 2592000 { "30d" },
+	if data.total_window_seconds == 7776000 { "90d" },
+	"invalid"
 ][0]
+
+_timeframe: _allowedTimeframe & (data.config.timeframe | _defaultTimeframe)
 
 // Datadog JSON API / Terraform payload structure
 name:        _config.name
 type:        "metric"
 description: _config.description
 query: {
-	numerator:   "sum:\(_config.metric_name){type:good}.as_count()"
-	denominator: "sum:\(_config.metric_name){*}.as_count()"
+	numerator:   *data.config.good_query | "sum:\(_config.metric_name){type:good}.as_count()"
+	denominator: *data.config.total_query | "sum:\(_config.metric_name){*}.as_count()"
 }
 thresholds: [
 	{

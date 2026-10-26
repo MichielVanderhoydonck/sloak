@@ -858,3 +858,29 @@ func TestBurnRateTinyElapsedJSONE2E(t *testing.T) {
 		t.Errorf("expected burn_rate to be 0.0, got: %v", res2["burn_rate"])
 	}
 }
+
+func TestRenderDatadogTimeframeValidationE2E(t *testing.T) {
+	// Case 1: Unsupported window without explicit override fails with actionable error
+	var stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "render", "--template=datadog", "--slo=99.9", "--window=14d")
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected failure for 14d window without timeframe override")
+	}
+	if !strings.Contains(stderr.String(), "datadog SLOs only support 7d, 30d, or 90d timeframes") {
+		t.Errorf("expected actionable error message, got: %s", stderr.String())
+	}
+
+	// Case 2: Invalid explicit timeframe override fails
+	stderr.Reset()
+	cmdInvalid := exec.Command(sloakBinaryPath, "render", "--template=datadog", "--slo=99.9", "--window=30d", "--set", "timeframe=14d")
+	cmdInvalid.Stderr = &stderr
+	errInvalid := cmdInvalid.Run()
+	if errInvalid == nil {
+		t.Fatal("expected failure for invalid explicit timeframe override")
+	}
+	if !strings.Contains(stderr.String(), "timeframe \"14d\" is invalid") {
+		t.Errorf("expected invalid timeframe error message, got: %s", stderr.String())
+	}
+}

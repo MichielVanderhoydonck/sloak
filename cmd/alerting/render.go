@@ -179,6 +179,19 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 		return fmt.Errorf("unknown template %q (not a built-in template and file does not exist)", templatePath)
 	}
 
+	if templatePath == "datadog" {
+		if tf, ok := configData["timeframe"].(string); ok && tf != "" {
+			if tf != "7d" && tf != "30d" && tf != "90d" {
+				return fmt.Errorf("datadog SLO timeframe %q is invalid: must be 7d, 30d, or 90d", tf)
+			}
+		} else {
+			winSec := totalWindow.Seconds()
+			if winSec != 7*86400 && winSec != 30*86400 && winSec != 90*86400 {
+				return fmt.Errorf("datadog SLOs only support 7d, 30d, or 90d timeframes (window is %s); use --set timeframe=7d|30d|90d to override explicitly", windowStr)
+			}
+		}
+	}
+
 	params := domain.GenerateParams{
 		TargetSLO:   sloTarget,
 		TotalWindow: totalWindow,
