@@ -37,3 +37,51 @@ func TestDisruptionService(t *testing.T) {
 		t.Errorf("Expected ~1.43 daily, got %f", res.DailyDisruptions)
 	}
 }
+
+func TestDisruptionService_Validation(t *testing.T) {
+	svc := service.NewDisruptionService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	tests := []struct {
+		name        string
+		params      domain.CalculationParams
+		errContains string
+	}{
+		{
+			name: "Zero window",
+			params: domain.CalculationParams{
+				TargetSLO:    slo999,
+				TotalWindow:  0,
+				CostPerEvent: util.Duration(1 * time.Minute),
+			},
+			errContains: "window must be greater than zero",
+		},
+		{
+			name: "Zero cost per disruption",
+			params: domain.CalculationParams{
+				TargetSLO:    slo999,
+				TotalWindow:  util.Duration(30 * 24 * time.Hour),
+				CostPerEvent: 0,
+			},
+			errContains: "cost per disruption must be greater than zero",
+		},
+		{
+			name: "Cost exceeds window",
+			params: domain.CalculationParams{
+				TargetSLO:    slo999,
+				TotalWindow:  util.Duration(1 * time.Hour),
+				CostPerEvent: util.Duration(2 * time.Hour),
+			},
+			errContains: "cost per disruption cannot exceed total window",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := svc.CalculateCapacity(tt.params)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tt.errContains)
+			}
+		})
+	}
+}

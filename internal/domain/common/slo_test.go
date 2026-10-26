@@ -21,14 +21,16 @@ func TestNewSLOTarget(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "Valid SLO (0)",
+			name:        "Invalid SLO (0)",
 			input:       0.0,
-			expectError: false,
+			expectError: true,
+			expectedErr: common.ErrInvalidSLOTarget,
 		},
 		{
-			name:        "Valid SLO (100)",
+			name:        "Invalid SLO (100)",
 			input:       100.0,
-			expectError: false,
+			expectError: true,
+			expectedErr: common.ErrInvalidSLOTarget,
 		},
 		{
 			name:        "Invalid SLO (Too High)",
@@ -65,14 +67,13 @@ func TestSLOTarget_String(t *testing.T) {
 		expected string
 	}{
 		{name: "SLO Target 99.9", input: 99.9, expected: "99.900%"},
-		{name: "SLO Target 100", input: 100, expected: "100.000%"},
-		{name: "SLO Target 0", input: 0, expected: "0.000%"},
+		{name: "SLO Target 99.0", input: 99.0, expected: "99.000%"},
 		{name: "SLO Target 99.999", input: 99.999, expected: "99.999%"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			sloTarget, _ := common.NewSLOTarget(tc.input)
+			sloTarget := common.SLOTarget{Value: tc.input}
 			require.Equal(t, tc.expected, sloTarget.String())
 		})
 	}

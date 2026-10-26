@@ -24,6 +24,9 @@ func (s *DisruptionService) CalculateCapacity(params disruptionDomain.Calculatio
 	if params.CostPerEvent <= 0 {
 		return disruptionDomain.Result{}, errors.New("cost per disruption must be greater than zero")
 	}
+	if params.CostPerEvent > params.TotalWindow {
+		return disruptionDomain.Result{}, errors.New("cost per disruption cannot exceed total window")
+	}
 
 	totalWindow := time.Duration(params.TotalWindow)
 	costPerEvent := time.Duration(params.CostPerEvent)
@@ -32,13 +35,8 @@ func (s *DisruptionService) CalculateCapacity(params disruptionDomain.Calculatio
 	totalBudgetNanos := float64(totalWindow) * errorBudgetPercent
 	totalBudget := time.Duration(math.Round(totalBudgetNanos))
 
-	var maxDisruptions int64
-	var dailyDisruptions float64
-
-	if costPerEvent > 0 {
-		maxDisruptions = int64(totalBudget / costPerEvent)
-		dailyDisruptions = float64(maxDisruptions) / (totalWindow.Hours() / 24.0)
-	}
+	maxDisruptions := int64(totalBudget / costPerEvent)
+	dailyDisruptions := float64(maxDisruptions) / (totalWindow.Hours() / 24.0)
 
 	return disruptionDomain.Result{
 		TotalErrorBudget:        util.Duration(totalBudget),

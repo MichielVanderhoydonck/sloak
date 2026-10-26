@@ -23,6 +23,7 @@ func (d Duration) String() string {
 }
 
 // ParseTimeWindow parses a duration string, including custom units like 'd', 'w', 'y'.
+// Negative durations are rejected as invalid.
 func ParseTimeWindow(s string) (time.Duration, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -32,6 +33,9 @@ func ParseTimeWindow(s string) (time.Duration, error) {
 	// First, try parsing with the standard library.
 	d, err := time.ParseDuration(s)
 	if err == nil {
+		if d < 0 {
+			return 0, fmt.Errorf("duration cannot be negative: %q", s)
+		}
 		return d, nil
 	}
 	originalErr := err
@@ -48,6 +52,9 @@ func ParseTimeWindow(s string) (time.Duration, error) {
 	number, err := strconv.ParseFloat(numberStr, 64)
 	if err != nil {
 		return 0, fmt.Errorf("invalid number %q for custom duration %q", numberStr, s)
+	}
+	if number < 0 {
+		return 0, fmt.Errorf("duration cannot be negative: %q", s)
 	}
 
 	var unitMultiplier float64

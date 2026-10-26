@@ -28,6 +28,9 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 	if timeElapsed < 0 {
 		return burnrateDomain.BurnRateResult{}, errors.New("time elapsed cannot be negative")
 	}
+	if timeElapsed > totalWindow {
+		return burnrateDomain.BurnRateResult{}, errors.New("time elapsed cannot exceed total window")
+	}
 	if errorConsumed < 0 {
 		return burnrateDomain.BurnRateResult{}, errors.New("error consumed cannot be negative")
 	}

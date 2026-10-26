@@ -87,6 +87,21 @@ func TestParseTimeWindow(t *testing.T) {
 			input:       "1h30d",
 			expectError: true,
 		},
+		{
+			name:        "Negative standard duration",
+			input:       "-5m",
+			expectError: true,
+		},
+		{
+			name:        "Negative custom duration (days)",
+			input:       "-30d",
+			expectError: true,
+		},
+		{
+			name:        "Negative custom duration (weeks)",
+			input:       "-1.5w",
+			expectError: true,
+		},
 	}
 
 	for _, tc := range testCases {

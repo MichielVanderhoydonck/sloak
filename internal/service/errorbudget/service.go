@@ -19,8 +19,8 @@ func NewCalculatorService() *CalculatorService {
 }
 
 func (s *CalculatorService) CalculateBudget(params errorbudgetDomain.CalculationParams) (errorbudgetDomain.BudgetResult, error) {
-	if params.TargetSLO.Value < 0 || params.TargetSLO.Value > 100 {
-		return errorbudgetDomain.BudgetResult{}, errors.New("SLO target must be between 0 and 100")
+	if params.TargetSLO.Value <= 0 || params.TargetSLO.Value >= 100 {
+		return errorbudgetDomain.BudgetResult{}, errors.New("SLO target must be strictly between 0 and 100")
 	}
 	if params.TimeWindow <= 0 {
 		return errorbudgetDomain.BudgetResult{}, errors.New("time window must be greater than zero")

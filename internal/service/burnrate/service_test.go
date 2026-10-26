@@ -134,6 +134,16 @@ func TestBurnRateService(t *testing.T) {
 			},
 			expectedError: errors.New("error consumed cannot be negative"),
 		},
+		{
+			name: "Elapsed Exceeds Window Error",
+			params: burnrateDomain.CalculationParams{
+				TargetSLO:     mustNewSLO(t, 99.9),
+				TotalWindow:   util.Duration(7 * 24 * time.Hour),
+				TimeElapsed:   util.Duration(8 * 24 * time.Hour),
+				ErrorConsumed: util.Duration(1 * time.Minute),
+			},
+			expectedError: errors.New("time elapsed cannot exceed total window"),
+		},
 	}
 
 	for _, tc := range testCases {
