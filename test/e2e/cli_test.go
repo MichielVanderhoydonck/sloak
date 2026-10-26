@@ -206,8 +206,11 @@ func TestDisruptionE2E(t *testing.T) {
 	cmd := exec.Command(sloakBinaryPath, "calculate", "max-disruption",
 		"--slo=99.9", "--window=30d", "--cost=1m",
 	)
-	output, _ := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	outStr := string(output)
+	if err != nil {
+		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
+	}
 
 	if !strings.Contains(outStr, "Max Events Total: 43") {
 		t.Errorf("Expected 43 events, got output:\n%s", outStr)
@@ -218,8 +221,11 @@ func TestFeasibilityE2E(t *testing.T) {
 	cmd := exec.Command(sloakBinaryPath, "calculate", "feasibility",
 		"--slo=99.9", "--mttr=1h",
 	)
-	output, _ := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	outStr := string(output)
+	if err != nil {
+		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
+	}
 
 	if !strings.Contains(outStr, "8.8 incidents") {
 		t.Errorf("Expected 8.8 incidents/year, got output:\n%s", outStr)
@@ -234,8 +240,11 @@ func TestRenderE2E(t *testing.T) {
 	cmd := exec.Command(sloakBinaryPath, "render",
 		"--template=../../templates/prometheus_operator_mwmbr.cue", "--slo=99.9",
 	)
-	output, _ := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	outStr := string(output)
+	if err != nil {
+		t.Fatalf("Command failed: %v\nOutput: %s", err, outStr)
+	}
 
 	if !strings.Contains(outStr, "apiVersion: monitoring.coreos.com/v1") {
 		t.Errorf("Expected prometheus operator apiVersion in output, got:\n%s", outStr)
@@ -661,5 +670,105 @@ func TestConvertZeroWindowE2E(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Error: calculation error: window must be greater than zero") {
 		t.Errorf("expected window error in stderr, got: %s", stderr.String())
+	}
+}
+
+func TestNegativePathCLI_E2E(t *testing.T) {
+	tests := []struct {
+		name          string
+		args          []string
+		expectedError string
+	}{
+		{
+			name:          "ErrorBudget_SLO_150",
+			args:          []string{"calculate", "errorbudget", "--slo=150"},
+			expectedError: "SLO target must be strictly between 0.0 and 100.0",
+		},
+		{
+			name:          "ErrorBudget_SLO_0",
+			args:          []string{"calculate", "errorbudget", "--slo=0"},
+			expectedError: "SLO target must be strictly between 0.0 and 100.0",
+		},
+		{
+			name:          "ErrorBudget_SLO_100",
+			args:          []string{"calculate", "errorbudget", "--slo=100"},
+			expectedError: "SLO target must be strictly between 0.0 and 100.0",
+		},
+		{
+			name:          "ErrorBudget_InvalidWindowUnit",
+			args:          []string{"calculate", "errorbudget", "--window=30x"},
+			expectedError: "unknown unit \"x\"",
+		},
+		{
+			name:          "ErrorBudget_NegativeWindow",
+			args:          []string{"calculate", "errorbudget", "--window=-30d"},
+			expectedError: "duration cannot be negative",
+		},
+		{
+			name:          "ErrorBudget_ZeroWindow",
+			args:          []string{"calculate", "errorbudget", "--window=0s"},
+			expectedError: "time window must be greater than zero",
+		},
+		{
+			name:          "BurnRate_InvalidConsumed",
+			args:          []string{"calculate", "burnrate", "--consumed=foo"},
+			expectedError: "invalid duration \"foo\"",
+		},
+		{
+			name:          "BurnRate_ElapsedExceedsWindow",
+			args:          []string{"calculate", "burnrate", "--elapsed=40d", "--window=30d"},
+			expectedError: "time elapsed cannot exceed total window",
+		},
+		{
+			name:          "Disruption_CostExceedsWindow",
+			args:          []string{"calculate", "max-disruption", "--cost=40d", "--window=30d"},
+			expectedError: "cost per disruption cannot exceed total window",
+		},
+		{
+			name:          "Dependency_MissingComponents",
+			args:          []string{"calculate", "dependency"},
+			expectedError: "--components is required",
+		},
+		{
+			name:          "Dependency_InvalidComponent",
+			args:          []string{"calculate", "dependency", "--components=99.9,xyz"},
+			expectedError: "parsing component 'xyz'",
+		},
+		{
+			name:          "Feasibility_SLO_150",
+			args:          []string{"calculate", "feasibility", "--slo=150"},
+			expectedError: "SLO target must be strictly between 0.0 and 100.0",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			cmd := exec.Command(sloakBinaryPath, tc.args...)
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+
+			err := cmd.Run()
+			if err == nil {
+				t.Fatalf("expected non-zero exit code for %v, got 0", tc.args)
+			}
+
+			exitErr, ok := err.(*exec.ExitError)
+			if !ok {
+				t.Fatalf("expected *exec.ExitError, got %T: %v", err, err)
+			}
+			if exitErr.ExitCode() != 1 {
+				t.Errorf("expected exit code 1, got %d", exitErr.ExitCode())
+			}
+
+			if stdout.Len() != 0 {
+				t.Errorf("expected stdout to be empty on failure, got: %q", stdout.String())
+			}
+
+			stderrStr := stderr.String()
+			if !strings.Contains(stderrStr, tc.expectedError) {
+				t.Errorf("expected stderr to contain %q, got: %q", tc.expectedError, stderrStr)
+			}
+		})
 	}
 }
