@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -68,11 +69,11 @@ func runDependencyCmd(cmd *cobra.Command, service domain.Service) error {
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	return cliutil.PrintResult(cmd, v.GetString("output"), res, func() error {
-		fmt.Printf("\n--- Dependency Availability (%s) ---\n", capitalizeFirst(string(res.CalculationType)))
-		fmt.Printf("Components: %d\n", res.ComponentCount)
-		fmt.Printf("------------------------------------\n")
-		fmt.Printf("Total Availability: %.4f%%\n", res.TotalAvailability)
+	return cliutil.PrintResult(cmd, v.GetString("output"), res, func(w io.Writer) error {
+		fmt.Fprintf(w, "\n--- Dependency Availability (%s) ---\n", capitalizeFirst(string(res.CalculationType)))
+		fmt.Fprintf(w, "Components: %d\n", res.ComponentCount)
+		fmt.Fprintf(w, "------------------------------------\n")
+		fmt.Fprintf(w, "Total Availability: %.4f%%\n", res.TotalAvailability)
 		return nil
 	})
 }

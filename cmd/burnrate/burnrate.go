@@ -2,6 +2,7 @@ package burnrate
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -79,51 +80,47 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	return cliutil.PrintResult(cmd, v.GetString("output"), result, func() error {
-
-		fmt.Printf("\n--- Burn Rate Analysis ---\n")
-		fmt.Printf("SLO Target: %.3f%%\n", params.TargetSLO.Value)
-
-		fmt.Printf("Time Window: %s\n", params.TotalWindow)
-
-		fmt.Printf("Total Error Budget: %s\n", result.TotalErrorBudget)
-
-		fmt.Printf("--------------------------\n")
-		fmt.Printf("Budget Consumed: %.2f%% (Time Elapsed: %.2f%%)\n",
+	return cliutil.PrintResult(cmd, v.GetString("output"), result, func(w io.Writer) error {
+		fmt.Fprintf(w, "\n--- Burn Rate Analysis ---\n")
+		fmt.Fprintf(w, "SLO Target: %.3f%%\n", params.TargetSLO.Value)
+		fmt.Fprintf(w, "Time Window: %s\n", params.TotalWindow)
+		fmt.Fprintf(w, "Total Error Budget: %s\n", result.TotalErrorBudget)
+		fmt.Fprintf(w, "--------------------------\n")
+		fmt.Fprintf(w, "Budget Consumed: %.2f%% (Time Elapsed: %.2f%%)\n",
 			result.BudgetConsumed,
 			result.TimeElapsedPercent)
 		if result.BurnRate != nil {
-			fmt.Printf("Burn Rate: %.2fx\n", *result.BurnRate)
+			fmt.Fprintf(w, "Burn Rate: %.2fx\n", *result.BurnRate)
 		} else if result.BurnRateUnbounded {
-			fmt.Println("Burn Rate: Unbounded (instant consumption)")
+			fmt.Fprintln(w, "Burn Rate: Unbounded (instant consumption)")
 		} else {
-			fmt.Println("Burn Rate: 0.00x")
+			fmt.Fprintln(w, "Burn Rate: 0.00x")
 		}
-		fmt.Printf("Budget Remaining: %s\n", result.BudgetRemaining)
+		fmt.Fprintf(w, "Budget Remaining: %s\n", result.BudgetRemaining)
 
 		switch {
 		case result.NoBudgetConsumed:
-			fmt.Println("\nStatus: Excellent! No error budget consumed.")
+			fmt.Fprintln(w, "\nStatus: Excellent! No error budget consumed.")
 		case result.BurnRateUnbounded:
-			fmt.Println("\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
-			fmt.Println("Forecast: Cannot forecast time-to-exhaustion with zero elapsed time.")
+			fmt.Fprintln(w, "\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
+			fmt.Fprintln(w, "Forecast: Cannot forecast time-to-exhaustion with zero elapsed time.")
 		case result.BurnRate != nil && *result.BurnRate >= 14.4:
-			fmt.Println("\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
-			fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
+			fmt.Fprintln(w, "\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
+			fmt.Fprintf(w, "Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
 			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
-			fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
+			fmt.Fprintf(w, "Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
 		case result.BurnRate != nil && *result.BurnRate >= 6.0:
-			fmt.Println("\nStatus: HIGH (Message). Budget is burning significantly faster than expected.")
-			fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
+			fmt.Fprintln(w, "\nStatus: HIGH (Message). Budget is burning significantly faster than expected.")
+			fmt.Fprintf(w, "Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
 			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
-			fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
+			fmt.Fprintf(w, "Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
 		case result.BurnRate != nil && *result.BurnRate > 1.0:
-			fmt.Println("\nStatus: WARNING (Ticket). Budget is burning faster than sustainable.")
-			fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
+			fmt.Fprintln(w, "\nStatus: WARNING (Ticket). Budget is burning faster than sustainable.")
+			fmt.Fprintf(w, "Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
 			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
-			fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
+			fmt.Fprintf(w, "Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
 		default:
-			fmt.Println("\nStatus: Healthy. Budget is being consumed at an acceptable rate.")
+			fmt.Fprintln(w, "\nStatus: Healthy. Budget is being consumed at an acceptable rate.")
 		}
 		return nil
 	})

@@ -2,6 +2,8 @@ package cliutil_test
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"strings"
 	"testing"
 
@@ -51,7 +53,7 @@ func TestPrintResult(t *testing.T) {
 	data := map[string]string{"key": "value"}
 
 	// Test JSON format
-	if err := cliutil.PrintResult(cmd, "json", data, func() error {
+	if err := cliutil.PrintResult(cmd, "json", data, func(w io.Writer) error {
 		t.Fatal("humanFn should not be called when format is json")
 		return nil
 	}); err != nil {
@@ -64,8 +66,9 @@ func TestPrintResult(t *testing.T) {
 
 	// Test Human format
 	humanCalled := false
-	if err := cliutil.PrintResult(cmd, "", data, func() error {
+	if err := cliutil.PrintResult(cmd, "", data, func(w io.Writer) error {
 		humanCalled = true
+		fmt.Fprint(w, "human output")
 		return nil
 	}); err != nil {
 		t.Fatalf("PrintResult(human) failed: %v", err)

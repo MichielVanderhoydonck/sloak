@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: slo-alerts
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: slo-alerts
+      rules:
+        - alert: HighBurnRatePage
+          labels:
+            env: prod
+            service: api
+            severity: page
+          expr: (job:api_errors:rate14m > (14.4 * 0.001) and job:api_errors:rate5m > (14.4 * 0.001))
+          annotations:
+            summary: High burn rate for page alerts
+            description: The page error budget is burning too fast for metric api_errors. Current burn rate exceeds SRE thresholds.
+        - alert: HighBurnRateMessage
+          labels:
+            env: prod
+            service: api
+            severity: message
+          expr: (job:api_errors:rate84m > (6 * 0.001) and job:api_errors:rate7m > (6 * 0.001))
+          annotations:
+            summary: High burn rate for message alerts
+            description: The message error budget is burning too fast for metric api_errors. Current burn rate exceeds SRE thresholds.
+        - alert: HighBurnRateTicket
+          labels:
+            env: prod
+            service: api
+            severity: ticket
+          expr: (job:api_errors:rate1008m > (1 * 0.001) and job:api_errors:rate84m > (1 * 0.001))
+          annotations:
+            summary: High burn rate for ticket alerts
+            description: The ticket error budget is burning too fast for metric api_errors. Current burn rate exceeds SRE thresholds.

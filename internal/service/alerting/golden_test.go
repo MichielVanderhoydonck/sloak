@@ -118,3 +118,58 @@ func TestRenderGoldenFiles(t *testing.T) {
 		})
 	}
 }
+
+func TestRenderGoldenFiles_7dWindow(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, err := common.NewSLOTarget(99.9)
+	if err != nil {
+		t.Fatalf("NewSLOTarget failed: %v", err)
+	}
+
+	params := domain.GenerateParams{
+		TargetSLO:   slo999,
+		TotalWindow: 7 * 24 * time.Hour,
+		Format:      "yaml",
+	}
+
+	config := map[string]any{
+		"metric_name": "api_errors",
+		"namespace":   "monitoring",
+		"rule_labels": map[string]any{
+			"env":     "prod",
+			"service": "api",
+		},
+		"meta_labels": map[string]any{
+			"release": "prometheus",
+		},
+	}
+
+	tmplContent, err := templates.GetTemplate("prometheus-operator")
+	if err != nil {
+		t.Fatalf("GetTemplate failed: %v", err)
+	}
+
+	rendered, err := svc.RenderTemplate(params, config, tmplContent)
+	if err != nil {
+		t.Fatalf("RenderTemplate failed: %v", err)
+	}
+
+	goldenPath := filepath.Clean("testdata/prometheus_operator_7d.golden")
+
+	if *updateGolden {
+		if err := os.WriteFile(goldenPath, []byte(rendered), 0644); err != nil {
+			t.Fatalf("failed to update golden file %q: %v", goldenPath, err)
+		}
+		t.Logf("Updated golden file: %s", goldenPath)
+		return
+	}
+
+	expected, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatalf("failed to read golden file %q (run with -update to create): %v", goldenPath, err)
+	}
+
+	if rendered != string(expected) {
+		t.Errorf("rendered output does not match golden file %q\n--- Expected:\n%s\n--- Got:\n%s", goldenPath, string(expected), rendered)
+	}
+}

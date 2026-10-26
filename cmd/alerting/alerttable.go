@@ -2,7 +2,7 @@ package alerting
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -59,11 +59,11 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) error {
 		return fmt.Errorf("generating table: %w", err)
 	}
 
-	return cliutil.PrintResult(cmd, v.GetString("output"), res, func() error {
-		fmt.Printf("\n--- SRE Alerting Table ---\n")
-		fmt.Printf("SLO: %.3f%% | Window: %s\n\n", res.TargetSLO.Value, res.TotalWindow.String())
+	return cliutil.PrintResult(cmd, v.GetString("output"), res, func(out io.Writer) error {
+		fmt.Fprintf(out, "\n--- SRE Alerting Table ---\n")
+		fmt.Fprintf(out, "SLO: %.3f%% | Window: %s\n\n", res.TargetSLO.Value, res.TotalWindow.String())
 
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 
 		fmt.Fprintln(w, "THRESHOLD\tSHORT WINDOW\tLONG WINDOW\tBURN RATE\tNOTIFICATION\t")
 		fmt.Fprintln(w, "---------\t------------\t-----------\t---------\t------------\t")
@@ -79,7 +79,7 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) error {
 		}
 
 		w.Flush()
-		fmt.Println()
+		fmt.Fprintln(out)
 		return nil
 	})
 }

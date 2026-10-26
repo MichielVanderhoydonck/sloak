@@ -2,6 +2,7 @@ package errorbudget
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -57,13 +58,13 @@ func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) er
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	return cliutil.PrintResult(cmd, v.GetString("output"), result, func() error {
-		fmt.Printf("\n--- Error Budget Calculation ---\n")
-		fmt.Printf("SLO Target: %.3f%%\n", result.TargetSLO.Value)
-		fmt.Printf("Time Window: %s\n", result.TotalDuration)
-		fmt.Printf("--------------------------------\n")
-		fmt.Printf("Error Budget: %.4f%% of time\n", result.ErrorBudget)
-		fmt.Printf("Allowed Downtime: %s\n", result.AllowedError)
+	return cliutil.PrintResult(cmd, v.GetString("output"), result, func(w io.Writer) error {
+		fmt.Fprintf(w, "\n--- Error Budget Calculation ---\n")
+		fmt.Fprintf(w, "SLO Target: %.3f%%\n", result.TargetSLO.Value)
+		fmt.Fprintf(w, "Time Window: %s\n", result.TotalDuration)
+		fmt.Fprintf(w, "--------------------------------\n")
+		fmt.Fprintf(w, "Error Budget: %.4f%% of time\n", result.ErrorBudget)
+		fmt.Fprintf(w, "Allowed Downtime: %s\n", result.AllowedError)
 		return nil
 	})
 }

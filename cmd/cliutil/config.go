@@ -13,7 +13,9 @@ import (
 func ScopedConfig(cmd *cobra.Command) (*viper.Viper, error) {
 	v := viper.New()
 	if globalSettings := viper.AllSettings(); len(globalSettings) > 0 {
-		_ = v.MergeConfigMap(globalSettings)
+		if err := v.MergeConfigMap(globalSettings); err != nil {
+			return nil, fmt.Errorf("merging config settings: %w", err)
+		}
 	}
 	v.SetEnvPrefix("SLOAK")
 	v.AutomaticEnv()

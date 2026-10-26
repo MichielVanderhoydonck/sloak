@@ -207,7 +207,7 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loa
 		return fmt.Errorf("generating config: %w", err)
 	}
 
-	fmt.Print(res)
+	fmt.Fprint(cmd.OutOrStdout(), res)
 	return nil
 }
 

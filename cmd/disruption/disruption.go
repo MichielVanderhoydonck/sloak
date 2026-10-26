@@ -2,6 +2,7 @@ package disruption
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -63,21 +64,21 @@ func runDisruptionCmd(cmd *cobra.Command, service domain.Service) error {
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	return cliutil.PrintResult(cmd, v.GetString("output"), res, func() error {
-		fmt.Printf("\n--- Disruption Budget Analysis ---\n")
-		fmt.Printf("SLO Target:       %.3f%%\n", slo.Value)
-		fmt.Printf("Total Budget:     %s\n", res.TotalErrorBudget)
-		fmt.Printf("Cost per Event:   %s\n", params.CostPerEvent)
-		fmt.Println("----------------------------------")
-		fmt.Printf("Max Events Total: %d\n", res.MaxDisruptions)
-		fmt.Printf("Daily Frequency:  %.1f events/day\n", res.DailyDisruptions)
+	return cliutil.PrintResult(cmd, v.GetString("output"), res, func(w io.Writer) error {
+		fmt.Fprintf(w, "\n--- Disruption Budget Analysis ---\n")
+		fmt.Fprintf(w, "SLO Target:       %.3f%%\n", slo.Value)
+		fmt.Fprintf(w, "Total Budget:     %s\n", res.TotalErrorBudget)
+		fmt.Fprintf(w, "Cost per Event:   %s\n", params.CostPerEvent)
+		fmt.Fprintln(w, "----------------------------------")
+		fmt.Fprintf(w, "Max Events Total: %d\n", res.MaxDisruptions)
+		fmt.Fprintf(w, "Daily Frequency:  %.1f events/day\n", res.DailyDisruptions)
 
 		if res.MaxDisruptions < 1 {
-			fmt.Println("\nStatus: BLOCKED. Disruption cost exceeds total budget.")
+			fmt.Fprintln(w, "\nStatus: BLOCKED. Disruption cost exceeds total budget.")
 		} else if res.DailyDisruptions < 1.0 {
-			fmt.Println("\nStatus: RISKY. Budget allows less than 1 event per day.")
+			fmt.Fprintln(w, "\nStatus: RISKY. Budget allows less than 1 event per day.")
 		} else {
-			fmt.Println("\nStatus: SAFE. Budget supports frequent changes.")
+			fmt.Fprintln(w, "\nStatus: SAFE. Budget supports frequent changes.")
 		}
 		return nil
 	})

@@ -2,6 +2,7 @@ package convert
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -73,15 +74,15 @@ func runConvertCmd(cmd *cobra.Command, service domain.Service) error {
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	return cliutil.PrintResult(cmd, v.GetString("output"), res, func() error {
-		fmt.Printf("\n--- Availability Conversion ---\n")
-		fmt.Printf("Availability: %.5f%%\n", res.AvailabilityPercent)
-		fmt.Printf("--------------------------------\n")
-		fmt.Printf("Daily Allowed:     %s\n", res.DailyDowntime)
-		fmt.Printf("Weekly Allowed:    %s\n", res.WeeklyDowntime)
-		fmt.Printf("Monthly (30d):     %s\n", res.MonthlyDowntime)
-		fmt.Printf("Quarterly (90d):   %s\n", res.QuarterlyDowntime)
-		fmt.Printf("Yearly (365d):     %s\n", res.YearlyDowntime)
+	return cliutil.PrintResult(cmd, v.GetString("output"), res, func(w io.Writer) error {
+		fmt.Fprintf(w, "\n--- Availability Conversion ---\n")
+		fmt.Fprintf(w, "Availability: %.5f%%\n", res.AvailabilityPercent)
+		fmt.Fprintf(w, "--------------------------------\n")
+		fmt.Fprintf(w, "Daily Allowed:     %s\n", res.DailyDowntime)
+		fmt.Fprintf(w, "Weekly Allowed:    %s\n", res.WeeklyDowntime)
+		fmt.Fprintf(w, "Monthly (30d):     %s\n", res.MonthlyDowntime)
+		fmt.Fprintf(w, "Quarterly (90d):   %s\n", res.QuarterlyDowntime)
+		fmt.Fprintf(w, "Yearly (365d):     %s\n", res.YearlyDowntime)
 		return nil
 	})
 }

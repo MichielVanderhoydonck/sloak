@@ -2,6 +2,7 @@ package feasibility
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -56,36 +57,35 @@ func runFeasibilityCmd(cmd *cobra.Command, service domain.Service) error {
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	return cliutil.PrintResult(cmd, v.GetString("output"), res, func() error {
+	return cliutil.PrintResult(cmd, v.GetString("output"), res, func(w io.Writer) error {
+		fmt.Fprintf(w, "\n--- SLO Feasibility Analysis ---\n")
+		fmt.Fprintf(w, "Target SLO:   %.3f%%\n", res.TargetSLO.Value)
+		fmt.Fprintf(w, "Average MTTR: %s\n\n", res.MTTR)
 
-		fmt.Printf("\n--- SLO Feasibility Analysis ---\n")
-		fmt.Printf("Target SLO:   %.3f%%\n", res.TargetSLO.Value)
-		fmt.Printf("Average MTTR: %s\n\n", res.MTTR)
+		fmt.Fprintln(w, "--- Operational Reality ---")
+		fmt.Fprintf(w, "To maintain %.3f%% with a %s response time:\n\n", res.TargetSLO.Value, res.MTTR)
 
-		fmt.Println("--- Operational Reality ---")
-		fmt.Printf("To maintain %.3f%% with a %s response time:\n\n", res.TargetSLO.Value, res.MTTR)
+		fmt.Fprintln(w, "Max Incident Frequency:")
+		fmt.Fprintf(w, "  • Per Year:    %.1f incidents\n", res.IncidentsPerYear)
+		fmt.Fprintf(w, "  • Per Quarter: %.1f incidents\n", res.IncidentsPerQuarter)
+		fmt.Fprintf(w, "  • Per Month:   %.1f incidents\n\n", res.IncidentsPerMonth)
 
-		fmt.Println("Max Incident Frequency:")
-		fmt.Printf("  • Per Year:    %.1f incidents\n", res.IncidentsPerYear)
-		fmt.Printf("  • Per Quarter: %.1f incidents\n", res.IncidentsPerQuarter)
-		fmt.Printf("  • Per Month:   %.1f incidents\n\n", res.IncidentsPerMonth)
-
-		fmt.Println("Required Reliability (MTBF):")
-		fmt.Printf("  • Systems must run for %s without failure.\n\n", res.RequiredMTBF)
+		fmt.Fprintln(w, "Required Reliability (MTBF):")
+		fmt.Fprintf(w, "  • Systems must run for %s without failure.\n\n", res.RequiredMTBF)
 
 		// Simple Status Logic
-		fmt.Print("Status: ")
+		fmt.Fprint(w, "Status: ")
 		if res.IncidentsPerQuarter < 1.0 {
-			fmt.Println("EXTREMELY HARD")
-			fmt.Println("You cannot afford even one major incident per quarter.")
+			fmt.Fprintln(w, "EXTREMELY HARD")
+			fmt.Fprintln(w, "You cannot afford even one major incident per quarter.")
 		} else if res.IncidentsPerQuarter < 3.0 {
-			fmt.Println("CHALLENGING")
-			fmt.Println("Allows ~1 incident per month. Tight but possible.")
+			fmt.Fprintln(w, "CHALLENGING")
+			fmt.Fprintln(w, "Allows ~1 incident per month. Tight but possible.")
 		} else {
-			fmt.Println("REALISTIC")
-			fmt.Println("Allows multiple incidents per quarter.")
+			fmt.Fprintln(w, "REALISTIC")
+			fmt.Fprintln(w, "Allows multiple incidents per quarter.")
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 		return nil
 	})
 }
