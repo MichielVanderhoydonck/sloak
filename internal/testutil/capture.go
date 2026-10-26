@@ -13,7 +13,10 @@ func CaptureOutput(t *testing.T) (*bytes.Buffer, func()) {
 	t.Helper() // Marks this function as a test helper for better failure logs
 
 	old := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
 	os.Stdout = w
 
 	output := new(bytes.Buffer)
@@ -43,7 +46,10 @@ func CaptureStderr(t *testing.T) (*bytes.Buffer, func()) {
 	t.Helper()
 
 	old := os.Stderr
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
 	os.Stderr = w
 
 	output := new(bytes.Buffer)
