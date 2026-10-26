@@ -9,6 +9,7 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/convert"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/convert"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	"github.com/spf13/viper"
 )
 
@@ -25,8 +26,8 @@ func TestConvertCommand(t *testing.T) {
 	viper.Reset()
 	mockRes := domain.ConversionResult{
 		AvailabilityPercent: 99.9,
-		DailyDowntime:       1*time.Minute + 26*time.Second,
-		YearlyDowntime:      8*time.Hour + 45*time.Minute,
+		DailyDowntime:       util.Duration(1*time.Minute + 26*time.Second),
+		YearlyDowntime:      util.Duration(8*time.Hour + 45*time.Minute),
 	}
 
 	svc := &mockService{res: mockRes, err: nil}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/convert"
 	convertSvc "github.com/MichielVanderhoydonck/sloak/internal/service/convert"
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 func TestConvertService(t *testing.T) {
@@ -29,7 +30,7 @@ func TestConvertService(t *testing.T) {
 		}
 
 		// 0.1% of 24h = 86.4s, which rounds to 86s. The current implementation rounds to 1m26s.
-		expectedDowntime := 1*time.Minute + 26*time.Second
+		expectedDowntime := util.Duration(1*time.Minute + 26*time.Second)
 		if res.DailyDowntime != expectedDowntime {
 			t.Errorf("expected daily downtime %v, got %v", expectedDowntime, res.DailyDowntime)
 		}

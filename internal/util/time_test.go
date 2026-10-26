@@ -160,6 +160,21 @@ func TestFormatDuration(t *testing.T) {
 			input:    0,
 			expected: "0s",
 		},
+		{
+			name:     "Multi-day duration (30d)",
+			input:    30 * 24 * time.Hour,
+			expected: "30.0d",
+		},
+		{
+			name:     "Quarterly duration (90d)",
+			input:    90 * 24 * time.Hour,
+			expected: "90.0d",
+		},
+		{
+			name:     "Yearly duration (1y / 365d)",
+			input:    365 * 24 * time.Hour,
+			expected: "1.0y",
+		},
 	}
 
 	for _, tc := range testCases {

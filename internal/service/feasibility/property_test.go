@@ -73,7 +73,7 @@ func TestProperty_FeasibilityMTBFMonotonicity(t *testing.T) {
 	f := func(seed int64) bool {
 		r := rand.New(rand.NewSource(seed))
 
-		slo1 := r.Float64()*45.0 + 50.0 // 50.0 to 95.0
+		slo1 := r.Float64()*45.0 + 50.0      // 50.0 to 95.0
 		slo2 := slo1 + r.Float64()*4.0 + 0.1 // slo2 > slo1
 
 		sloVO1, _ := common.NewSLOTarget(slo1)

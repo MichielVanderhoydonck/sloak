@@ -77,11 +77,11 @@ func runConvertCmd(cmd *cobra.Command, service domain.Service) error {
 		fmt.Printf("\n--- Availability Conversion ---\n")
 		fmt.Printf("Availability: %.5f%%\n", res.AvailabilityPercent)
 		fmt.Printf("--------------------------------\n")
-		fmt.Printf("Daily Allowed:     %s\n", util.FormatDuration(res.DailyDowntime))
-		fmt.Printf("Weekly Allowed:    %s\n", util.FormatDuration(res.WeeklyDowntime))
-		fmt.Printf("Monthly (30d):     %s\n", util.FormatDuration(res.MonthlyDowntime))
-		fmt.Printf("Quarterly (90d):   %s\n", util.FormatDuration(res.QuarterlyDowntime))
-		fmt.Printf("Yearly (365d):     %s\n", util.FormatDuration(res.YearlyDowntime))
+		fmt.Printf("Daily Allowed:     %s\n", res.DailyDowntime)
+		fmt.Printf("Weekly Allowed:    %s\n", res.WeeklyDowntime)
+		fmt.Printf("Monthly (30d):     %s\n", res.MonthlyDowntime)
+		fmt.Printf("Quarterly (90d):   %s\n", res.QuarterlyDowntime)
+		fmt.Printf("Yearly (365d):     %s\n", res.YearlyDowntime)
 		return nil
 	})
 }

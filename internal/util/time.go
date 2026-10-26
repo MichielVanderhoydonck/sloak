@@ -85,11 +85,8 @@ func FormatDuration(d time.Duration) string {
 	}
 
 	hours := d.Hours()
-	if hours >= 24*365*2 { // 2 years or more
+	if hours >= 24*365 { // 1 year or more
 		return fmt.Sprintf("%.1fy", hours/(24*365))
-	}
-	if hours >= 24*60 { // 60 days or more
-		return fmt.Sprintf("%.1fw", hours/(24*7))
 	}
 	if hours >= 24*2 { // 2 days or more
 		return fmt.Sprintf("%.1fd", hours/24)

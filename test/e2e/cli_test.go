@@ -633,6 +633,12 @@ func TestConvertJSONE2E(t *testing.T) {
 	if !strings.Contains(outStr, `"availability_percent": 99.9`) {
 		t.Errorf("expected JSON to contain availability_percent, got: %s", outStr)
 	}
+	if !strings.Contains(outStr, `"daily_downtime": "1m26s"`) {
+		t.Errorf("expected JSON to contain formatted daily_downtime string, got: %s", outStr)
+	}
+	if !strings.Contains(outStr, `"daily_downtime_seconds": 86`) {
+		t.Errorf("expected JSON to contain daily_downtime_seconds, got: %s", outStr)
+	}
 }
 
 func TestFeasibilityZeroMTTRE2E(t *testing.T) {

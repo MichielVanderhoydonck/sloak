@@ -28,7 +28,7 @@ func TestProperty_BurnRateInvariants(t *testing.T) {
 
 		// Random window between 1 day and 90 days
 		totalWindowSecs := float64(r.Int63n(89*86400) + 86400)
-		totalWindow := time.Duration(totalWindowSecs) * time.Second
+		totalWindow := time.Duration(totalWindowSecs * float64(time.Second))
 
 		// Total error budget duration
 		budgetSecs := totalWindowSecs * (1.0 - (sloVal / 100.0))
@@ -40,12 +40,12 @@ func TestProperty_BurnRateInvariants(t *testing.T) {
 		// Pick an elapsed fraction in (0.01, 1.0)
 		elapsedFraction := r.Float64()*0.99 + 0.01
 		elapsedSecs := totalWindowSecs * elapsedFraction
-		timeElapsed := time.Duration(elapsedSecs) * time.Second
+		timeElapsed := time.Duration(elapsedSecs * float64(time.Second))
 
 		// Test Case 1: When consumed fraction == elapsed fraction, burn rate must be ~1.0
 		// consumed = totalBudget * elapsedFraction
 		consumedSecs := budgetSecs * elapsedFraction
-		errorConsumed := time.Duration(consumedSecs) * time.Second
+		errorConsumed := time.Duration(consumedSecs * float64(time.Second))
 
 		res, err := svc.CalculateBurnRate(burnrateDomain.CalculationParams{
 			TargetSLO:     sloVO,

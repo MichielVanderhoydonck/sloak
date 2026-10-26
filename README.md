@@ -236,17 +236,17 @@ sloak calculate errorbudget
 | Command | Key Flags | Description |
 | :--- | :--- | :--- |
 | `calculate errorbudget` | `--slo`, `--window`, `-o` | Total allowed downtime for an SLO and window. |
-| `calculate burnrate` | `--slo`, `--window`, `--elapsed`, `--consumed` | Consumption velocity and forecast time-to-exhaustion. |
-| `calculate feasibility` | `--slo`, `--mttr` | Required MTBF and maximum incident frequency per month/quarter. |
-| `calculate max-disruption` | `--slo`, `--window`, `--cost` | Allowed deployment/restart frequency given disruption cost. |
-| `calculate dependency` | `--components`, `--type` (`serial`\|`parallel`) | Composite availability across multi-tier architectures. |
+| `calculate burnrate` | `--slo`, `--window`, `--elapsed`, `--consumed`, `-o` | Consumption velocity and forecast time-to-exhaustion. |
+| `calculate feasibility` | `--slo`, `--mttr`, `-o` | Required MTBF and maximum incident frequency per month/quarter. |
+| `calculate max-disruption` | `--slo`, `--window`, `--cost`, `-o` | Allowed deployment/restart frequency given disruption cost. |
+| `calculate dependency` | `--components`, `--type` (`serial`\|`parallel`), `-o` | Composite availability across multi-tier architectures. |
 
 ### Conversions & Generation
 | Command | Key Flags | Description |
 | :--- | :--- | :--- |
-| `convert` | `--nines` OR `--downtime`, `--window` | Bidirectional conversion between availability % and allowed downtime. |
+| `convert` | `--nines` OR `--downtime`, `--window`, `-o` | Bidirectional conversion between availability % and allowed downtime. |
 | `generate alert-table` | `--slo`, `--window`, `-o` | Tabular display of Google SRE multi-window alerting thresholds. |
-| `render` | `--template`, `--slo`, `--spec`, `--values`, `--set` | Render observability alerting and SLO rules via CUE templates. |
+| `render` | `--template`, `--slo`, `--spec`, `--values`, `--set`, `-o` / `--format` | Render observability alerting and SLO rules via CUE templates. |
 | `init` | *(None)* | Outputs default `.sloak.yaml` configuration to stdout. |
 
 ---
@@ -254,7 +254,8 @@ sloak calculate errorbudget
 ## 🏗 Architecture & Quality
 
 `sloak` strictly follows **Clean Architecture** principles:
-- **Domain (`internal/domain`)**: Core business rules and interfaces. Pure Go, zero external dependencies.
+- **Domain (`internal/domain`)**: Core business rules, value objects, and interfaces. Pure Go, zero external dependencies.
+- **Adapter (`internal/adapter`)**: Ingestion and mapping of external formats (e.g. OpenSLO SDK) into domain models.
 - **Service (`internal/service`)**: Implementation of calculations and business workflows. Depends only on `Domain`.
 - **CLI Commands (`cmd/`)**: Delivery mechanism. Depends only on `Domain` interfaces; strictly prohibited from importing concrete services.
 - **Composition Root (`cmd/root.go`, `cmd/sloak/main.go`)**: Bootstrap layer where concrete dependencies are injected.

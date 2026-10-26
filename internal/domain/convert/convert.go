@@ -3,6 +3,8 @@ package convert
 import (
 	"errors"
 	"time"
+
+	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type ConversionMode int
@@ -39,12 +41,17 @@ func (p *ConversionParams) Validate() error {
 }
 
 type ConversionResult struct {
-	AvailabilityPercent float64       `json:"availability_percent"`
-	DailyDowntime       time.Duration `json:"daily_downtime"`
-	WeeklyDowntime      time.Duration `json:"weekly_downtime"`
-	MonthlyDowntime     time.Duration `json:"monthly_downtime"`
-	QuarterlyDowntime   time.Duration `json:"quarterly_downtime"`
-	YearlyDowntime      time.Duration `json:"yearly_downtime"`
+	AvailabilityPercent      float64       `json:"availability_percent"`
+	DailyDowntime            util.Duration `json:"daily_downtime"`
+	DailyDowntimeSeconds     float64       `json:"daily_downtime_seconds"`
+	WeeklyDowntime           util.Duration `json:"weekly_downtime"`
+	WeeklyDowntimeSeconds    float64       `json:"weekly_downtime_seconds"`
+	MonthlyDowntime          util.Duration `json:"monthly_downtime"`
+	MonthlyDowntimeSeconds   float64       `json:"monthly_downtime_seconds"`
+	QuarterlyDowntime        util.Duration `json:"quarterly_downtime"`
+	QuarterlyDowntimeSeconds float64       `json:"quarterly_downtime_seconds"`
+	YearlyDowntime           util.Duration `json:"yearly_downtime"`
+	YearlyDowntimeSeconds    float64       `json:"yearly_downtime_seconds"`
 }
 
 type Service interface {
