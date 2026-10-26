@@ -40,3 +40,12 @@ func GetTemplate(name string) (string, error) {
 
 	return "", fmt.Errorf("not a built-in template: %q", name)
 }
+
+// GetSchema returns the shared CUE input and alert schema definition.
+func GetSchema() (string, error) {
+	bytes, err := FS.ReadFile("schema.cue")
+	if err != nil {
+		return "", fmt.Errorf("failed to read embedded schema.cue: %w", err)
+	}
+	return string(bytes), nil
+}

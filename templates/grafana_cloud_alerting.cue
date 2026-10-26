@@ -4,21 +4,6 @@ import (
 	"strings"
 )
 
-#Alert: {
-	long:     string
-	short:    string
-	burn:     float
-	severity: "page" | "message" | "ticket"
-}
-
-#Input: {
-	slo_target:           float
-	error_budget_ratio:   float
-	total_window_seconds: float
-	windows: [...#Alert]
-	config?: {[string]: _}
-}
-
 // Data input
 data: #Input
 

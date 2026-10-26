@@ -15,6 +15,7 @@ import (
 	cueyaml "cuelang.org/go/encoding/yaml"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
+	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
 
 const (
@@ -131,7 +132,8 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 		return "", fmt.Errorf("failed to encode data to CUE: %w", dataValue.Err())
 	}
 
-	tplValue := ctx.CompileString(templateContent)
+	templateToCompile := injectSharedSchema(templateContent)
+	tplValue := ctx.CompileString(templateToCompile)
 	if tplValue.Err() != nil {
 		return "", fmt.Errorf("failed to compile CUE template: %w", tplValue.Err())
 	}
@@ -224,4 +226,31 @@ func formatPrometheusDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", d/time.Minute)
 	}
 	return fmt.Sprintf("%ds", int(d.Seconds()))
+}
+
+func injectSharedSchema(templateContent string) string {
+	if strings.Contains(templateContent, "#Input:") {
+		return templateContent
+	}
+
+	schemaContent, err := templates.GetSchema()
+	if err != nil {
+		return templateContent
+	}
+
+	schemaDef := strings.TrimSpace(strings.TrimPrefix(schemaContent, "package templates"))
+	lines := strings.Split(templateContent, "\n")
+	var out []string
+	injected := false
+	for _, line := range lines {
+		out = append(out, line)
+		if !injected && strings.HasPrefix(strings.TrimSpace(line), "package ") {
+			out = append(out, "\n"+schemaDef+"\n")
+			injected = true
+		}
+	}
+	if !injected {
+		return schemaDef + "\n\n" + templateContent
+	}
+	return strings.Join(out, "\n")
 }

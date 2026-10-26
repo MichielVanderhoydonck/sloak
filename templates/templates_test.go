@@ -1,6 +1,7 @@
 package templates_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/MichielVanderhoydonck/sloak/templates"
@@ -47,5 +48,15 @@ func TestGetTemplate_RejectPathsAndExtensions(t *testing.T) {
 				t.Errorf("expected GetTemplate(%q) to fail, but got nil", name)
 			}
 		})
+	}
+}
+
+func TestGetSchema(t *testing.T) {
+	schema, err := templates.GetSchema()
+	if err != nil {
+		t.Fatalf("expected GetSchema to succeed, got: %v", err)
+	}
+	if !strings.Contains(schema, "#Alert:") || !strings.Contains(schema, "#Input:") {
+		t.Errorf("expected schema to contain #Alert and #Input, got: %s", schema)
 	}
 }
