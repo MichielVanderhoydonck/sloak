@@ -24,7 +24,6 @@ type BurnRateResult struct {
 	TimeToExhaustion        util.Duration `json:"time_to_exhaustion"`
 	TimeToExhaustionSeconds float64       `json:"time_to_exhaustion_seconds"`
 	NoBudgetConsumed        bool          `json:"no_budget_consumed"`
-	IsInfinite              bool          `json:"is_infinite"`
 }
 
 type Service interface {

@@ -37,12 +37,12 @@ func TestProperty_BurnRateInvariants(t *testing.T) {
 			return true
 		}
 
-		// Pick an elapsed fraction in (0.01, 1.0)
-		elapsedFraction := r.Float64()*0.99 + 0.01
+		// Pick an elapsed fraction in (0.0001, 1.0) to include tiny elapsed windows
+		elapsedFraction := r.Float64()*0.9999 + 0.0001
 		elapsedSecs := totalWindowSecs * elapsedFraction
 		timeElapsed := time.Duration(elapsedSecs * float64(time.Second))
 
-		// Test Case 1: When consumed fraction == elapsed fraction, burn rate must be ~1.0
+		// Test Case 1: When consumed fraction == elapsed fraction, burn rate must be 1.00
 		// consumed = totalBudget * elapsedFraction
 		consumedSecs := budgetSecs * elapsedFraction
 		errorConsumed := time.Duration(consumedSecs * float64(time.Second))
@@ -62,7 +62,7 @@ func TestProperty_BurnRateInvariants(t *testing.T) {
 			t.Log("expected non-nil burn rate")
 			return false
 		}
-		if math.Abs(*res.BurnRate-1.0) > 0.05 {
+		if math.Abs(*res.BurnRate-1.0) > 0.01 {
 			t.Logf("expected burn rate ~1.0, got %v (consumedPct=%v, elapsedPct=%v)", *res.BurnRate, res.BudgetConsumed, res.TimeElapsedPercent)
 			return false
 		}

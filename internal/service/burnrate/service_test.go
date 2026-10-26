@@ -121,6 +121,38 @@ func TestBurnRateService(t *testing.T) {
 			expectedInfinite:     false,
 		},
 		{
+			name: "Tiny Elapsed Time (1m elapsed, 1m consumed out of 30d)",
+			params: burnrateDomain.CalculationParams{
+				TargetSLO:     mustNewSLO(t, 99.9),
+				TotalWindow:   util.Duration(30 * 24 * time.Hour),
+				TimeElapsed:   util.Duration(1 * time.Minute),
+				ErrorConsumed: util.Duration(1 * time.Minute),
+			},
+			expectedError:        nil,
+			expectedBurnRate:     floatPtr(1000.0),
+			expectedUnbounded:    false,
+			expectedConsumedPct:  2.3148,
+			expectedRemainingDur: util.Duration((42 * time.Minute) + (12 * time.Second)),
+			expectedTTE:          util.Duration(42*time.Minute + 12*time.Second),
+			expectedInfinite:     false,
+		},
+		{
+			name: "Tiny Elapsed Time Zero Consumed (1m elapsed, 0s consumed out of 30d)",
+			params: burnrateDomain.CalculationParams{
+				TargetSLO:     mustNewSLO(t, 99.9),
+				TotalWindow:   util.Duration(30 * 24 * time.Hour),
+				TimeElapsed:   util.Duration(1 * time.Minute),
+				ErrorConsumed: 0,
+			},
+			expectedError:        nil,
+			expectedBurnRate:     floatPtr(0.0),
+			expectedUnbounded:    false,
+			expectedConsumedPct:  0.0,
+			expectedRemainingDur: util.Duration((43 * time.Minute) + (12 * time.Second)),
+			expectedTTE:          0,
+			expectedInfinite:     true,
+		},
+		{
 			name: "Zero Total Window Error",
 			params: burnrateDomain.CalculationParams{
 				TargetSLO:     mustNewSLO(t, 99.9),
@@ -198,9 +230,6 @@ func TestBurnRateService(t *testing.T) {
 					t.Errorf("expected remaining duration %v, but got %v", tc.expectedRemainingDur, result.BudgetRemaining)
 				}
 
-				if result.IsInfinite != tc.expectedInfinite {
-					t.Errorf("expected IsInfinite %v, got %v", tc.expectedInfinite, result.IsInfinite)
-				}
 				if result.NoBudgetConsumed != tc.expectedInfinite {
 					t.Errorf("expected NoBudgetConsumed %v, got %v", tc.expectedInfinite, result.NoBudgetConsumed)
 				}

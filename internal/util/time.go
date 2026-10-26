@@ -12,8 +12,6 @@ import (
 // Duration is a wrapper around time.Duration that provides better JSON and String formatting.
 type Duration time.Duration
 
-var Inf = math.Inf(1)
-
 func (d Duration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.String())
 }

@@ -44,16 +44,14 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 
 	budgetRemaining := totalBudgetDur - errorConsumed
 	consumedPercent := (errorConsumed.Seconds() / totalBudgetDur.Seconds()) * 100.0
-
-	timeElapsedPercent := 0.0
-	if totalWindow.Seconds() > 0 {
-		timeElapsedPercent = util.RoundValue((timeElapsed.Seconds() / totalWindow.Seconds()) * 100.0)
-	}
+	timeElapsedPercent := (timeElapsed.Seconds() / totalWindow.Seconds()) * 100.0
 
 	var burnRate *float64
 	var burnRateUnbounded bool
-	if timeElapsed.Seconds() > 0 {
-		val := util.RoundValue(consumedPercent / timeElapsedPercent)
+	if timeElapsed > 0 {
+		// Calculate burn rate directly from unrounded ratios: (consumed/budget) / (elapsed/window)
+		rawBurnRate := (errorConsumed.Seconds() / totalBudgetDur.Seconds()) / (timeElapsed.Seconds() / totalWindow.Seconds())
+		val := util.RoundValue(rawBurnRate)
 		burnRate = &val
 	} else {
 		if errorConsumed > 0 {
@@ -69,7 +67,7 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 	if errorConsumed > 0 && timeElapsed.Seconds() > 0 {
 		consumptionRate := errorConsumed.Seconds() / timeElapsed.Seconds()
 		if consumptionRate > 0 {
-			tte = time.Duration(budgetRemaining.Seconds()/consumptionRate) * time.Second
+			tte = time.Duration(math.Round(budgetRemaining.Seconds()/consumptionRate)) * time.Second
 		}
 	}
 
@@ -83,12 +81,11 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 		BudgetRemaining:         util.Duration(budgetRemaining),
 		BudgetRemainingSeconds:  math.Round(budgetRemaining.Seconds()),
 		BudgetConsumed:          util.RoundPercentage(consumedPercent),
-		TimeElapsedPercent:      timeElapsedPercent,
+		TimeElapsedPercent:      util.RoundPercentage(timeElapsedPercent),
 		BurnRate:                burnRate,
 		BurnRateUnbounded:       burnRateUnbounded,
 		TimeToExhaustion:        util.Duration(tte),
 		TimeToExhaustionSeconds: math.Round(tte.Seconds()),
 		NoBudgetConsumed:        errorConsumed == 0,
-		IsInfinite:              errorConsumed == 0,
 	}, nil
 }

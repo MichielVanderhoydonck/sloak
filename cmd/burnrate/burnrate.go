@@ -26,7 +26,7 @@ func NewBurnRateCmd(service burnrateDomain.Service) *cobra.Command {
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "The SLO target percentage (e.g., 99.9)")
 	cmd.Flags().StringP("window", "w", "30d", "The total time window (e.g., 30d)")
-	cmd.Flags().StringP("elapsed", "t", "15d", "Time elapsed since start of the window.")
+	cmd.Flags().StringP("elapsed", "t", "", "Time elapsed since start of the window (defaults to half the window).")
 	cmd.Flags().StringP("consumed", "c", "1h", "Total error time consumed (e.g., 1h, 10m).")
 
 	return cmd
@@ -102,9 +102,12 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 		fmt.Printf("Budget Remaining: %s\n", result.BudgetRemaining)
 
 		switch {
-		case result.NoBudgetConsumed || result.IsInfinite:
+		case result.NoBudgetConsumed:
 			fmt.Println("\nStatus: Excellent! No error budget consumed.")
-		case result.BurnRateUnbounded || (result.BurnRate != nil && *result.BurnRate >= 14.4):
+		case result.BurnRateUnbounded:
+			fmt.Println("\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
+			fmt.Println("Forecast: Cannot forecast time-to-exhaustion with zero elapsed time.")
+		case result.BurnRate != nil && *result.BurnRate >= 14.4:
 			fmt.Println("\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
 			fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
 			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))

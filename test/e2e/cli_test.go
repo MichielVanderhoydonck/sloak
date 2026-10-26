@@ -814,3 +814,47 @@ func TestBurnRateOverspentBudgetE2E(t *testing.T) {
 		t.Errorf("expected budget_consumed_percentage > 100%%, got: %v", res["budget_consumed_percentage"])
 	}
 }
+
+func TestBurnRateTinyElapsedJSONE2E(t *testing.T) {
+	// Case 1: 1m elapsed, 1m consumed on 30d window should produce a finite burn rate (1000.0x) and valid JSON
+	cmd1 := exec.Command(sloakBinaryPath, "calculate", "burnrate",
+		"--slo=99.9",
+		"--window=30d",
+		"--elapsed=1m",
+		"--consumed=1m",
+		"-o", "json",
+	)
+	out1, err := cmd1.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected tiny elapsed burnrate to succeed with json: %v\nOutput: %s", err, string(out1))
+	}
+	var res1 map[string]any
+	if err := json.Unmarshal(out1, &res1); err != nil {
+		t.Fatalf("failed to parse json for tiny elapsed: %v\nOutput: %s", err, string(out1))
+	}
+	burnRate1, ok := res1["burn_rate"].(float64)
+	if !ok || burnRate1 != 1000.0 {
+		t.Errorf("expected burn_rate to be 1000.0, got: %v", res1["burn_rate"])
+	}
+
+	// Case 2: 1m elapsed, 0s consumed on 30d window should produce burn_rate 0.00x, not NaN, and valid JSON
+	cmd2 := exec.Command(sloakBinaryPath, "calculate", "burnrate",
+		"--slo=99.9",
+		"--window=30d",
+		"--elapsed=1m",
+		"--consumed=0s",
+		"-o", "json",
+	)
+	out2, err := cmd2.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected tiny elapsed zero-consumed to succeed: %v\nOutput: %s", err, string(out2))
+	}
+	var res2 map[string]any
+	if err := json.Unmarshal(out2, &res2); err != nil {
+		t.Fatalf("failed to parse json for tiny elapsed zero consumed: %v\nOutput: %s", err, string(out2))
+	}
+	burnRate2, ok := res2["burn_rate"].(float64)
+	if !ok || burnRate2 != 0.0 {
+		t.Errorf("expected burn_rate to be 0.0, got: %v", res2["burn_rate"])
+	}
+}
