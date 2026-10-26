@@ -4,8 +4,7 @@ To validate that sloak generates valid configuration that correctly triggers ale
 ## 1. Start the Lab Environment
 
 Spin up a local cluster and install the standard kube-prometheus stack.
-```Bash
-
+```bash
 minikube start
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm install prometheus prometheus-community/kube-prometheus-stack \
@@ -68,8 +67,7 @@ kubectl apply -f slo-alerts.yaml
 ## 4. Verify in UI
 
 Port-forward the Prometheus UI:
-```Bash
-
+```bash
 kubectl port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090 -n monitoring
 ```
 Visit http://localhost:9090/alerts. You should see HighBurnRatePage, HighBurnRateMessage, and HighBurnRateTicket in the Firing (Red) state.
@@ -81,20 +79,19 @@ Visit http://localhost:9090/alerts. You should see HighBurnRatePage, HighBurnRat
 Grafana Cloud Alerting uses standard Mimir/Loki ruler format rules. Grafana Cloud offers a generous **Free Tier** to host rules.
 
 ## 1. Syntax Validation
-You can validate the generated alerting rules syntax locally using the official `mimirtool` CLI utility without creating an account:
+You can validate the generated alerting rules syntax locally using the official `mimirtool` CLI or containerized `promtool`:
 
 ```bash
 # Generate the rules file
 ./sloak render --template grafana-cloud --slo 99.9 --window 30d --values templates/values.yaml > mimir-alerts.yaml
 
-# Validate syntax (exit code 0 indicates success)
+# Option A: Using local mimirtool CLI
 mimirtool rules check mimir-alerts.yaml
-
-# Lint/format rules (sorts keys alphabetically and formats expressions to a single line)
 mimirtool rules lint mimir-alerts.yaml
-
-# Analyze used metrics (generates metrics-in-ruler.json listing all metric names referenced in the rules)
 mimirtool analyze rule-file mimir-alerts.yaml
+
+# Option B: Using promtool in Docker (no local installation required)
+docker run --rm --entrypoint promtool -v $(pwd)/mimir-alerts.yaml:/etc/prometheus/rules.yaml prom/prometheus:latest check rules /etc/prometheus/rules.yaml
 ```
 
 ## 2. Local Live Testing via Docker
