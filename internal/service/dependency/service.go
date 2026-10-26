@@ -4,6 +4,7 @@ import (
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
+
 type AvailabilityService struct{}
 
 var _ domain.Service = (*AvailabilityService)(nil)

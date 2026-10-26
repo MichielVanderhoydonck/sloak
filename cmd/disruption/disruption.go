@@ -15,11 +15,13 @@ import (
 
 func NewDisruptionCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "max-disruption",
-		Short: "Calculates allowed deployment frequency based on disruption cost.",
-		Long:  `Determines how many disruptive events (e.g. deployments, restarts) fit into the error budget.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			runDisruptionCmd(cmd, service)
+		Use:           "max-disruption",
+		Short:         "Calculates allowed deployment frequency based on disruption cost.",
+		Long:          `Determines how many disruptive events (e.g. deployments, restarts) fit into the error budget.`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runDisruptionCmd(cmd, service)
 		},
 	}
 
@@ -30,18 +32,23 @@ func NewDisruptionCmd(service domain.Service) *cobra.Command {
 	return cmd
 }
 
-func runDisruptionCmd(cmd *cobra.Command, service domain.Service) {
+func runDisruptionCmd(cmd *cobra.Command, service domain.Service) error {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")
 	costStr := viper.GetString("cost")
 
-	window, _ := util.ParseTimeWindow(windowStr)
-	cost, _ := util.ParseTimeWindow(costStr)
+	window, err := util.ParseTimeWindow(windowStr)
+	if err != nil {
+		return fmt.Errorf("parsing window: %w", err)
+	}
+	cost, err := util.ParseTimeWindow(costStr)
+	if err != nil {
+		return fmt.Errorf("parsing cost: %w", err)
+	}
 	slo, err := common.NewSLOTarget(sloFlag)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return err
 	}
 
 	params := domain.CalculationParams{
@@ -52,8 +59,7 @@ func runDisruptionCmd(cmd *cobra.Command, service domain.Service) {
 
 	res, err := service.CalculateCapacity(params)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return fmt.Errorf("calculation error: %w", err)
 	}
 
 	outputFlag := viper.GetString("output")
@@ -61,9 +67,9 @@ func runDisruptionCmd(cmd *cobra.Command, service domain.Service) {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(res); err != nil {
-			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+			return fmt.Errorf("encoding JSON: %w", err)
 		}
-		return
+		return nil
 	}
 
 	fmt.Printf("\n--- Disruption Budget Analysis ---\n")
@@ -81,4 +87,5 @@ func runDisruptionCmd(cmd *cobra.Command, service domain.Service) {
 	} else {
 		fmt.Println("\nStatus: SAFE. Budget supports frequent changes.")
 	}
+	return nil
 }

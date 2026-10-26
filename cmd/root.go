@@ -36,11 +36,13 @@ var rootCmd = &cobra.Command{
 	Short: "SLOAK is a Service Level Objective Army Knife for SRE calculations.",
 	Long: `SLOAK provides a suite of tools for calculating error budgets, 
            SLI attainment, burn rates, and more, following strict SRE principles.`,
+	SilenceErrors: true,
+	SilenceUsage:  true,
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }

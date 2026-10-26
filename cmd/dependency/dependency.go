@@ -15,10 +15,12 @@ import (
 
 func NewDependencyCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "dependency",
-		Short: "Calculates composite availability for serial or parallel dependencies.",
-		Run: func(cmd *cobra.Command, _ []string) {
-			runDependencyCmd(cmd, service)
+		Use:           "dependency",
+		Short:         "Calculates composite availability for serial or parallel dependencies.",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runDependencyCmd(cmd, service)
 		},
 	}
 
@@ -28,10 +30,14 @@ func NewDependencyCmd(service domain.Service) *cobra.Command {
 	return cmd
 }
 
-func runDependencyCmd(cmd *cobra.Command, service domain.Service) {
+func runDependencyCmd(cmd *cobra.Command, service domain.Service) error {
 	viper.BindPFlags(cmd.Flags())
 	compStr := viper.GetString("components")
 	typeStr := viper.GetString("type")
+
+	if strings.TrimSpace(compStr) == "" {
+		return fmt.Errorf("--components is required")
+	}
 
 	strValues := strings.Split(compStr, ",")
 	var components []float64
@@ -42,8 +48,7 @@ func runDependencyCmd(cmd *cobra.Command, service domain.Service) {
 		}
 		val, err := strconv.ParseFloat(s, 64)
 		if err != nil {
-			fmt.Printf("Error parsing component '%s': %v\n", s, err)
-			return
+			return fmt.Errorf("parsing component '%s': %w", s, err)
 		}
 		components = append(components, val)
 	}
@@ -55,8 +60,7 @@ func runDependencyCmd(cmd *cobra.Command, service domain.Service) {
 
 	res, err := service.CalculateCompositeAvailability(params)
 	if err != nil {
-		fmt.Printf("Calculation Error: %v\n", err)
-		return
+		return fmt.Errorf("calculation error: %w", err)
 	}
 
 	outputFlag := viper.GetString("output")
@@ -64,13 +68,14 @@ func runDependencyCmd(cmd *cobra.Command, service domain.Service) {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(res); err != nil {
-			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+			return fmt.Errorf("encoding JSON: %w", err)
 		}
-		return
+		return nil
 	}
 
 	fmt.Printf("\n--- Dependency Availability (%s) ---\n", strings.Title(string(res.CalculationType)))
 	fmt.Printf("Components: %d\n", res.ComponentCount)
 	fmt.Printf("------------------------------------\n")
 	fmt.Printf("Total Availability: %.4f%%\n", res.TotalAvailability)
+	return nil
 }

@@ -16,11 +16,13 @@ import (
 
 func NewAlertTableCmd(service domain.TableGenerator) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "alert-table",
-		Short: "Generates the standard SRE Alerting Table.",
-		Long:  `Generates the Google SRE standard alerting table (Fast/Slow/Sustained burn rates).`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			runAlertRulesCmd(cmd, service)
+		Use:           "alert-table",
+		Short:         "Generates the standard SRE Alerting Table.",
+		Long:          `Generates the Google SRE standard alerting table (Fast/Slow/Sustained burn rates).`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runAlertRulesCmd(cmd, service)
 		},
 	}
 
@@ -30,16 +32,19 @@ func NewAlertTableCmd(service domain.TableGenerator) *cobra.Command {
 	return cmd
 }
 
-func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) {
+func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) error {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")
 
-	totalWindow, _ := util.ParseTimeWindow(windowStr)
+	totalWindow, err := util.ParseTimeWindow(windowStr)
+	if err != nil {
+		return fmt.Errorf("parsing window: %w", err)
+	}
+
 	sloTarget, err := common.NewSLOTarget(sloFlag)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return err
 	}
 
 	params := domain.GenerateParams{
@@ -49,8 +54,7 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) {
 
 	res, err := service.GenerateTable(params)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return fmt.Errorf("generating table: %w", err)
 	}
 
 	outputFlag := viper.GetString("output")
@@ -58,9 +62,9 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(res); err != nil {
-			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+			return fmt.Errorf("encoding JSON: %w", err)
 		}
-		return
+		return nil
 	}
 
 	fmt.Printf("\n--- SRE Alerting Table ---\n")
@@ -83,4 +87,5 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) {
 
 	w.Flush()
 	fmt.Println()
+	return nil
 }

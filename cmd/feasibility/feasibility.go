@@ -15,11 +15,13 @@ import (
 
 func NewFeasibilityCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "feasibility",
-		Short: "Calculates if an SLO is realistic given your MTTR.",
-		Long:  `Analyzes whether your target SLO is mathematically feasible based on your team's average Mean Time To Recover (MTTR).`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			runFeasibilityCmd(cmd, service)
+		Use:           "feasibility",
+		Short:         "Calculates if an SLO is realistic given your MTTR.",
+		Long:          `Analyzes whether your target SLO is mathematically feasible based on your team's average Mean Time To Recover (MTTR).`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runFeasibilityCmd(cmd, service)
 		},
 	}
 
@@ -29,16 +31,18 @@ func NewFeasibilityCmd(service domain.Service) *cobra.Command {
 	return cmd
 }
 
-func runFeasibilityCmd(cmd *cobra.Command, service domain.Service) {
+func runFeasibilityCmd(cmd *cobra.Command, service domain.Service) error {
 	viper.BindPFlags(cmd.Flags())
 	sloFlag := viper.GetFloat64("slo")
 	mttrStr := viper.GetString("mttr")
 
-	mttr, _ := util.ParseTimeWindow(mttrStr)
+	mttr, err := util.ParseTimeWindow(mttrStr)
+	if err != nil {
+		return fmt.Errorf("parsing mttr: %w", err)
+	}
 	slo, err := common.NewSLOTarget(sloFlag)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return err
 	}
 
 	params := domain.FeasibilityParams{
@@ -48,8 +52,7 @@ func runFeasibilityCmd(cmd *cobra.Command, service domain.Service) {
 
 	res, err := service.CalculateFeasibility(params)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return fmt.Errorf("calculation error: %w", err)
 	}
 
 	outputFlag := viper.GetString("output")
@@ -57,9 +60,9 @@ func runFeasibilityCmd(cmd *cobra.Command, service domain.Service) {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(res); err != nil {
-			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+			return fmt.Errorf("encoding JSON: %w", err)
 		}
-		return
+		return nil
 	}
 
 	fmt.Printf("\n--- SLO Feasibility Analysis ---\n")
@@ -90,4 +93,5 @@ func runFeasibilityCmd(cmd *cobra.Command, service domain.Service) {
 		fmt.Println("Allows multiple incidents per quarter.")
 	}
 	fmt.Println()
+	return nil
 }

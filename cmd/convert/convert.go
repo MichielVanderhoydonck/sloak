@@ -12,11 +12,13 @@ import (
 
 func NewConvertCmd(service domain.Service) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "convert",
-		Short: "Converts between Availability % and Downtime Duration.",
-		Long:  `Converts "Nines" (e.g. 99.9%) to allowed downtime per day/month/year, or converts a specific downtime duration back into a percentage.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			runConvertCmd(cmd, service)
+		Use:           "convert",
+		Short:         "Converts between Availability % and Downtime Duration.",
+		Long:          `Converts "Nines" (e.g. 99.9%) to allowed downtime per day/month/year, or converts a specific downtime duration back into a percentage.`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runConvertCmd(cmd, service)
 		},
 	}
 
@@ -27,7 +29,7 @@ func NewConvertCmd(service domain.Service) *cobra.Command {
 	return cmd
 }
 
-func runConvertCmd(cmd *cobra.Command, service domain.Service) {
+func runConvertCmd(cmd *cobra.Command, service domain.Service) error {
 	viper.BindPFlags(cmd.Flags())
 	nines := viper.GetFloat64("nines")
 	downtimeStr := viper.GetString("downtime")
@@ -36,8 +38,7 @@ func runConvertCmd(cmd *cobra.Command, service domain.Service) {
 	var params domain.ConversionParams
 
 	if nines != -1 && downtimeStr != "" {
-		fmt.Println("Error: Please provide EITHER --nines OR --downtime, not both.")
-		return
+		return fmt.Errorf("please provide EITHER --nines OR --downtime, not both")
 	}
 
 	if nines != -1 {
@@ -48,13 +49,11 @@ func runConvertCmd(cmd *cobra.Command, service domain.Service) {
 	} else if downtimeStr != "" {
 		dt, err := util.ParseTimeWindow(downtimeStr)
 		if err != nil {
-			fmt.Printf("Error parsing downtime: %v\n", err)
-			return
+			return fmt.Errorf("parsing downtime: %w", err)
 		}
 		win, err := util.ParseTimeWindow(windowStr)
 		if err != nil {
-			fmt.Printf("Error parsing window: %v\n", err)
-			return
+			return fmt.Errorf("parsing window: %w", err)
 		}
 		params = domain.ConversionParams{
 			Mode:         domain.ModeFromDowntime,
@@ -62,14 +61,12 @@ func runConvertCmd(cmd *cobra.Command, service domain.Service) {
 			CustomWindow: win,
 		}
 	} else {
-		fmt.Println("Error: Must provide either --nines or --downtime")
-		return
+		return fmt.Errorf("must provide either --nines or --downtime")
 	}
 
 	res, err := service.Convert(params)
 	if err != nil {
-		fmt.Printf("Calculation Error: %v\n", err)
-		return
+		return fmt.Errorf("calculation error: %w", err)
 	}
 
 	fmt.Printf("\n--- Availability Conversion ---\n")
@@ -80,4 +77,5 @@ func runConvertCmd(cmd *cobra.Command, service domain.Service) {
 	fmt.Printf("Monthly (30d):     %s\n", util.FormatDuration(res.MonthlyDowntime))
 	fmt.Printf("Quarterly (90d):   %s\n", util.FormatDuration(res.QuarterlyDowntime))
 	fmt.Printf("Yearly (365d):     %s\n", util.FormatDuration(res.YearlyDowntime))
+	return nil
 }

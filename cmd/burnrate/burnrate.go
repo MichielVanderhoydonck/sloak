@@ -16,11 +16,13 @@ import (
 
 func NewBurnRateCmd(service burnrateDomain.Service) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "burnrate",
-		Short: "Calculates the current error budget burn rate (consumption speed).",
-		Long:  `Calculates the current burn rate against the ideal burn rate (1.0). A value > 1.0 indicates overspending.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			runBurnRateCmd(cmd, service)
+		Use:           "burnrate",
+		Short:         "Calculates the current error budget burn rate (consumption speed).",
+		Long:          `Calculates the current burn rate against the ideal burn rate (1.0). A value > 1.0 indicates overspending.`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runBurnRateCmd(cmd, service)
 		},
 	}
 
@@ -32,21 +34,29 @@ func NewBurnRateCmd(service burnrateDomain.Service) *cobra.Command {
 	return cmd
 }
 
-func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) {
+func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 	viper.BindPFlags(cmd.Flags())
 	sloTarget := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")
 	elapsedStr := viper.GetString("elapsed")
 	consumedStr := viper.GetString("consumed")
 
-	totalWindow, _ := util.ParseTimeWindow(windowStr)
-	timeElapsed, _ := util.ParseTimeWindow(elapsedStr)
-	errorConsumed, _ := time.ParseDuration(consumedStr)
+	totalWindow, err := util.ParseTimeWindow(windowStr)
+	if err != nil {
+		return fmt.Errorf("parsing window: %w", err)
+	}
+	timeElapsed, err := util.ParseTimeWindow(elapsedStr)
+	if err != nil {
+		return fmt.Errorf("parsing elapsed: %w", err)
+	}
+	errorConsumed, err := util.ParseTimeWindow(consumedStr)
+	if err != nil {
+		return fmt.Errorf("parsing consumed duration: %w", err)
+	}
 
 	sloTargetVO, err := common.NewSLOTarget(sloTarget)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return err
 	}
 
 	params := burnrateDomain.CalculationParams{
@@ -57,10 +67,8 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) {
 	}
 
 	result, err := service.CalculateBurnRate(params)
-
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Calculation Error: %v\n", err)
-		return
+		return fmt.Errorf("calculation error: %w", err)
 	}
 
 	outputFlag := viper.GetString("output")
@@ -68,9 +76,9 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(result); err != nil {
-			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+			return fmt.Errorf("encoding JSON: %w", err)
 		}
-		return
+		return nil
 	}
 
 	fmt.Printf("\n--- Burn Rate Analysis ---\n")
@@ -97,4 +105,5 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) {
 	} else {
 		fmt.Println("\nStatus: Healthy. Budget is being consumed at an acceptable rate.")
 	}
+	return nil
 }

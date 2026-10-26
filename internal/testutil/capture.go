@@ -36,3 +36,30 @@ func CaptureOutput(t *testing.T) (*bytes.Buffer, func()) {
 
 	return output, cleanup
 }
+
+// CaptureStderr hijacks os.Stderr and returns a buffer and a cleanup function.
+// It handles synchronization to prevent race conditions during test assertions.
+func CaptureStderr(t *testing.T) (*bytes.Buffer, func()) {
+	t.Helper()
+
+	old := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	output := new(bytes.Buffer)
+
+	done := make(chan struct{})
+
+	go func() {
+		io.Copy(output, r)
+		close(done)
+	}()
+
+	cleanup := func() {
+		w.Close()
+		<-done
+		os.Stderr = old
+	}
+
+	return output, cleanup
+}

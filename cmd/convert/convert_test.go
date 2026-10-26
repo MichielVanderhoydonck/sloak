@@ -1,6 +1,7 @@
 package convert_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/convert"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/convert"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
+	"github.com/spf13/viper"
 )
 
 type mockService struct {
@@ -20,6 +22,7 @@ func (m *mockService) Convert(_ domain.ConversionParams) (domain.ConversionResul
 }
 
 func TestConvertCommand(t *testing.T) {
+	viper.Reset()
 	mockRes := domain.ConversionResult{
 		AvailabilityPercent: 99.9,
 		DailyDowntime:       1*time.Minute + 26*time.Second,
@@ -33,9 +36,11 @@ func TestConvertCommand(t *testing.T) {
 	cmd := convert.NewConvertCmd(svc)
 	cmd.SetArgs([]string{"--nines=99.9"})
 
-	cmd.Execute()
-
+	err := cmd.Execute()
 	restore()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	outStr := output.String()
 	if !strings.Contains(outStr, "Availability: 99.90000%") {
@@ -43,5 +48,89 @@ func TestConvertCommand(t *testing.T) {
 	}
 	if !strings.Contains(outStr, "Daily Allowed:     1m26s") {
 		t.Errorf("Missing daily downtime in output: %s", outStr)
+	}
+}
+
+func TestConvertCommand_BothFlagsError(t *testing.T) {
+	viper.Reset()
+	svc := &mockService{}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := convert.NewConvertCmd(svc)
+	cmd.SetArgs([]string{"--nines=99.9", "--downtime=10m"})
+
+	err := cmd.Execute()
+	restore()
+	if err == nil {
+		t.Fatal("expected error when both flags are passed, got nil")
+	}
+
+	outStr := output.String()
+	if outStr != "" {
+		t.Errorf("expected empty stdout on error, got: %q", outStr)
+	}
+}
+
+func TestConvertCommand_NeitherFlagError(t *testing.T) {
+	viper.Reset()
+	svc := &mockService{}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := convert.NewConvertCmd(svc)
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	restore()
+	if err == nil {
+		t.Fatal("expected error when neither flag is passed, got nil")
+	}
+
+	outStr := output.String()
+	if outStr != "" {
+		t.Errorf("expected empty stdout on error, got: %q", outStr)
+	}
+}
+
+func TestConvertCommand_InvalidDowntime(t *testing.T) {
+	viper.Reset()
+	svc := &mockService{}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := convert.NewConvertCmd(svc)
+	cmd.SetArgs([]string{"--downtime=invalid"})
+
+	err := cmd.Execute()
+	restore()
+	if err == nil {
+		t.Fatal("expected error for invalid downtime, got nil")
+	}
+
+	outStr := output.String()
+	if outStr != "" {
+		t.Errorf("expected empty stdout on error, got: %q", outStr)
+	}
+}
+
+func TestConvertCommand_ServiceError(t *testing.T) {
+	viper.Reset()
+	svc := &mockService{err: errors.New("conversion failed")}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := convert.NewConvertCmd(svc)
+	cmd.SetArgs([]string{"--nines=99.9"})
+
+	err := cmd.Execute()
+	restore()
+	if err == nil {
+		t.Fatal("expected error from service failure, got nil")
+	}
+
+	outStr := output.String()
+	if outStr != "" {
+		t.Errorf("expected empty stdout on error, got: %q", outStr)
 	}
 }

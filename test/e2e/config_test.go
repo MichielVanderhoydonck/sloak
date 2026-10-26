@@ -49,7 +49,7 @@ func TestEnvOverrideE2E(t *testing.T) {
 	// Run burnrate calculation using ENV vars
 	cmd := exec.Command(sloakBinaryPath, "calculate", "burnrate", "--consumed", "1h")
 	cmd.Env = append(os.Environ(), "SLOAK_SLO=96.0", "SLOAK_WINDOW=7d")
-	
+
 	output, err := cmd.CombinedOutput()
 	outStr := string(output)
 

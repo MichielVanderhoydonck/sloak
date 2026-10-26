@@ -15,11 +15,13 @@ import (
 
 func NewErrorBudgetCmd(service errorbudgetDomain.Service) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "errorbudget",
-		Short: "Calculates the total error budget (time) for a given SLO.",
-		Long:  `Calculates the allowed failure time based on an SLO percentage and a time window.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			runErrorBudgetCmd(cmd, service)
+		Use:           "errorbudget",
+		Short:         "Calculates the total error budget (time) for a given SLO.",
+		Long:          `Calculates the allowed failure time based on an SLO percentage and a time window.`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runErrorBudgetCmd(cmd, service)
 		},
 	}
 
@@ -29,21 +31,19 @@ func NewErrorBudgetCmd(service errorbudgetDomain.Service) *cobra.Command {
 	return cmd
 }
 
-func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) {
+func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) error {
 	viper.BindPFlags(cmd.Flags())
 	sloTarget := viper.GetFloat64("slo")
 	windowStr := viper.GetString("window")
 
 	timeWindow, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return fmt.Errorf("parsing window: %w", err)
 	}
 
 	sloTargetVO, err := common.NewSLOTarget(sloTarget)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return err
 	}
 
 	params := errorbudgetDomain.CalculationParams{
@@ -52,10 +52,8 @@ func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) {
 	}
 
 	result, err := service.CalculateBudget(params)
-
 	if err != nil {
-		fmt.Printf("Calculation Error: %v\n", err)
-		return
+		return fmt.Errorf("calculation error: %w", err)
 	}
 
 	output := viper.GetString("output")
@@ -63,9 +61,9 @@ func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(result); err != nil {
-			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+			return fmt.Errorf("encoding JSON: %w", err)
 		}
-		return
+		return nil
 	}
 
 	fmt.Printf("\n--- Error Budget Calculation ---\n")
@@ -74,4 +72,5 @@ func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) {
 	fmt.Printf("--------------------------------\n")
 	fmt.Printf("Error Budget: %.4f%% of time\n", result.ErrorBudget)
 	fmt.Printf("Allowed Downtime: %s\n", result.AllowedError)
+	return nil
 }

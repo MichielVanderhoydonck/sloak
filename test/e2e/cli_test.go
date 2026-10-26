@@ -7,6 +7,7 @@
 package e2e
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -274,3 +275,118 @@ spec:
 	}
 }
 
+func TestRenderMissingTemplateFailureE2E(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "render")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected failure exit code when --template is missing, got status 0")
+	}
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		t.Fatalf("expected *exec.ExitError, got %T: %v", err, err)
+	}
+	if exitErr.ExitCode() != 1 {
+		t.Errorf("expected exit code 1, got %d", exitErr.ExitCode())
+	}
+
+	if stdout.Len() != 0 {
+		t.Errorf("expected stdout to be empty on error, got: %q", stdout.String())
+	}
+
+	stderrStr := stderr.String()
+	if !strings.Contains(stderrStr, "Error: --template is required") {
+		t.Errorf("expected stderr to contain 'Error: --template is required', got: %q", stderrStr)
+	}
+}
+
+func TestRenderInvalidTemplateFailureE2E(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "render", "--template=nonexistent_file.cue")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected failure exit code for nonexistent template, got status 0")
+	}
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		t.Fatalf("expected *exec.ExitError, got %T: %v", err, err)
+	}
+	if exitErr.ExitCode() != 1 {
+		t.Errorf("expected exit code 1, got %d", exitErr.ExitCode())
+	}
+
+	if stdout.Len() != 0 {
+		t.Errorf("expected stdout to be empty on error, got: %q", stdout.String())
+	}
+
+	stderrStr := stderr.String()
+	if !strings.Contains(stderrStr, "Error: reading template file") {
+		t.Errorf("expected stderr to contain 'Error: reading template file', got: %q", stderrStr)
+	}
+}
+
+func TestBurnRateInvalidSLOFailureE2E(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "calculate", "burnrate", "--slo=120")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected failure exit code for invalid slo, got status 0")
+	}
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		t.Fatalf("expected *exec.ExitError, got %T: %v", err, err)
+	}
+	if exitErr.ExitCode() != 1 {
+		t.Errorf("expected exit code 1, got %d", exitErr.ExitCode())
+	}
+
+	if stdout.Len() != 0 {
+		t.Errorf("expected stdout to be empty on error, got: %q", stdout.String())
+	}
+
+	stderrStr := stderr.String()
+	if !strings.Contains(stderrStr, "Error: SLO target must be between 0.0 and 100.0") {
+		t.Errorf("expected stderr to contain SLO error, got: %q", stderrStr)
+	}
+}
+
+func TestConvertConflictingFlagsFailureE2E(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "convert", "--nines=99.9", "--downtime=10m")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected failure exit code for conflicting flags, got status 0")
+	}
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		t.Fatalf("expected *exec.ExitError, got %T: %v", err, err)
+	}
+	if exitErr.ExitCode() != 1 {
+		t.Errorf("expected exit code 1, got %d", exitErr.ExitCode())
+	}
+
+	if stdout.Len() != 0 {
+		t.Errorf("expected stdout to be empty on error, got: %q", stdout.String())
+	}
+
+	stderrStr := stderr.String()
+	if !strings.Contains(stderrStr, "Error: please provide EITHER --nines OR --downtime, not both") {
+		t.Errorf("expected stderr to contain conflict error, got: %q", stderrStr)
+	}
+}

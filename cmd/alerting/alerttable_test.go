@@ -1,6 +1,7 @@
 package alerting_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
+	"github.com/spf13/viper"
 )
 
 type mockTableGenerator struct {
@@ -22,6 +24,7 @@ func (m *mockTableGenerator) GenerateTable(_ domain.GenerateParams) (domain.Tabl
 }
 
 func TestAlertRulesCommand(t *testing.T) {
+	viper.Reset()
 	mockRes := domain.TableResult{
 		Alerts: []domain.AlertDefinition{
 			{
@@ -58,8 +61,11 @@ func TestAlertRulesCommand(t *testing.T) {
 		"--window=30d",
 	})
 
-	cmd.Execute()
+	err := cmd.Execute()
 	restore()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	outStr := output.String()
 
@@ -77,5 +83,77 @@ func TestAlertRulesCommand(t *testing.T) {
 	}
 	if !strings.Contains(outStr, "Ticket") {
 		t.Error("Output missing 'Ticket' notification type")
+	}
+}
+
+func TestAlertRulesCommand_InvalidWindow(t *testing.T) {
+	viper.Reset()
+	svc := &mockTableGenerator{}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := alerting.NewAlertTableCmd(svc)
+	cmd.SetArgs([]string{
+		"--slo=99.9",
+		"--window=invalid_window",
+	})
+
+	err := cmd.Execute()
+	restore()
+	if err == nil {
+		t.Fatal("expected error for invalid window, got nil")
+	}
+
+	outStr := output.String()
+	if outStr != "" {
+		t.Errorf("expected empty stdout on error, got: %q", outStr)
+	}
+}
+
+func TestAlertRulesCommand_InvalidSLO(t *testing.T) {
+	viper.Reset()
+	svc := &mockTableGenerator{}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := alerting.NewAlertTableCmd(svc)
+	cmd.SetArgs([]string{
+		"--slo=150.0",
+		"--window=30d",
+	})
+
+	err := cmd.Execute()
+	restore()
+	if err == nil {
+		t.Fatal("expected error for invalid slo, got nil")
+	}
+
+	outStr := output.String()
+	if outStr != "" {
+		t.Errorf("expected empty stdout on error, got: %q", outStr)
+	}
+}
+
+func TestAlertRulesCommand_ServiceError(t *testing.T) {
+	viper.Reset()
+	svc := &mockTableGenerator{err: errors.New("table generation failed")}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := alerting.NewAlertTableCmd(svc)
+	cmd.SetArgs([]string{
+		"--slo=99.9",
+		"--window=30d",
+	})
+
+	err := cmd.Execute()
+	restore()
+	if err == nil {
+		t.Fatal("expected error for service error, got nil")
+	}
+
+	outStr := output.String()
+	if outStr != "" {
+		t.Errorf("expected empty stdout on error, got: %q", outStr)
 	}
 }

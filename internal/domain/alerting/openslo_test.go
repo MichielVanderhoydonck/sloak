@@ -34,9 +34,9 @@ spec:
     - duration: 30d
       isRolling: true
 `,
-			wantErr:    false,
-			wantTarget: 99.9,
-			wantWindow: 30 * 24 * time.Hour,
+			wantErr:     false,
+			wantTarget:  99.9,
+			wantWindow:  30 * 24 * time.Hour,
 			wantSLOName: "billing-success",
 			wantConfig: map[string]any{
 				"metric_name": "billing-success",
@@ -61,9 +61,9 @@ spec:
     - duration: 7d
       isRolling: true
 `,
-			wantErr:    false,
-			wantTarget: 99.5,
-			wantWindow: 7 * 24 * time.Hour,
+			wantErr:     false,
+			wantTarget:  99.5,
+			wantWindow:  7 * 24 * time.Hour,
 			wantSLOName: "latency-slo",
 			wantConfig: map[string]any{
 				"metric_name": "latency-slo",

@@ -1,8 +1,8 @@
 package alerting
 
 import (
-	"maps"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"time"
@@ -19,11 +19,13 @@ import (
 
 func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "render",
-		Short: "Renders observability configuration from BYOT templates.",
-		Long:  `Renders actionable configurations by taking a provided BYOT CUE template and injecting generic SLO math.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			runRenderCmd(cmd, renderService)
+		Use:           "render",
+		Short:         "Renders observability configuration from BYOT templates.",
+		Long:          `Renders actionable configurations by taking a provided BYOT CUE template and injecting generic SLO math.`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runRenderCmd(cmd, renderService)
 		},
 	}
 
@@ -32,23 +34,22 @@ func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 	cmd.Flags().StringP("spec", "f", "", "Path to OpenSLO specification file (overrides --slo and --window)")
 	cmd.Flags().String("values", "", "Path to custom values file (YAML)")
 	cmd.Flags().StringSlice("set", []string{}, "Set individual values (e.g. key=val)")
-	
+
 	cmd.Flags().String("template", "", "Path to a BYOT CUE template file or name of built-in template (required)")
 
 	return cmd
 }
 
-func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) {
+func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) error {
 	viper.BindPFlags(cmd.Flags())
-	
+
 	templatePath := viper.GetString("template")
 	setVals := viper.GetStringSlice("set")
 	valuesFile := viper.GetString("values")
 	specFile := viper.GetString("spec")
 
 	if templatePath == "" {
-		fmt.Println("Error: --template is required")
-		return
+		return fmt.Errorf("--template is required")
 	}
 
 	sloFlag := viper.GetFloat64("slo")
@@ -64,23 +65,20 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) {
 		var metaConfig map[string]any
 		target, totalWindow, _, metaConfig, err = domain.ParseOpenSLO(specFile)
 		if err != nil {
-			fmt.Printf("Error parsing OpenSLO spec: %v\n", err)
-			return
+			return fmt.Errorf("parsing OpenSLO spec: %w", err)
 		}
 		sloVal = target
 		openSLOConfig = metaConfig
 	} else {
 		totalWindow, err = util.ParseTimeWindow(windowStr)
 		if err != nil {
-			fmt.Printf("Error parsing window: %v\n", err)
-			return
+			return fmt.Errorf("parsing window: %w", err)
 		}
 	}
 
 	sloTarget, err := common.NewSLOTarget(sloVal)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+		return err
 	}
 
 	// Build the generic configuration map
@@ -93,12 +91,10 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) {
 	if valuesFile != "" {
 		bytes, err := os.ReadFile(valuesFile)
 		if err != nil {
-			fmt.Printf("Error reading values file: %v\n", err)
-			return
+			return fmt.Errorf("reading values file: %w", err)
 		}
 		if err := yaml.Unmarshal(bytes, &configData); err != nil {
-			fmt.Printf("Error parsing values file: %v\n", err)
-			return
+			return fmt.Errorf("parsing values file: %w", err)
 		}
 	}
 
@@ -118,8 +114,7 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) {
 	} else {
 		bytes, err := os.ReadFile(templatePath)
 		if err != nil {
-			fmt.Printf("Error reading template file: %v\n", err)
-			return
+			return fmt.Errorf("reading template file: %w", err)
 		}
 		templateContent = string(bytes)
 	}
@@ -131,10 +126,9 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) {
 
 	res, err := renderService.RenderTemplate(params, configData, templateContent)
 	if err != nil {
-		fmt.Printf("Error generating config: %v\n", err)
-		return
+		return fmt.Errorf("generating config: %w", err)
 	}
 
 	fmt.Print(res)
+	return nil
 }
-
