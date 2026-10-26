@@ -74,6 +74,11 @@ type SLOSpec struct {
 	Config      map[string]any
 }
 
+// SpecLoader defines the domain contract for loading external SLO specifications.
+type SpecLoader interface {
+	LoadSpec(filePath string) (SLOSpec, error)
+}
+
 // SanitizePrometheusMetricName sanitizes an arbitrary string (such as an OpenSLO DNS-1123 name)
 // so that it is a valid Prometheus metric name matching ^[a-zA-Z_:][a-zA-Z0-9_:]*$.
 func SanitizePrometheusMetricName(name string) string {

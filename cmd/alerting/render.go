@@ -12,14 +12,13 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 
-	openslo "github.com/MichielVanderhoydonck/sloak/internal/adapter/openslo"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
 
-func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
+func NewRenderCmd(renderService domain.TemplateRenderer, loader domain.SpecLoader) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "render",
 		Short:         "Renders observability configuration from BYOT templates.",
@@ -27,7 +26,7 @@ func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runRenderCmd(cmd, renderService)
+			return runRenderCmd(cmd, renderService, loader)
 		},
 	}
 
@@ -44,7 +43,7 @@ func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 	return cmd
 }
 
-func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) error {
+func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loader domain.SpecLoader) error {
 	v, err := cliutil.ScopedConfig(cmd)
 	if err != nil {
 		return err
@@ -74,7 +73,10 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 	var openSLOConfig map[string]any
 
 	if specFile != "" {
-		spec, err := openslo.ParseFile(specFile)
+		if loader == nil {
+			return fmt.Errorf("spec loader is not configured")
+		}
+		spec, err := loader.LoadSpec(specFile)
 		if err != nil {
 			return fmt.Errorf("parsing OpenSLO spec: %w", err)
 		}

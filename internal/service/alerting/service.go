@@ -176,8 +176,17 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 		return "", fmt.Errorf("failed to encode data to CUE: %w", dataValue.Err())
 	}
 
-	templateToCompile := injectSharedSchema(templateContent)
-	tplValue := ctx.CompileString(templateToCompile)
+	schemaContent, err := templates.GetSchema()
+	if err != nil {
+		return "", fmt.Errorf("failed to load shared schema: %w", err)
+	}
+
+	schemaVal := ctx.CompileString(schemaContent)
+	if schemaVal.Err() != nil {
+		return "", fmt.Errorf("failed to compile shared schema: %w", schemaVal.Err())
+	}
+
+	tplValue := ctx.CompileString(templateContent, cue.Scope(schemaVal))
 	if tplValue.Err() != nil {
 		return "", fmt.Errorf("failed to compile CUE template: %w", tplValue.Err())
 	}
@@ -274,52 +283,4 @@ func formatPrometheusDuration(d time.Duration) string {
 		return fmt.Sprintf("%dm", d/time.Minute)
 	}
 	return fmt.Sprintf("%ds", int(d.Seconds()))
-}
-
-func injectSharedSchema(templateContent string) string {
-	if strings.Contains(templateContent, "#Input:") {
-		return templateContent
-	}
-
-	schemaContent, err := templates.GetSchema()
-	if err != nil {
-		return templateContent
-	}
-
-	schemaDef := strings.TrimSpace(strings.TrimPrefix(schemaContent, "package templates"))
-	lines := strings.Split(templateContent, "\n")
-	insertIdx := 0
-	inImportBlock := false
-
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "package ") {
-			insertIdx = i + 1
-			continue
-		}
-		if strings.HasPrefix(trimmed, "import (") {
-			inImportBlock = true
-			continue
-		}
-		if inImportBlock {
-			if strings.HasPrefix(trimmed, ")") {
-				inImportBlock = false
-				insertIdx = i + 1
-			}
-			continue
-		}
-		if strings.HasPrefix(trimmed, "import ") {
-			insertIdx = i + 1
-			continue
-		}
-		if trimmed != "" && !strings.HasPrefix(trimmed, "//") && !strings.HasPrefix(trimmed, "/*") {
-			break
-		}
-	}
-
-	var out []string
-	out = append(out, lines[:insertIdx]...)
-	out = append(out, "\n"+schemaDef+"\n")
-	out = append(out, lines[insertIdx:]...)
-	return strings.Join(out, "\n")
 }

@@ -28,6 +28,8 @@ import (
 
 	feasibilityCmd "github.com/MichielVanderhoydonck/sloak/cmd/feasibility"
 	feasibilityService "github.com/MichielVanderhoydonck/sloak/internal/service/feasibility"
+
+	openslo "github.com/MichielVanderhoydonck/sloak/internal/adapter/openslo"
 )
 
 var (
@@ -73,8 +75,9 @@ func init() {
 	rootCmd.AddCommand(convertCmd.NewConvertCmd(convertService.NewConvertService()))
 
 	alertSvc := alertingService.NewAlertGeneratorService()
+	specLoader := openslo.NewSpecLoader()
 	generateCmd.AddCommand(alertingTableCmd.NewAlertTableCmd(alertSvc))
-	rootCmd.AddCommand(alertingTableCmd.NewRenderCmd(alertSvc))
+	rootCmd.AddCommand(alertingTableCmd.NewRenderCmd(alertSvc, specLoader))
 }
 
 func initConfig() {

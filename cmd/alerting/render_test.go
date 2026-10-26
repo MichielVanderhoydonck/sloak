@@ -6,11 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	"github.com/MichielVanderhoydonck/sloak/internal/testutil"
-	"github.com/spf13/viper"
 )
 
 type mockRenderService struct {
@@ -28,13 +31,26 @@ func (m *mockRenderService) RenderTemplate(_ domain.GenerateParams, cfg map[stri
 	return m.res, m.err
 }
 
+type mockSpecLoader struct {
+	spec domain.SLOSpec
+	err  error
+}
+
+func (m *mockSpecLoader) LoadSpec(_ string) (domain.SLOSpec, error) {
+	return m.spec, m.err
+}
+
+func newTestRenderCmd(svc domain.TemplateRenderer) *cobra.Command {
+	return alerting.NewRenderCmd(svc, &mockSpecLoader{})
+}
+
 func TestRenderCommand_Success(t *testing.T) {
 	viper.Reset()
 	svc := &mockRenderService{res: "apiVersion: monitoring.coreos.com/v1\nkind: PrometheusRule\n"}
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=99.9",
@@ -58,7 +74,7 @@ func TestRenderCommand_MissingTemplate(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--slo=99.9",
 	})
@@ -85,7 +101,7 @@ func TestRenderCommand_NonExistentTemplateFile(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=/nonexistent/path/template.cue",
 		"--slo=99.9",
@@ -113,7 +129,7 @@ func TestRenderCommand_RendererError(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=99.9",
@@ -141,7 +157,7 @@ func TestRenderCommand_InvalidWindow(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--window=invalid_window",
@@ -169,7 +185,7 @@ func TestRenderCommand_InvalidSLO(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=150.0",
@@ -200,7 +216,7 @@ func TestRenderCommand_CustomTemplateTakesPrecedenceOverBuiltIn(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=" + customFile,
 		"--slo=99.9",
@@ -228,7 +244,7 @@ func TestRenderCommand_NonExistentPathDoesNotFallbackToBuiltIn(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=./nonexistent/datadog.cue",
 		"--slo=99.9",
@@ -256,7 +272,7 @@ func TestRenderCommand_UnknownBuiltIn(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=unknown-template-name",
 		"--slo=99.9",
@@ -284,7 +300,7 @@ func TestRenderCommand_SetDottedAndMapFlags(t *testing.T) {
 
 	output, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=99.9",
@@ -332,7 +348,7 @@ func TestRenderCommand_SetJSONFlags(t *testing.T) {
 
 	_, restore := testutil.CaptureOutput(t)
 
-	cmd := alerting.NewRenderCmd(svc)
+	cmd := newTestRenderCmd(svc)
 	cmd.SetArgs([]string{
 		"--template=prometheus-operator",
 		"--slo=99.9",
@@ -356,5 +372,39 @@ func TestRenderCommand_SetJSONFlags(t *testing.T) {
 
 	if svc.receivedConfig["enabled"] != true {
 		t.Errorf("expected enabled to be true, got: %v", svc.receivedConfig["enabled"])
+	}
+}
+
+func TestRenderCommand_WithSpecLoader(t *testing.T) {
+	viper.Reset()
+	svc := &mockRenderService{res: "rendered with spec"}
+	loader := &mockSpecLoader{
+		spec: domain.SLOSpec{
+			TargetSLO:   99.95,
+			TotalWindow: 30 * 24 * time.Hour,
+			Config: map[string]any{
+				"metric_name": "custom_metric",
+			},
+		},
+	}
+
+	cmd := alerting.NewRenderCmd(svc, loader)
+	cmd.SetArgs([]string{
+		"--template=prometheus-operator",
+		"--spec=slo.yaml",
+	})
+
+	output, restore := testutil.CaptureOutput(t)
+	err := cmd.Execute()
+	restore()
+	if err != nil {
+		t.Fatalf("expected command with spec to succeed: %v", err)
+	}
+
+	if svc.receivedConfig["metric_name"] != "custom_metric" {
+		t.Errorf("expected config from spec to be passed, got: %v", svc.receivedConfig)
+	}
+	if !strings.Contains(output.String(), "rendered with spec") {
+		t.Errorf("expected rendered output, got: %s", output.String())
 	}
 }

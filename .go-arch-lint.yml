@@ -62,7 +62,7 @@ deps:
         canUse: [3rd-cue, 3rd-yaml]
 
     CLI:
-        mayDependOn: [CLI, Domain, Adapter, Util, Templates] 
+        mayDependOn: [CLI, Domain, Util, Templates] 
         canUse: [3rd-cobra, 3rd-viper, 3rd-yaml]
 
     CLI-Root:

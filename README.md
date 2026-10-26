@@ -256,8 +256,8 @@ sloak calculate errorbudget
 `sloak` strictly follows **Clean Architecture** principles:
 - **Domain (`internal/domain`)**: Core business rules, value objects, and interfaces. Pure Go, zero external dependencies.
 - **Adapter (`internal/adapter`)**: Ingestion and mapping of external formats (e.g. OpenSLO SDK) into domain models.
-- **Service (`internal/service`)**: Implementation of calculations and business workflows. Depends only on `Domain`.
-- **CLI Commands (`cmd/`)**: Delivery mechanism. Depends only on `Domain` interfaces; strictly prohibited from importing concrete services.
+- **Service (`internal/service`)**: Implementation of calculations and business workflows. Depends on `Domain`, `Util`, and embedded template assets.
+- **CLI Commands (`cmd/`)**: Delivery mechanism. Depends only on `Domain` interfaces; strictly prohibited from importing concrete services or adapters.
 - **Composition Root (`cmd/root.go`, `cmd/sloak/main.go`)**: Bootstrap layer where concrete dependencies are injected.
 
 ### Verifying Architectural Integrity

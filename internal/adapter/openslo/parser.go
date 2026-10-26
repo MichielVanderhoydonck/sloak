@@ -11,6 +11,19 @@ import (
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 )
 
+// OpenSLOLoader implements domain.SpecLoader for OpenSLO definitions.
+type OpenSLOLoader struct{}
+
+// NewSpecLoader returns a new OpenSLO spec loader.
+func NewSpecLoader() domain.SpecLoader {
+	return &OpenSLOLoader{}
+}
+
+// LoadSpec reads and parses an OpenSLO YAML file into a domain SLOSpec.
+func (l *OpenSLOLoader) LoadSpec(filePath string) (domain.SLOSpec, error) {
+	return ParseFile(filePath)
+}
+
 // ParseFile reads and parses an OpenSLO YAML file into a domain SLOSpec.
 func ParseFile(filePath string) (domain.SLOSpec, error) {
 	bytesData, err := os.ReadFile(filePath)
