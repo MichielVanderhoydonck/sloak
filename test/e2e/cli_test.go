@@ -162,7 +162,7 @@ func TestAlertTableE2E(t *testing.T) {
 		t.Errorf("Expected scaled burn rates 14.40x, 6.00x, 1.00x for 7d window, got:\n%s", outStr7d)
 	}
 
-	// Test window under 24h fails
+	// Test window under 7d fails
 	cmdShort := exec.Command(sloakBinaryPath, "generate", "alert-table",
 		"--slo=99.9",
 		"--window=1h",

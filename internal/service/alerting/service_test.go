@@ -127,10 +127,10 @@ func TestGenerateMatrix_Validation(t *testing.T) {
 			errContains: "greater than zero",
 		},
 		{
-			name:        "window under 24h",
+			name:        "window under 7d",
 			slo:         slo99,
-			window:      12 * time.Hour,
-			errContains: "at least 24h",
+			window:      3 * 24 * time.Hour,
+			errContains: "at least 7d",
 		},
 		{
 			name:        "SLO 100 percent",
