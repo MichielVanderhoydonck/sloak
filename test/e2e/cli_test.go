@@ -224,6 +224,22 @@ func TestRenderE2E(t *testing.T) {
 	if !strings.Contains(outStr, "slo-alerts") {
 		t.Errorf("Expected slo-alerts in output, got:\n%s", outStr)
 	}
+
+	apiIdx := strings.Index(outStr, "apiVersion:")
+	kindIdx := strings.Index(outStr, "kind:")
+	metaIdx := strings.Index(outStr, "metadata:")
+	specIdx := strings.Index(outStr, "spec:")
+
+	if apiIdx == -1 || kindIdx == -1 || metaIdx == -1 || specIdx == -1 {
+		t.Fatalf("Missing expected Kubernetes manifest sections, got:\n%s", outStr)
+	}
+	if !(apiIdx < kindIdx && kindIdx < metaIdx && metaIdx < specIdx) {
+		t.Errorf("Expected manifest field ordering apiVersion < kind < metadata < spec, got indices: apiVersion=%d, kind=%d, metadata=%d, spec=%d",
+			apiIdx, kindIdx, metaIdx, specIdx)
+	}
+	if strings.HasPrefix(outStr, "data:") || strings.Contains(outStr, "\ndata:") {
+		t.Errorf("Expected top-level data field to be stripped from rendered output, got:\n%s", outStr)
+	}
 }
 
 func TestRenderBuiltInTemplatesE2E(t *testing.T) {
@@ -232,10 +248,10 @@ func TestRenderBuiltInTemplatesE2E(t *testing.T) {
 		wantString string
 	}{
 		{"prometheus-operator", "apiVersion: monitoring.coreos.com/v1"},
-		{"datadog", "type: metric"},
+		{"datadog", `"type": "metric"`},
 		{"grafana-cloud", "groups:"},
 		{"otel-collector", "connectors:"},
-		{"incident-io", "source_type: custom"},
+		{"incident-io", `"source_type": "custom"`},
 	}
 
 	for _, tt := range templates {
@@ -252,6 +268,48 @@ func TestRenderBuiltInTemplatesE2E(t *testing.T) {
 				t.Errorf("Template %s output missing %q. Got:\n%s", tt.name, tt.wantString, outStr)
 			}
 		})
+	}
+}
+
+func TestRenderFormatAndDatadogTimeframeE2E(t *testing.T) {
+	// 1. Datadog with 7d window -> "7d"
+	cmd7d := exec.Command(sloakBinaryPath, "render", "--template", "datadog", "--window", "7d", "--slo", "99.9")
+	out7d, err := cmd7d.CombinedOutput()
+	if err != nil {
+		t.Fatalf("datadog 7d failed: %v\nOutput: %s", err, string(out7d))
+	}
+	if !strings.Contains(string(out7d), `"timeframe": "7d"`) {
+		t.Errorf("expected 7d timeframe, got:\n%s", string(out7d))
+	}
+
+	// 2. Datadog with 90d window -> "90d"
+	cmd90d := exec.Command(sloakBinaryPath, "render", "--template", "datadog", "--window", "90d", "--slo", "99.9")
+	out90d, err := cmd90d.CombinedOutput()
+	if err != nil {
+		t.Fatalf("datadog 90d failed: %v\nOutput: %s", err, string(out90d))
+	}
+	if !strings.Contains(string(out90d), `"timeframe": "90d"`) {
+		t.Errorf("expected 90d timeframe, got:\n%s", string(out90d))
+	}
+
+	// 3. Datadog explicit YAML format
+	cmdYAML := exec.Command(sloakBinaryPath, "render", "--template", "datadog", "-o", "yaml", "--slo", "99.9")
+	outYAML, err := cmdYAML.CombinedOutput()
+	if err != nil {
+		t.Fatalf("datadog yaml failed: %v\nOutput: %s", err, string(outYAML))
+	}
+	if !strings.Contains(string(outYAML), "type: metric") {
+		t.Errorf("expected YAML output with 'type: metric', got:\n%s", string(outYAML))
+	}
+
+	// 4. Prometheus Operator explicit JSON format
+	cmdJSON := exec.Command(sloakBinaryPath, "render", "--template", "prometheus-operator", "-o", "json", "--slo", "99.9")
+	outJSON, err := cmdJSON.CombinedOutput()
+	if err != nil {
+		t.Fatalf("prometheus-operator json failed: %v\nOutput: %s", err, string(outJSON))
+	}
+	if !strings.Contains(string(outJSON), `"apiVersion": "monitoring.coreos.com/v1"`) {
+		t.Errorf("expected JSON output with 'apiVersion', got:\n%s", string(outJSON))
 	}
 }
 

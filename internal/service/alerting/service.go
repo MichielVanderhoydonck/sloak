@@ -1,6 +1,8 @@
 package alerting
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -8,8 +10,9 @@ import (
 	"time"
 
 	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/cuecontext"
-	"gopkg.in/yaml.v3"
+	cueyaml "cuelang.org/go/encoding/yaml"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 )
@@ -142,16 +145,66 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 		return "", fmt.Errorf("failed to validate CUE result: %w", err)
 	}
 
-	var result map[string]interface{}
-	if err := finalValue.Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to decode CUE result: %w", err)
+	// Filter out the 'data' field while preserving field declaration order
+	syntax := finalValue.Syntax(cue.Final())
+	if file, ok := syntax.(*ast.File); ok {
+		var filtered []ast.Decl
+		for _, decl := range file.Decls {
+			if f, ok := decl.(*ast.Field); ok {
+				if name, _, err := ast.LabelName(f.Label); err == nil && name == "data" {
+					continue
+				}
+			}
+			filtered = append(filtered, decl)
+		}
+		file.Decls = filtered
+	} else if lit, ok := syntax.(*ast.StructLit); ok {
+		var filtered []ast.Decl
+		for _, elt := range lit.Elts {
+			if f, ok := elt.(*ast.Field); ok {
+				if name, _, err := ast.LabelName(f.Label); err == nil && name == "data" {
+					continue
+				}
+			}
+			filtered = append(filtered, elt)
+		}
+		lit.Elts = filtered
 	}
 
-	delete(result, "data")
+	var outputVal cue.Value
+	switch n := syntax.(type) {
+	case *ast.File:
+		outputVal = ctx.BuildFile(n)
+	case *ast.StructLit:
+		outputVal = ctx.BuildExpr(n)
+	default:
+		outputVal = finalValue
+	}
 
-	yamlBytes, err := yaml.Marshal(result)
+	if outputVal.Err() != nil {
+		return "", fmt.Errorf("failed to build output CUE value: %w", outputVal.Err())
+	}
+
+	// Check if JSON format was requested
+	format, _ := config["format"].(string)
+	format = strings.ToLower(strings.TrimSpace(format))
+
+	if format == "json" {
+		jsonBytes, err := outputVal.MarshalJSON()
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+		var pretty bytes.Buffer
+		if err := json.Indent(&pretty, jsonBytes, "", "  "); err == nil {
+			return pretty.String() + "\n", nil
+		}
+		return string(jsonBytes) + "\n", nil
+	}
+
+	// Default to YAML (preserving field order)
+	yamlBytes, err := cueyaml.Encode(outputVal)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal YAML: %w", err)
+		return "", fmt.Errorf("failed to encode YAML: %w", err)
 	}
 
 	return string(yamlBytes), nil

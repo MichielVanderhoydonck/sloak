@@ -26,6 +26,7 @@ var ignoredFlags = map[string]bool{
 	"values":     true,
 	"set":        true,
 	"set-json":   true,
+	"format":     true,
 	"spec":       true,
 }
 

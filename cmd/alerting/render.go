@@ -35,6 +35,7 @@ func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 	cmd.Flags().String("values", "", "Path to custom values file (YAML)")
 	cmd.Flags().StringArray("set", []string{}, "Set individual values (e.g. key=val, dotted.path=val, or map=k1=v1,k2=v2)")
 	cmd.Flags().StringArray("set-json", []string{}, "Set individual JSON/YAML values (e.g. key={\"foo\":\"bar\"})")
+	cmd.Flags().StringP("format", "o", "", "Output format (yaml or json). If not specified, defaults based on template.")
 
 	cmd.Flags().String("template", "", "Path to a BYOT CUE template file or name of built-in template (required)")
 
@@ -130,6 +131,30 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 			setPath(configData, strings.Split(key, "."), cleanYAMLValue(parsedVal))
 		}
 	}
+
+	// 5. Determine output format (yaml or json)
+	formatFlag, _ := cmd.Flags().GetString("format")
+	if formatFlag == "" {
+		formatFlag = viper.GetString("format")
+	}
+	if formatFlag == "" {
+		formatFlag = viper.GetString("output")
+	}
+
+	if formatFlag == "" {
+		tmplLower := strings.ToLower(templatePath)
+		if strings.Contains(tmplLower, "datadog") || strings.Contains(tmplLower, "incident") {
+			formatFlag = "json"
+		} else {
+			formatFlag = "yaml"
+		}
+	}
+
+	formatFlag = strings.ToLower(strings.TrimSpace(formatFlag))
+	if formatFlag != "yaml" && formatFlag != "json" {
+		return fmt.Errorf("invalid format %q: must be yaml or json", formatFlag)
+	}
+	configData["format"] = formatFlag
 
 	// Determine the CUE template content:
 	// 1. If templatePath exists on disk, load it as a custom file (custom templates take precedence).

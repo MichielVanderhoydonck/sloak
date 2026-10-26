@@ -26,6 +26,12 @@ _config: {
 	tags:        *data.config.tags | ["env:prod", "service:my-service"]
 }
 
+_timeframe: *data.config.timeframe | [
+	if data.total_window_seconds <= 604800 { "7d" },
+	if data.total_window_seconds <= 2592000 { "30d" },
+	"90d"
+][0]
+
 // Datadog JSON API / Terraform payload structure
 name:        _config.name
 type:        "metric"
@@ -36,7 +42,7 @@ query: {
 }
 thresholds: [
 	{
-		timeframe: "30d"
+		timeframe: _timeframe
 		target:    data.slo_target
 		warning:   data.slo_target + (100.0 - data.slo_target) * 0.1
 	}

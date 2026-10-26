@@ -74,7 +74,7 @@ _tickets:  #FormatAlerts & {sev: "ticket"}
 apiVersion: "monitoring.coreos.com/v1"
 kind:       "PrometheusRule"
 metadata: {
-	name:      [if _config.meta_labels.name != _|_ { _config.meta_labels.name }, "slo-alerts"][0]
+	name:      *data.config.meta_labels.name | "slo-alerts"
 	namespace: _config.namespace
 	labels:    _config.meta_labels
 }
