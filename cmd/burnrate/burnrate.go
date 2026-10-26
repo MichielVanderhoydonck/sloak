@@ -92,10 +92,16 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 	fmt.Printf("Budget Consumed: %.2f%% (Time Elapsed: %.2f%%)\n",
 		result.BudgetConsumed,
 		(float64(timeElapsed)/float64(totalWindow))*100.0)
-	fmt.Printf("Burn Rate: %.2fx\n", result.BurnRate)
+	if result.BurnRate != nil {
+		fmt.Printf("Burn Rate: %.2fx\n", *result.BurnRate)
+	} else if result.BurnRateUnbounded {
+		fmt.Println("Burn Rate: Unbounded (instant consumption)")
+	} else {
+		fmt.Println("Burn Rate: 0.00x")
+	}
 	fmt.Printf("Budget Remaining: %s\n", result.BudgetRemaining)
 
-	if result.BurnRate > 1.0 {
+	if result.BurnRateUnbounded || (result.BurnRate != nil && *result.BurnRate > 1.0) {
 		fmt.Println("\nStatus: CRITICAL! Budget is burning faster than expected.")
 		fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
 		exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))

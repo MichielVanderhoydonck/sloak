@@ -1,6 +1,7 @@
 package burnrate_test
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
 	"testing"
@@ -24,6 +25,10 @@ func approxEqual(a, b, epsilon float64) bool {
 	return math.Abs(a-b) < epsilon
 }
 
+func floatPtr(v float64) *float64 {
+	return &v
+}
+
 func TestBurnRateService(t *testing.T) {
 	svc := burnrateService.NewBurnRateService()
 
@@ -31,7 +36,8 @@ func TestBurnRateService(t *testing.T) {
 		name                 string
 		params               burnrateDomain.CalculationParams
 		expectedError        error
-		expectedBurnRate     float64
+		expectedBurnRate     *float64
+		expectedUnbounded    bool
 		expectedConsumedPct  float64
 		expectedRemainingDur util.Duration
 		expectedTTE          util.Duration
@@ -46,7 +52,7 @@ func TestBurnRateService(t *testing.T) {
 				ErrorConsumed: util.Duration(30 * time.Minute),
 			},
 			expectedError:        nil,
-			expectedBurnRate:     2.97619,
+			expectedBurnRate:     floatPtr(2.97619),
 			expectedConsumedPct:  69.444,
 			expectedRemainingDur: util.Duration((13 * time.Minute) + (12 * time.Second)),
 			expectedTTE:          util.Duration(73*time.Hour + 55*time.Minute + 12*time.Second),
@@ -61,7 +67,7 @@ func TestBurnRateService(t *testing.T) {
 				ErrorConsumed: util.Duration((21 * time.Minute) + (36 * time.Second)),
 			},
 			expectedError:        nil,
-			expectedBurnRate:     1.0,
+			expectedBurnRate:     floatPtr(1.0),
 			expectedConsumedPct:  50.0,
 			expectedRemainingDur: util.Duration((21 * time.Minute) + (36 * time.Second)),
 			expectedTTE:          util.Duration(15 * 24 * time.Hour),
@@ -72,18 +78,18 @@ func TestBurnRateService(t *testing.T) {
 			params: burnrateDomain.CalculationParams{
 				TargetSLO:     mustNewSLO(t, 99.9),
 				TotalWindow:   util.Duration(30 * 24 * time.Hour),
-				TimeElapsed:   util.Duration(7 * 24 * time.Hour),
+				TimeElapsed:   util.Duration(10 * 24 * time.Hour),
 				ErrorConsumed: 0,
 			},
 			expectedError:        nil,
-			expectedBurnRate:     0.0,
+			expectedBurnRate:     floatPtr(0.0),
 			expectedConsumedPct:  0.0,
 			expectedRemainingDur: util.Duration((43 * time.Minute) + (12 * time.Second)),
 			expectedTTE:          0,
 			expectedInfinite:     true,
 		},
 		{
-			name: "Instant Burn (Infinite)",
+			name: "Instant Burn (Infinite/Unbounded)",
 			params: burnrateDomain.CalculationParams{
 				TargetSLO:     mustNewSLO(t, 99.9),
 				TotalWindow:   util.Duration(30 * 24 * time.Hour),
@@ -91,11 +97,42 @@ func TestBurnRateService(t *testing.T) {
 				ErrorConsumed: util.Duration(1 * time.Minute),
 			},
 			expectedError:        nil,
-			expectedBurnRate:     math.Inf(1),
+			expectedBurnRate:     nil,
+			expectedUnbounded:    true,
 			expectedConsumedPct:  2.31,
 			expectedRemainingDur: util.Duration((42 * time.Minute) + (12 * time.Second)),
 			expectedTTE:          0,
 			expectedInfinite:     false,
+		},
+		{
+			name: "Zero Total Window Error",
+			params: burnrateDomain.CalculationParams{
+				TargetSLO:     mustNewSLO(t, 99.9),
+				TotalWindow:   0,
+				TimeElapsed:   util.Duration(1 * time.Hour),
+				ErrorConsumed: util.Duration(1 * time.Minute),
+			},
+			expectedError: errors.New("total window must be greater than zero"),
+		},
+		{
+			name: "Negative Elapsed Error",
+			params: burnrateDomain.CalculationParams{
+				TargetSLO:     mustNewSLO(t, 99.9),
+				TotalWindow:   util.Duration(30 * 24 * time.Hour),
+				TimeElapsed:   util.Duration(-1 * time.Hour),
+				ErrorConsumed: util.Duration(1 * time.Minute),
+			},
+			expectedError: errors.New("time elapsed cannot be negative"),
+		},
+		{
+			name: "Negative Consumed Error",
+			params: burnrateDomain.CalculationParams{
+				TargetSLO:     mustNewSLO(t, 99.9),
+				TotalWindow:   util.Duration(30 * 24 * time.Hour),
+				TimeElapsed:   util.Duration(1 * time.Hour),
+				ErrorConsumed: util.Duration(-1 * time.Minute),
+			},
+			expectedError: errors.New("error consumed cannot be negative"),
 		},
 	}
 
@@ -104,7 +141,7 @@ func TestBurnRateService(t *testing.T) {
 			result, err := svc.CalculateBurnRate(tc.params)
 
 			if tc.expectedError != nil {
-				if !errors.Is(err, tc.expectedError) {
+				if err == nil || err.Error() != tc.expectedError.Error() {
 					t.Fatalf("expected error '%v', but got '%v'", tc.expectedError, err)
 				}
 			} else {
@@ -112,12 +149,20 @@ func TestBurnRateService(t *testing.T) {
 					t.Fatalf("did not expect an error, but got: %v", err)
 				}
 
-				if math.IsInf(tc.expectedBurnRate, 1) {
-					if !math.IsInf(result.BurnRate, 1) {
-						t.Errorf("expected burn rate +Inf, but got %.2f", result.BurnRate)
+				if tc.expectedBurnRate == nil {
+					if result.BurnRate != nil {
+						t.Errorf("expected burn rate nil (unbounded), but got %.2f", *result.BurnRate)
 					}
-				} else if !approxEqual(result.BurnRate, tc.expectedBurnRate, 0.01) {
-					t.Errorf("expected burn rate %.2f, but got %.2f", tc.expectedBurnRate, result.BurnRate)
+					if !result.BurnRateUnbounded {
+						t.Errorf("expected BurnRateUnbounded true, got false")
+					}
+				} else {
+					if result.BurnRate == nil {
+						t.Fatalf("expected burn rate %.2f, got nil", *tc.expectedBurnRate)
+					}
+					if !approxEqual(*result.BurnRate, *tc.expectedBurnRate, 0.01) {
+						t.Errorf("expected burn rate %.2f, but got %.2f", *tc.expectedBurnRate, *result.BurnRate)
+					}
 				}
 
 				if !approxEqual(result.BudgetConsumed, tc.expectedConsumedPct, 0.01) {
@@ -135,6 +180,15 @@ func TestBurnRateService(t *testing.T) {
 					if result.TimeToExhaustion.String() != tc.expectedTTE.String() {
 						t.Errorf("expected TTE %v, got %v", tc.expectedTTE, result.TimeToExhaustion)
 					}
+				}
+
+				// Verify JSON encoding always succeeds
+				jsonBytes, err := json.Marshal(result)
+				if err != nil {
+					t.Fatalf("JSON encoding failed: %v", err)
+				}
+				if len(jsonBytes) == 0 {
+					t.Fatal("JSON output is empty")
 				}
 			}
 		})

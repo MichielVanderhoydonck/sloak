@@ -1,7 +1,9 @@
 package convert
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -25,6 +27,7 @@ func NewConvertCmd(service domain.Service) *cobra.Command {
 	cmd.Flags().Float64("nines", -1, "Availability Percentage (e.g. 99.95)")
 	cmd.Flags().String("downtime", "", "Downtime duration (e.g. 15m)")
 	cmd.Flags().String("window", "30d", "Window size (only used with --downtime)")
+	cmd.Flags().StringP("output", "o", "", "Output format (e.g., json)")
 
 	return cmd
 }
@@ -67,6 +70,16 @@ func runConvertCmd(cmd *cobra.Command, service domain.Service) error {
 	res, err := service.Convert(params)
 	if err != nil {
 		return fmt.Errorf("calculation error: %w", err)
+	}
+
+	outputFlag := viper.GetString("output")
+	if outputFlag == "json" {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(res); err != nil {
+			return fmt.Errorf("encoding JSON: %w", err)
+		}
+		return nil
 	}
 
 	fmt.Printf("\n--- Availability Conversion ---\n")

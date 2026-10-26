@@ -33,3 +33,18 @@ func TestCalculateFeasibility(t *testing.T) {
 		t.Errorf("Expected MTBF %s, got %s", expectedMTBF, res.RequiredMTBF.String())
 	}
 }
+
+func TestCalculateFeasibility_ZeroMTTR(t *testing.T) {
+	svc := service.NewFeasibilityService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	params := domain.FeasibilityParams{
+		TargetSLO: slo999,
+		MTTR:      0,
+	}
+
+	_, err := svc.CalculateFeasibility(params)
+	if err == nil {
+		t.Fatal("expected error for zero MTTR, got nil")
+	}
+}

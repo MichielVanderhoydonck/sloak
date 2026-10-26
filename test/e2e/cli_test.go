@@ -390,3 +390,78 @@ func TestConvertConflictingFlagsFailureE2E(t *testing.T) {
 		t.Errorf("expected stderr to contain conflict error, got: %q", stderrStr)
 	}
 }
+
+func TestBurnRateUnboundedJSONE2E(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "calculate", "burnrate", "--elapsed=0s", "--consumed=5m", "-o", "json")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		t.Fatalf("expected success exit code for unbounded burnrate json, got error: %v\nStderr: %s", err, stderr.String())
+	}
+
+	outStr := stdout.String()
+	if !strings.Contains(outStr, `"burn_rate": null`) {
+		t.Errorf("expected JSON to contain '\"burn_rate\": null', got: %s", outStr)
+	}
+	if !strings.Contains(outStr, `"burn_rate_unbounded": true`) {
+		t.Errorf("expected JSON to contain '\"burn_rate_unbounded\": true', got: %s", outStr)
+	}
+}
+
+func TestConvertJSONE2E(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "convert", "--nines=99.9", "-o", "json")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		t.Fatalf("expected success for convert -o json, got error: %v\nStderr: %s", err, stderr.String())
+	}
+
+	outStr := stdout.String()
+	if !strings.Contains(outStr, `"availability_percent": 99.9`) {
+		t.Errorf("expected JSON to contain availability_percent, got: %s", outStr)
+	}
+}
+
+func TestFeasibilityZeroMTTRE2E(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "calculate", "feasibility", "--mttr=0s", "-o", "json")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected failure for 0s mttr, got success")
+	}
+
+	if stdout.Len() != 0 {
+		t.Errorf("expected empty stdout on error, got: %s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "Error: calculation error: MTTR must be greater than zero") {
+		t.Errorf("expected MTTR error in stderr, got: %s", stderr.String())
+	}
+}
+
+func TestConvertZeroWindowE2E(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.Command(sloakBinaryPath, "convert", "--downtime=5m", "--window=0s")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected failure for 0s window, got success")
+	}
+
+	if stdout.Len() != 0 {
+		t.Errorf("expected empty stdout on error, got: %s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "Error: calculation error: window must be greater than zero") {
+		t.Errorf("expected window error in stderr, got: %s", stderr.String())
+	}
+}

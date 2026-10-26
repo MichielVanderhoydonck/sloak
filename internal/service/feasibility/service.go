@@ -19,6 +19,10 @@ func NewFeasibilityService() *FeasibilityService {
 
 func (s *FeasibilityService) CalculateFeasibility(params domain.FeasibilityParams) (domain.FeasibilityResult, error) {
 	mttr := time.Duration(params.MTTR)
+	if mttr <= 0 {
+		return domain.FeasibilityResult{}, errors.New("MTTR must be greater than zero")
+	}
+
 	errorBudgetPercent := 1.0 - (params.TargetSLO.Value / 100.0)
 
 	if errorBudgetPercent <= 0 {

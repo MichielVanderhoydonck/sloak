@@ -24,10 +24,11 @@ func (m *mockBurnRateService) CalculateBurnRate(_ burnrateDomain.CalculationPara
 
 func TestBurnRateCommand(t *testing.T) {
 	viper.Reset()
+	br := 2.98
 	mockResult := burnrateDomain.BurnRateResult{
 		TotalErrorBudget: util.Duration((43 * time.Minute) + (12 * time.Second)),
 		BudgetConsumed:   69.44,
-		BurnRate:         2.98,
+		BurnRate:         &br,
 		BudgetRemaining:  util.Duration((13 * time.Minute) + (12 * time.Second)),
 		TimeToExhaustion: util.Duration(73*time.Hour + 55*time.Minute + 12*time.Second),
 	}
@@ -72,9 +73,10 @@ func TestBurnRateCommand(t *testing.T) {
 
 func TestBurnRateCommand_ConsumedWithDayUnit(t *testing.T) {
 	viper.Reset()
+	br := 1.0
 	mockResult := burnrateDomain.BurnRateResult{
 		TotalErrorBudget: util.Duration(43 * time.Minute),
-		BurnRate:         1.0,
+		BurnRate:         &br,
 	}
 	mockSvc := &mockBurnRateService{MockResult: mockResult}
 
@@ -94,6 +96,40 @@ func TestBurnRateCommand_ConsumedWithDayUnit(t *testing.T) {
 		t.Fatalf("expected --consumed=1d to parse successfully, got error: %v", err)
 	}
 	_ = output.String()
+}
+
+func TestBurnRateCommand_Unbounded(t *testing.T) {
+	viper.Reset()
+	mockResult := burnrateDomain.BurnRateResult{
+		TotalErrorBudget:  util.Duration(43 * time.Minute),
+		BurnRate:          nil,
+		BurnRateUnbounded: true,
+	}
+	mockSvc := &mockBurnRateService{MockResult: mockResult}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := burnrate.NewBurnRateCmd(mockSvc)
+	cmd.SetArgs([]string{
+		"--slo=99.9",
+		"--window=30d",
+		"--elapsed=0s",
+		"--consumed=5m",
+	})
+
+	err := cmd.Execute()
+	restore()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	outStr := output.String()
+	if !strings.Contains(outStr, "Burn Rate: Unbounded") {
+		t.Errorf("expected unbounded burn rate in output, got: %s", outStr)
+	}
+	if !strings.Contains(outStr, "Status: CRITICAL!") {
+		t.Errorf("expected CRITICAL status, got: %s", outStr)
+	}
 }
 
 func TestBurnRateCommand_InvalidWindow(t *testing.T) {

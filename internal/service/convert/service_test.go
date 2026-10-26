@@ -68,4 +68,43 @@ func TestConvertService(t *testing.T) {
 			t.Errorf("expected error '%v', got '%v'", expectedErr, err)
 		}
 	})
+
+	t.Run("returns validation error for zero custom window", func(t *testing.T) {
+		params := convert.ConversionParams{
+			Mode:         convert.ModeFromDowntime,
+			Downtime:     1 * time.Hour,
+			CustomWindow: 0,
+		}
+
+		_, err := service.Convert(params)
+		if err == nil {
+			t.Fatal("expected an error for zero custom window, got nil")
+		}
+	})
+
+	t.Run("returns validation error for negative downtime", func(t *testing.T) {
+		params := convert.ConversionParams{
+			Mode:         convert.ModeFromDowntime,
+			Downtime:     -1 * time.Hour,
+			CustomWindow: 24 * time.Hour,
+		}
+
+		_, err := service.Convert(params)
+		if err == nil {
+			t.Fatal("expected an error for negative downtime, got nil")
+		}
+	})
+
+	t.Run("returns validation error when downtime exceeds window", func(t *testing.T) {
+		params := convert.ConversionParams{
+			Mode:         convert.ModeFromDowntime,
+			Downtime:     48 * time.Hour,
+			CustomWindow: 24 * time.Hour,
+		}
+
+		_, err := service.Convert(params)
+		if err == nil {
+			t.Fatal("expected an error when downtime exceeds window, got nil")
+		}
+	})
 }

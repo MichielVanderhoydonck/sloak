@@ -55,6 +55,14 @@ func TestCalculatorService(t *testing.T) {
 			expectedError:    nil,
 			expectedDowntime: util.Duration((8 * time.Hour) + (24 * time.Minute)), // 5% of 168h
 		},
+		{
+			name: "Zero Window Error",
+			params: errorbudgetDomain.CalculationParams{
+				TargetSLO:  mustNewSLO(99.9),
+				TimeWindow: 0,
+			},
+			expectedError: errors.New("time window must be greater than zero"),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -62,7 +70,7 @@ func TestCalculatorService(t *testing.T) {
 			result, err := svc.CalculateBudget(tc.params)
 
 			if tc.expectedError != nil {
-				if !errors.Is(err, tc.expectedError) {
+				if err == nil || err.Error() != tc.expectedError.Error() {
 					t.Fatalf("expected error '%v', but got '%v'", tc.expectedError, err)
 				}
 			} else {

@@ -22,6 +22,9 @@ func (s *CalculatorService) CalculateBudget(params errorbudgetDomain.Calculation
 	if params.TargetSLO.Value < 0 || params.TargetSLO.Value > 100 {
 		return errorbudgetDomain.BudgetResult{}, errors.New("SLO target must be between 0 and 100")
 	}
+	if params.TimeWindow <= 0 {
+		return errorbudgetDomain.BudgetResult{}, errors.New("time window must be greater than zero")
+	}
 
 	errorBudgetPercent := 1.0 - (params.TargetSLO.Value / 100.0)
 	allowedErrorNanos := float64(params.TimeWindow) * errorBudgetPercent
