@@ -33,7 +33,8 @@ func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 	cmd.Flags().StringP("window", "w", "30d", "Total time window")
 	cmd.Flags().StringP("spec", "f", "", "Path to OpenSLO specification file (overrides --slo and --window)")
 	cmd.Flags().String("values", "", "Path to custom values file (YAML)")
-	cmd.Flags().StringSlice("set", []string{}, "Set individual values (e.g. key=val)")
+	cmd.Flags().StringArray("set", []string{}, "Set individual values (e.g. key=val, dotted.path=val, or map=k1=v1,k2=v2)")
+	cmd.Flags().StringArray("set-json", []string{}, "Set individual JSON/YAML values (e.g. key={\"foo\":\"bar\"})")
 
 	cmd.Flags().String("template", "", "Path to a BYOT CUE template file or name of built-in template (required)")
 
@@ -44,7 +45,14 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 	viper.BindPFlags(cmd.Flags())
 
 	templatePath := viper.GetString("template")
-	setVals := viper.GetStringSlice("set")
+	setVals, _ := cmd.Flags().GetStringArray("set")
+	if len(setVals) == 0 {
+		setVals = viper.GetStringSlice("set")
+	}
+	setJSONVals, _ := cmd.Flags().GetStringArray("set-json")
+	if len(setJSONVals) == 0 {
+		setJSONVals = viper.GetStringSlice("set-json")
+	}
 	valuesFile := viper.GetString("values")
 	specFile := viper.GetString("spec")
 
@@ -102,7 +110,24 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 	for _, setVal := range setVals {
 		parts := strings.SplitN(setVal, "=", 2)
 		if len(parts) == 2 {
-			configData[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			parsedVal := parseSetVal(val)
+			setPath(configData, strings.Split(key, "."), parsedVal)
+		}
+	}
+
+	// 4. Read from --set-json flags
+	for _, setJSONVal := range setJSONVals {
+		parts := strings.SplitN(setJSONVal, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			rawVal := strings.TrimSpace(parts[1])
+			var parsedVal any
+			if err := yaml.Unmarshal([]byte(rawVal), &parsedVal); err != nil {
+				parsedVal = rawVal
+			}
+			setPath(configData, strings.Split(key, "."), cleanYAMLValue(parsedVal))
 		}
 	}
 
@@ -138,4 +163,71 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 
 	fmt.Print(res)
 	return nil
+}
+
+func setPath(target map[string]any, path []string, value any) {
+	if len(path) == 0 {
+		return
+	}
+	if len(path) == 1 {
+		if existingMap, ok := target[path[0]].(map[string]any); ok {
+			if newMap, ok := value.(map[string]any); ok {
+				for k, v := range newMap {
+					existingMap[k] = v
+				}
+				return
+			}
+		}
+		target[path[0]] = value
+		return
+	}
+
+	currKey := path[0]
+	subMap, ok := target[currKey].(map[string]any)
+	if !ok {
+		subMap = make(map[string]any)
+		target[currKey] = subMap
+	}
+	setPath(subMap, path[1:], value)
+}
+
+func parseSetVal(val string) any {
+	if !strings.Contains(val, "=") || strings.Contains(val, "://") {
+		return val
+	}
+	pairs := strings.Split(val, ",")
+	m := make(map[string]any)
+	for _, pair := range pairs {
+		k, v, ok := strings.Cut(pair, "=")
+		if !ok || k == "" {
+			return val
+		}
+		m[strings.TrimSpace(k)] = strings.TrimSpace(v)
+	}
+	return m
+}
+
+func cleanYAMLValue(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		res := make(map[string]any, len(val))
+		for k, item := range val {
+			res[k] = cleanYAMLValue(item)
+		}
+		return res
+	case map[any]any:
+		res := make(map[string]any, len(val))
+		for k, item := range val {
+			res[fmt.Sprintf("%v", k)] = cleanYAMLValue(item)
+		}
+		return res
+	case []any:
+		res := make([]any, len(val))
+		for i, item := range val {
+			res[i] = cleanYAMLValue(item)
+		}
+		return res
+	default:
+		return val
+	}
 }

@@ -17,12 +17,14 @@ type mockRenderService struct {
 	res              string
 	err              error
 	receivedTemplate string
+	receivedConfig   map[string]any
 }
 
 var _ domain.TemplateRenderer = (*mockRenderService)(nil)
 
-func (m *mockRenderService) RenderTemplate(_ domain.GenerateParams, _ map[string]any, tpl string) (string, error) {
+func (m *mockRenderService) RenderTemplate(_ domain.GenerateParams, cfg map[string]any, tpl string) (string, error) {
 	m.receivedTemplate = tpl
+	m.receivedConfig = cfg
 	return m.res, m.err
 }
 
@@ -273,5 +275,86 @@ func TestRenderCommand_UnknownBuiltIn(t *testing.T) {
 	outStr := output.String()
 	if outStr != "" {
 		t.Errorf("expected empty stdout on failure, got: %q", outStr)
+	}
+}
+
+func TestRenderCommand_SetDottedAndMapFlags(t *testing.T) {
+	viper.Reset()
+	svc := &mockRenderService{res: "some yaml"}
+
+	output, restore := testutil.CaptureOutput(t)
+
+	cmd := alerting.NewRenderCmd(svc)
+	cmd.SetArgs([]string{
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--set", "metric_name=custom_api",
+		"--set", "rule_labels=service=api,env=prod",
+		"--set", "meta_labels.release=prometheus",
+		"--set", "meta_labels.role=alert-rules",
+	})
+
+	err := cmd.Execute()
+	restore()
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if svc.receivedConfig["metric_name"] != "custom_api" {
+		t.Errorf("expected metric_name to be 'custom_api', got: %v", svc.receivedConfig["metric_name"])
+	}
+
+	ruleLabels, ok := svc.receivedConfig["rule_labels"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected rule_labels to be map[string]any, got: %T (%v)", svc.receivedConfig["rule_labels"], svc.receivedConfig["rule_labels"])
+	}
+	if ruleLabels["service"] != "api" || ruleLabels["env"] != "prod" {
+		t.Errorf("unexpected rule_labels content: %v", ruleLabels)
+	}
+
+	metaLabels, ok := svc.receivedConfig["meta_labels"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected meta_labels to be map[string]any, got: %T (%v)", svc.receivedConfig["meta_labels"], svc.receivedConfig["meta_labels"])
+	}
+	if metaLabels["release"] != "prometheus" || metaLabels["role"] != "alert-rules" {
+		t.Errorf("unexpected meta_labels content: %v", metaLabels)
+	}
+
+	outStr := output.String()
+	if !strings.Contains(outStr, "some yaml") {
+		t.Errorf("expected rendered output, got: %q", outStr)
+	}
+}
+
+func TestRenderCommand_SetJSONFlags(t *testing.T) {
+	viper.Reset()
+	svc := &mockRenderService{res: "some yaml"}
+
+	_, restore := testutil.CaptureOutput(t)
+
+	cmd := alerting.NewRenderCmd(svc)
+	cmd.SetArgs([]string{
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--set-json", `rule_labels={"service":"auth","tier":1}`,
+		"--set-json", `enabled=true`,
+	})
+
+	err := cmd.Execute()
+	restore()
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	ruleLabels, ok := svc.receivedConfig["rule_labels"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected rule_labels to be map[string]any, got: %T (%v)", svc.receivedConfig["rule_labels"], svc.receivedConfig["rule_labels"])
+	}
+	if ruleLabels["service"] != "auth" || ruleLabels["tier"] != 1 {
+		t.Errorf("unexpected rule_labels content: %v", ruleLabels)
+	}
+
+	if svc.receivedConfig["enabled"] != true {
+		t.Errorf("expected enabled to be true, got: %v", svc.receivedConfig["enabled"])
 	}
 }

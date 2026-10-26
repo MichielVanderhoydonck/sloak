@@ -317,6 +317,34 @@ func TestRenderSeverityOverridesE2E(t *testing.T) {
 	}
 }
 
+func TestRenderSetFlagsE2E(t *testing.T) {
+	cmd := exec.Command(sloakBinaryPath, "render",
+		"--template", "prometheus-operator",
+		"--slo=99.9",
+		"--set", "metric_name=api_errors",
+		"--set", "rule_labels=service=api,env=prod",
+		"--set", "meta_labels.release=prometheus",
+	)
+	output, err := cmd.CombinedOutput()
+	outStr := string(output)
+	if err != nil {
+		t.Fatalf("Failed to render with --set flags: %v\nOutput: %s", err, outStr)
+	}
+
+	expectedSubstrings := []string{
+		"job:api_errors:",
+		"service: api",
+		"env: prod",
+		"release: prometheus",
+	}
+
+	for _, s := range expectedSubstrings {
+		if !strings.Contains(outStr, s) {
+			t.Errorf("Expected output to contain %q, but it did not.\nFull output:\n%s", s, outStr)
+		}
+	}
+}
+
 func TestRenderOpenSLOE2E(t *testing.T) {
 	yamlContent := `
 apiVersion: openslo/v1
