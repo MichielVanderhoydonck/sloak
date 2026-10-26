@@ -23,17 +23,18 @@ func (s *FeasibilityService) CalculateFeasibility(params domain.FeasibilityParam
 		return domain.FeasibilityResult{}, errors.New("MTTR must be greater than zero")
 	}
 
-	errorBudgetPercent := 1.0 - (params.TargetSLO.Value / 100.0)
-
-	if errorBudgetPercent <= 0 {
-		return domain.FeasibilityResult{}, errors.New("SLO target 100% leaves no room for incidents; MTBF is infinite")
+	if params.TargetSLO.Value <= 0 || params.TargetSLO.Value >= 100 {
+		return domain.FeasibilityResult{}, errors.New("SLO target must be strictly between 0 and 100")
 	}
 
-	mtbfNanos := mttr.Seconds() / errorBudgetPercent
+	sloRatio := params.TargetSLO.Value / 100.0
+	unavailabilityRatio := 1.0 - sloRatio
 
-	incidentsPerYear := (365 * 24 * time.Hour).Seconds() / (mtbfNanos + mttr.Seconds())
+	yearSeconds := (365 * 24 * time.Hour).Seconds()
+	incidentsPerYear := yearSeconds * unavailabilityRatio / mttr.Seconds()
 
-	requiredMTBF := time.Duration(math.Round(mtbfNanos * float64(time.Second)))
+	mtbfSeconds := mttr.Seconds() * (sloRatio / unavailabilityRatio)
+	requiredMTBF := time.Duration(math.Round(mtbfSeconds * float64(time.Second)))
 
 	return domain.FeasibilityResult{
 		TargetSLO:           params.TargetSLO,
