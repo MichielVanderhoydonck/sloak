@@ -102,6 +102,16 @@ func TestParseTimeWindow(t *testing.T) {
 			input:       "-1.5w",
 			expectError: true,
 		},
+		{
+			name:        "Overflow duration (300y)",
+			input:       "300y",
+			expectError: true,
+		},
+		{
+			name:        "Overflow duration (huge days)",
+			input:       "100000000000d",
+			expectError: true,
+		},
 	}
 
 	for _, tc := range testCases {

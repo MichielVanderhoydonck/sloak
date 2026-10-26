@@ -68,6 +68,9 @@ func ParseTimeWindow(s string) (time.Duration, error) {
 	}
 
 	nanos := number * unitMultiplier
+	if nanos > float64(math.MaxInt64) {
+		return 0, fmt.Errorf("duration %q overflows maximum duration limit", s)
+	}
 	return time.Duration(nanos), nil
 }
 

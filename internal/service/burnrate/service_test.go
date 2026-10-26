@@ -105,6 +105,22 @@ func TestBurnRateService(t *testing.T) {
 			expectedInfinite:     false,
 		},
 		{
+			name: "Overspent Budget (Consumed > Budget, Negative Remaining)",
+			params: burnrateDomain.CalculationParams{
+				TargetSLO:     mustNewSLO(t, 99.9),
+				TotalWindow:   util.Duration(30 * 24 * time.Hour), // budget: 43m12s
+				TimeElapsed:   util.Duration(15 * 24 * time.Hour), // 50% elapsed
+				ErrorConsumed: util.Duration(60 * time.Minute),    // 60m consumed
+			},
+			expectedError:        nil,
+			expectedBurnRate:     floatPtr(2.78),
+			expectedUnbounded:    false,
+			expectedConsumedPct:  138.89,
+			expectedRemainingDur: util.Duration(-(16*time.Minute + 48*time.Second)),
+			expectedTTE:          0,
+			expectedInfinite:     false,
+		},
+		{
 			name: "Zero Total Window Error",
 			params: burnrateDomain.CalculationParams{
 				TargetSLO:     mustNewSLO(t, 99.9),

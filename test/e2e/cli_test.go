@@ -739,6 +739,11 @@ func TestNegativePathCLI_E2E(t *testing.T) {
 			args:          []string{"calculate", "feasibility", "--slo=150"},
 			expectedError: "SLO target must be strictly between 0.0 and 100.0",
 		},
+		{
+			name:          "ErrorBudget_OverflowWindow",
+			args:          []string{"calculate", "errorbudget", "--window=300y"},
+			expectedError: "overflows maximum duration limit",
+		},
 	}
 
 	for _, tc := range tests {
@@ -770,5 +775,36 @@ func TestNegativePathCLI_E2E(t *testing.T) {
 				t.Errorf("expected stderr to contain %q, got: %q", tc.expectedError, stderrStr)
 			}
 		})
+	}
+}
+
+func TestBurnRateOverspentBudgetE2E(t *testing.T) {
+	cmd := exec.Command(sloakBinaryPath, "calculate", "burnrate",
+		"--slo=99.9",
+		"--window=30d",
+		"--elapsed=15d",
+		"--consumed=60m",
+		"-o", "json",
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected overspent burnrate calculation to succeed: %v\nOutput: %s", err, string(output))
+	}
+
+	var res map[string]any
+	if err := json.Unmarshal(output, &res); err != nil {
+		t.Fatalf("failed to parse json output: %v", err)
+	}
+
+	// Budget was 43m12s. Consumed 60m. Budget remaining should be negative: -16m48s.
+	remainingStr, ok := res["budget_remaining"].(string)
+	if !ok || !strings.HasPrefix(remainingStr, "-") {
+		t.Errorf("expected negative budget_remaining string, got: %v", res["budget_remaining"])
+	}
+
+	// Budget consumed should be > 100%
+	consumedPct, ok := res["budget_consumed_percentage"].(float64)
+	if !ok || consumedPct < 100.0 {
+		t.Errorf("expected budget_consumed_percentage > 100%%, got: %v", res["budget_consumed_percentage"])
 	}
 }
