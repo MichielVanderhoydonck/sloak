@@ -1,14 +1,12 @@
 package burnrate
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
+	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/burnrate"
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
@@ -35,11 +33,14 @@ func NewBurnRateCmd(service burnrateDomain.Service) *cobra.Command {
 }
 
 func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
-	viper.BindPFlags(cmd.Flags())
-	sloTarget := viper.GetFloat64("slo")
-	windowStr := viper.GetString("window")
-	elapsedStr := viper.GetString("elapsed")
-	consumedStr := viper.GetString("consumed")
+	v, err := cliutil.ScopedConfig(cmd)
+	if err != nil {
+		return err
+	}
+	sloTarget := v.GetFloat64("slo")
+	windowStr := v.GetString("window")
+	elapsedStr := v.GetString("elapsed")
+	consumedStr := v.GetString("consumed")
 
 	totalWindow, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
@@ -47,7 +48,7 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 	}
 
 	var timeElapsed time.Duration
-	if cmd.Flags().Changed("elapsed") || viper.IsSet("elapsed") {
+	if cmd.Flags().Changed("elapsed") || v.IsSet("elapsed") {
 		timeElapsed, err = util.ParseTimeWindow(elapsedStr)
 		if err != nil {
 			return fmt.Errorf("parsing elapsed: %w", err)
@@ -78,56 +79,49 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	outputFlag := viper.GetString("output")
-	if outputFlag == "json" {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(result); err != nil {
-			return fmt.Errorf("encoding JSON: %w", err)
+	return cliutil.PrintResult(cmd, v.GetString("output"), result, func() error {
+
+		fmt.Printf("\n--- Burn Rate Analysis ---\n")
+		fmt.Printf("SLO Target: %.3f%%\n", params.TargetSLO.Value)
+
+		fmt.Printf("Time Window: %s\n", params.TotalWindow)
+
+		fmt.Printf("Total Error Budget: %s\n", result.TotalErrorBudget)
+
+		fmt.Printf("--------------------------\n")
+		fmt.Printf("Budget Consumed: %.2f%% (Time Elapsed: %.2f%%)\n",
+			result.BudgetConsumed,
+			result.TimeElapsedPercent)
+		if result.BurnRate != nil {
+			fmt.Printf("Burn Rate: %.2fx\n", *result.BurnRate)
+		} else if result.BurnRateUnbounded {
+			fmt.Println("Burn Rate: Unbounded (instant consumption)")
+		} else {
+			fmt.Println("Burn Rate: 0.00x")
+		}
+		fmt.Printf("Budget Remaining: %s\n", result.BudgetRemaining)
+
+		switch {
+		case result.NoBudgetConsumed || result.IsInfinite:
+			fmt.Println("\nStatus: Excellent! No error budget consumed.")
+		case result.BurnRateUnbounded || (result.BurnRate != nil && *result.BurnRate >= 14.4):
+			fmt.Println("\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
+			fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
+			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
+			fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
+		case result.BurnRate != nil && *result.BurnRate >= 6.0:
+			fmt.Println("\nStatus: HIGH (Message). Budget is burning significantly faster than expected.")
+			fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
+			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
+			fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
+		case result.BurnRate != nil && *result.BurnRate > 1.0:
+			fmt.Println("\nStatus: WARNING (Ticket). Budget is burning faster than sustainable.")
+			fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
+			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
+			fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
+		default:
+			fmt.Println("\nStatus: Healthy. Budget is being consumed at an acceptable rate.")
 		}
 		return nil
-	}
-
-	fmt.Printf("\n--- Burn Rate Analysis ---\n")
-	fmt.Printf("SLO Target: %.3f%%\n", params.TargetSLO.Value)
-
-	fmt.Printf("Time Window: %s\n", params.TotalWindow)
-
-	fmt.Printf("Total Error Budget: %s\n", result.TotalErrorBudget)
-
-	fmt.Printf("--------------------------\n")
-	fmt.Printf("Budget Consumed: %.2f%% (Time Elapsed: %.2f%%)\n",
-		result.BudgetConsumed,
-		result.TimeElapsedPercent)
-	if result.BurnRate != nil {
-		fmt.Printf("Burn Rate: %.2fx\n", *result.BurnRate)
-	} else if result.BurnRateUnbounded {
-		fmt.Println("Burn Rate: Unbounded (instant consumption)")
-	} else {
-		fmt.Println("Burn Rate: 0.00x")
-	}
-	fmt.Printf("Budget Remaining: %s\n", result.BudgetRemaining)
-
-	switch {
-	case result.NoBudgetConsumed || result.IsInfinite:
-		fmt.Println("\nStatus: Excellent! No error budget consumed.")
-	case result.BurnRateUnbounded || (result.BurnRate != nil && *result.BurnRate >= 14.4):
-		fmt.Println("\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
-		fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
-		exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
-		fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
-	case result.BurnRate != nil && *result.BurnRate >= 6.0:
-		fmt.Println("\nStatus: HIGH (Message). Budget is burning significantly faster than expected.")
-		fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
-		exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
-		fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
-	case result.BurnRate != nil && *result.BurnRate > 1.0:
-		fmt.Println("\nStatus: WARNING (Ticket). Budget is burning faster than sustainable.")
-		fmt.Printf("Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
-		exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
-		fmt.Printf("Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
-	default:
-		fmt.Println("\nStatus: Healthy. Budget is being consumed at an acceptable rate.")
-	}
-	return nil
+	})
 }

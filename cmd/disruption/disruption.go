@@ -1,13 +1,11 @@
 package disruption
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
+	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/disruption"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
@@ -33,10 +31,13 @@ func NewDisruptionCmd(service domain.Service) *cobra.Command {
 }
 
 func runDisruptionCmd(cmd *cobra.Command, service domain.Service) error {
-	viper.BindPFlags(cmd.Flags())
-	sloFlag := viper.GetFloat64("slo")
-	windowStr := viper.GetString("window")
-	costStr := viper.GetString("cost")
+	v, err := cliutil.ScopedConfig(cmd)
+	if err != nil {
+		return err
+	}
+	sloFlag := v.GetFloat64("slo")
+	windowStr := v.GetString("window")
+	costStr := v.GetString("cost")
 
 	window, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
@@ -62,30 +63,22 @@ func runDisruptionCmd(cmd *cobra.Command, service domain.Service) error {
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	outputFlag := viper.GetString("output")
-	if outputFlag == "json" {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(res); err != nil {
-			return fmt.Errorf("encoding JSON: %w", err)
+	return cliutil.PrintResult(cmd, v.GetString("output"), res, func() error {
+		fmt.Printf("\n--- Disruption Budget Analysis ---\n")
+		fmt.Printf("SLO Target:       %.3f%%\n", slo.Value)
+		fmt.Printf("Total Budget:     %s\n", res.TotalErrorBudget)
+		fmt.Printf("Cost per Event:   %s\n", params.CostPerEvent)
+		fmt.Println("----------------------------------")
+		fmt.Printf("Max Events Total: %d\n", res.MaxDisruptions)
+		fmt.Printf("Daily Frequency:  %.1f events/day\n", res.DailyDisruptions)
+
+		if res.MaxDisruptions < 1 {
+			fmt.Println("\nStatus: BLOCKED. Disruption cost exceeds total budget.")
+		} else if res.DailyDisruptions < 1.0 {
+			fmt.Println("\nStatus: RISKY. Budget allows less than 1 event per day.")
+		} else {
+			fmt.Println("\nStatus: SAFE. Budget supports frequent changes.")
 		}
 		return nil
-	}
-
-	fmt.Printf("\n--- Disruption Budget Analysis ---\n")
-	fmt.Printf("SLO Target:       %.3f%%\n", slo.Value)
-	fmt.Printf("Total Budget:     %s\n", res.TotalErrorBudget)
-	fmt.Printf("Cost per Event:   %s\n", params.CostPerEvent)
-	fmt.Println("----------------------------------")
-	fmt.Printf("Max Events Total: %d\n", res.MaxDisruptions)
-	fmt.Printf("Daily Frequency:  %.1f events/day\n", res.DailyDisruptions)
-
-	if res.MaxDisruptions < 1 {
-		fmt.Println("\nStatus: BLOCKED. Disruption cost exceeds total budget.")
-	} else if res.DailyDisruptions < 1.0 {
-		fmt.Println("\nStatus: RISKY. Budget allows less than 1 event per day.")
-	} else {
-		fmt.Println("\nStatus: SAFE. Budget supports frequent changes.")
-	}
-	return nil
+	})
 }

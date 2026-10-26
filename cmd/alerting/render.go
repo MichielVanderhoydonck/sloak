@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
+
+	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 
 	openslo "github.com/MichielVanderhoydonck/sloak/internal/adapter/openslo"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
@@ -44,31 +45,33 @@ func NewRenderCmd(renderService domain.TemplateRenderer) *cobra.Command {
 }
 
 func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) error {
-	viper.BindPFlags(cmd.Flags())
+	v, err := cliutil.ScopedConfig(cmd)
+	if err != nil {
+		return err
+	}
 
-	templatePath := viper.GetString("template")
+	templatePath := v.GetString("template")
 	setVals, _ := cmd.Flags().GetStringArray("set")
 	if len(setVals) == 0 {
-		setVals = viper.GetStringSlice("set")
+		setVals = v.GetStringSlice("set")
 	}
 	setJSONVals, _ := cmd.Flags().GetStringArray("set-json")
 	if len(setJSONVals) == 0 {
-		setJSONVals = viper.GetStringSlice("set-json")
+		setJSONVals = v.GetStringSlice("set-json")
 	}
-	valuesFile := viper.GetString("values")
-	specFile := viper.GetString("spec")
+	valuesFile := v.GetString("values")
+	specFile := v.GetString("spec")
 
 	if templatePath == "" {
 		return fmt.Errorf("--template is required")
 	}
 
-	sloFlag := viper.GetFloat64("slo")
-	windowStr := viper.GetString("window")
+	sloFlag := v.GetFloat64("slo")
+	windowStr := v.GetString("window")
 
 	var sloVal float64 = sloFlag
 	var totalWindow time.Duration
 	var openSLOConfig map[string]any
-	var err error
 
 	if specFile != "" {
 		spec, err := openslo.ParseFile(specFile)
@@ -135,10 +138,10 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer) err
 	// 5. Determine output format (yaml or json)
 	formatFlag, _ := cmd.Flags().GetString("format")
 	if formatFlag == "" {
-		formatFlag = viper.GetString("format")
+		formatFlag = v.GetString("format")
 	}
 	if formatFlag == "" {
-		formatFlag = viper.GetString("output")
+		formatFlag = v.GetString("output")
 	}
 
 	if formatFlag == "" {

@@ -1,14 +1,13 @@
 package alerting
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
+	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
@@ -33,9 +32,12 @@ func NewAlertTableCmd(service domain.TableGenerator) *cobra.Command {
 }
 
 func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) error {
-	viper.BindPFlags(cmd.Flags())
-	sloFlag := viper.GetFloat64("slo")
-	windowStr := viper.GetString("window")
+	v, err := cliutil.ScopedConfig(cmd)
+	if err != nil {
+		return err
+	}
+	sloFlag := v.GetFloat64("slo")
+	windowStr := v.GetString("window")
 
 	totalWindow, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
@@ -57,35 +59,27 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) error {
 		return fmt.Errorf("generating table: %w", err)
 	}
 
-	outputFlag := viper.GetString("output")
-	if outputFlag == "json" {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(res); err != nil {
-			return fmt.Errorf("encoding JSON: %w", err)
+	return cliutil.PrintResult(cmd, v.GetString("output"), res, func() error {
+		fmt.Printf("\n--- SRE Alerting Table ---\n")
+		fmt.Printf("SLO: %.3f%% | Window: %s\n\n", res.TargetSLO.Value, res.TotalWindow.String())
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+
+		fmt.Fprintln(w, "THRESHOLD\tSHORT WINDOW\tLONG WINDOW\tBURN RATE\tNOTIFICATION\t")
+		fmt.Fprintln(w, "---------\t------------\t-----------\t---------\t------------\t")
+
+		for _, rule := range res.Alerts {
+			fmt.Fprintf(w, "%.0f%%\t%s\t%s\t%.2fx\t%s\t\n",
+				rule.ConsumptionTarget,
+				rule.ShortWindow.String(),
+				rule.LongWindow.String(),
+				rule.BurnRate,
+				rule.NotificationType,
+			)
 		}
+
+		w.Flush()
+		fmt.Println()
 		return nil
-	}
-
-	fmt.Printf("\n--- SRE Alerting Table ---\n")
-	fmt.Printf("SLO: %.3f%% | Window: %s\n\n", res.TargetSLO.Value, res.TotalWindow.String())
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-
-	fmt.Fprintln(w, "THRESHOLD\tSHORT WINDOW\tLONG WINDOW\tBURN RATE\tNOTIFICATION\t")
-	fmt.Fprintln(w, "---------\t------------\t-----------\t---------\t------------\t")
-
-	for _, rule := range res.Alerts {
-		fmt.Fprintf(w, "%.0f%%\t%s\t%s\t%.2fx\t%s\t\n",
-			rule.ConsumptionTarget,
-			rule.ShortWindow.String(),
-			rule.LongWindow.String(),
-			rule.BurnRate,
-			rule.NotificationType,
-		)
-	}
-
-	w.Flush()
-	fmt.Println()
-	return nil
+	})
 }

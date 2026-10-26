@@ -1,15 +1,13 @@
 package dependency
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
+	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
 )
 
@@ -35,9 +33,12 @@ Note: In parallel mode, this calculation assumes independent failures between co
 }
 
 func runDependencyCmd(cmd *cobra.Command, service domain.Service) error {
-	viper.BindPFlags(cmd.Flags())
-	compStr := viper.GetString("components")
-	typeStr := viper.GetString("type")
+	v, err := cliutil.ScopedConfig(cmd)
+	if err != nil {
+		return err
+	}
+	compStr := v.GetString("components")
+	typeStr := v.GetString("type")
 
 	if strings.TrimSpace(compStr) == "" {
 		return fmt.Errorf("--components is required")
@@ -67,21 +68,13 @@ func runDependencyCmd(cmd *cobra.Command, service domain.Service) error {
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	outputFlag := viper.GetString("output")
-	if outputFlag == "json" {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(res); err != nil {
-			return fmt.Errorf("encoding JSON: %w", err)
-		}
+	return cliutil.PrintResult(cmd, v.GetString("output"), res, func() error {
+		fmt.Printf("\n--- Dependency Availability (%s) ---\n", capitalizeFirst(string(res.CalculationType)))
+		fmt.Printf("Components: %d\n", res.ComponentCount)
+		fmt.Printf("------------------------------------\n")
+		fmt.Printf("Total Availability: %.4f%%\n", res.TotalAvailability)
 		return nil
-	}
-
-	fmt.Printf("\n--- Dependency Availability (%s) ---\n", capitalizeFirst(string(res.CalculationType)))
-	fmt.Printf("Components: %d\n", res.ComponentCount)
-	fmt.Printf("------------------------------------\n")
-	fmt.Printf("Total Availability: %.4f%%\n", res.TotalAvailability)
-	return nil
+	})
 }
 
 func capitalizeFirst(s string) string {

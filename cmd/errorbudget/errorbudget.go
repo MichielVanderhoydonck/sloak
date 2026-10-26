@@ -1,13 +1,11 @@
 package errorbudget
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
+	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/errorbudget"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
@@ -32,9 +30,12 @@ func NewErrorBudgetCmd(service errorbudgetDomain.Service) *cobra.Command {
 }
 
 func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) error {
-	viper.BindPFlags(cmd.Flags())
-	sloTarget := viper.GetFloat64("slo")
-	windowStr := viper.GetString("window")
+	v, err := cliutil.ScopedConfig(cmd)
+	if err != nil {
+		return err
+	}
+	sloTarget := v.GetFloat64("slo")
+	windowStr := v.GetString("window")
 
 	timeWindow, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
@@ -56,21 +57,13 @@ func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) er
 		return fmt.Errorf("calculation error: %w", err)
 	}
 
-	output := viper.GetString("output")
-	if output == "json" {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(result); err != nil {
-			return fmt.Errorf("encoding JSON: %w", err)
-		}
+	return cliutil.PrintResult(cmd, v.GetString("output"), result, func() error {
+		fmt.Printf("\n--- Error Budget Calculation ---\n")
+		fmt.Printf("SLO Target: %.3f%%\n", result.TargetSLO.Value)
+		fmt.Printf("Time Window: %s\n", result.TotalDuration)
+		fmt.Printf("--------------------------------\n")
+		fmt.Printf("Error Budget: %.4f%% of time\n", result.ErrorBudget)
+		fmt.Printf("Allowed Downtime: %s\n", result.AllowedError)
 		return nil
-	}
-
-	fmt.Printf("\n--- Error Budget Calculation ---\n")
-	fmt.Printf("SLO Target: %.3f%%\n", result.TargetSLO.Value)
-	fmt.Printf("Time Window: %s\n", result.TotalDuration)
-	fmt.Printf("--------------------------------\n")
-	fmt.Printf("Error Budget: %.4f%% of time\n", result.ErrorBudget)
-	fmt.Printf("Allowed Downtime: %s\n", result.AllowedError)
-	return nil
+	})
 }

@@ -30,7 +30,7 @@ components:
         in: ['internal/service/**']
 
     CLI:
-        in: ['cmd/convert', 'cmd/disruption', 'cmd/errorbudget', 'cmd/burnrate', 'cmd/feasibility', 'cmd/dependency', 'cmd/alerting']
+        in: ['cmd/convert', 'cmd/disruption', 'cmd/errorbudget', 'cmd/burnrate', 'cmd/feasibility', 'cmd/dependency', 'cmd/alerting', 'cmd/cliutil']
 
     CLI-Root:
         in: ['cmd', 'cmd/sloak']
