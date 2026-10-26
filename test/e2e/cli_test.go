@@ -967,3 +967,32 @@ func TestRenderRecordingRulesE2E(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalMonthlyWindowsE2E(t *testing.T) {
+	// Case 1: generate alert-table --window 28d must succeed with canonical 14.4x, 6.0x, 1.0x
+	cmd28d := exec.Command(sloakBinaryPath, "generate", "alert-table", "--slo=99.9", "--window=28d")
+	out28d, err := cmd28d.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected alert-table --window 28d to succeed, got error: %v, output: %s", err, string(out28d))
+	}
+	s28d := string(out28d)
+	if !strings.Contains(s28d, "14.40x") || !strings.Contains(s28d, "6.00x") || !strings.Contains(s28d, "1.00x") {
+		t.Errorf("expected canonical burn rates for 28d, got:\n%s", s28d)
+	}
+
+	// Case 2: render with 4w window
+	cmd4w := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=4w",
+		"--set", "metric_name=api_errors",
+	)
+	out4w, err := cmd4w.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected render --window 4w to succeed, got error: %v, output: %s", err, string(out4w))
+	}
+	s4w := string(out4w)
+	if !strings.Contains(s4w, "HighBurnRatePage") || !strings.Contains(s4w, "HighBurnRateMessage") || !strings.Contains(s4w, "HighBurnRateTicket") {
+		t.Errorf("expected all 3 alert rules in 4w output, got:\n%s", s4w)
+	}
+}

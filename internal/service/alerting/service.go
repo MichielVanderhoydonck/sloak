@@ -48,17 +48,17 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 		return domain.TableResult{}, errors.New("SLO target must be strictly between 0 and 100")
 	}
 
-	// For canonical monthly windows (28d to 31d), use standard Google SRE Workbook windows.
+	// For canonical monthly windows (28d to 31d), use standard Google SRE Workbook windows and burn rates.
 	isCanonicalMonthly := params.TotalWindow >= 28*24*time.Hour && params.TotalWindow <= 31*24*time.Hour
 
-	createRule := func(consumptionThreshold float64, windowRatio float64, notif domain.NotificationType, canonicalLong, canonicalShort time.Duration) (domain.AlertDefinition, error) {
+	createRule := func(consumptionThreshold float64, windowRatio float64, notif domain.NotificationType, canonicalLong, canonicalShort time.Duration, canonicalBurn float64) (domain.AlertDefinition, error) {
 		var longWindow, shortWindow time.Duration
 		var burnFactor float64
 
 		if isCanonicalMonthly {
 			longWindow = canonicalLong
 			shortWindow = canonicalShort
-			burnFactor = (float64(params.TotalWindow) / float64(longWindow)) * consumptionThreshold
+			burnFactor = canonicalBurn
 		} else {
 			longWindow = time.Duration(math.Round(float64(params.TotalWindow) / windowRatio)).Round(time.Second)
 			if longWindow >= params.TotalWindow {
@@ -73,11 +73,11 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 			if shortWindow >= longWindow {
 				shortWindow = longWindow / 2
 			}
+			if burnFactor < 1.0 {
+				return domain.AlertDefinition{}, fmt.Errorf("resulting burn rate (%.2fx) is less than 1.0x for %s alert", burnFactor, notif)
+			}
 		}
 
-		if burnFactor < 1.0 {
-			return domain.AlertDefinition{}, fmt.Errorf("resulting burn rate (%.2fx) is less than 1.0x for %s alert", burnFactor, notif)
-		}
 		if shortWindow <= 0 {
 			return domain.AlertDefinition{}, fmt.Errorf("alert short window (%v) must be greater than zero", shortWindow)
 		}
@@ -93,15 +93,15 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 		}, nil
 	}
 
-	fastRule, err := createRule(0.02, FastWindowRatio, domain.Page, 1*time.Hour, 5*time.Minute)
+	fastRule, err := createRule(0.02, FastWindowRatio, domain.Page, 1*time.Hour, 5*time.Minute, 14.4)
 	if err != nil {
 		return domain.TableResult{}, err
 	}
-	slowRule, err := createRule(0.05, SlowWindowRatio, domain.Message, 6*time.Hour, 30*time.Minute)
+	slowRule, err := createRule(0.05, SlowWindowRatio, domain.Message, 6*time.Hour, 30*time.Minute, 6.0)
 	if err != nil {
 		return domain.TableResult{}, err
 	}
-	sustainedRule, err := createRule(0.10, SustainedRatio, domain.Ticket, 3*24*time.Hour, 6*time.Hour)
+	sustainedRule, err := createRule(0.10, SustainedRatio, domain.Ticket, 3*24*time.Hour, 6*time.Hour, 1.0)
 	if err != nil {
 		return domain.TableResult{}, err
 	}

@@ -64,6 +64,53 @@ func TestGenerateMatrix(t *testing.T) {
 	}
 }
 
+func TestGenerateMatrix_CanonicalMonthlyWindows(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo, err := common.NewSLOTarget(99.9)
+	if err != nil {
+		t.Fatalf("unexpected error creating SLO target: %v", err)
+	}
+
+	windows := []struct {
+		name string
+		dur  time.Duration
+	}{
+		{"28d (4w)", 28 * 24 * time.Hour},
+		{"29d", 29 * 24 * time.Hour},
+		{"30d", 30 * 24 * time.Hour},
+		{"31d", 31 * 24 * time.Hour},
+	}
+
+	for _, w := range windows {
+		t.Run(w.name, func(t *testing.T) {
+			res, err := svc.GenerateTable(domain.GenerateParams{
+				TargetSLO:   slo,
+				TotalWindow: w.dur,
+			})
+			if err != nil {
+				t.Fatalf("GenerateTable failed for canonical window %s: %v", w.name, err)
+			}
+			if len(res.Alerts) != 3 {
+				t.Fatalf("expected 3 alerts, got %d", len(res.Alerts))
+			}
+
+			// Verify canonical windows and burn rates
+			// Page
+			if res.Alerts[0].BurnRate != 14.4 || time.Duration(res.Alerts[0].LongWindow) != time.Hour || time.Duration(res.Alerts[0].ShortWindow) != 5*time.Minute {
+				t.Errorf("unexpected Page alert for %s: %+v", w.name, res.Alerts[0])
+			}
+			// Message
+			if res.Alerts[1].BurnRate != 6.0 || time.Duration(res.Alerts[1].LongWindow) != 6*time.Hour || time.Duration(res.Alerts[1].ShortWindow) != 30*time.Minute {
+				t.Errorf("unexpected Message alert for %s: %+v", w.name, res.Alerts[1])
+			}
+			// Ticket
+			if res.Alerts[2].BurnRate != 1.0 || time.Duration(res.Alerts[2].LongWindow) != 72*time.Hour || time.Duration(res.Alerts[2].ShortWindow) != 6*time.Hour {
+				t.Errorf("unexpected Ticket alert for %s: %+v", w.name, res.Alerts[2])
+			}
+		})
+	}
+}
+
 func TestGenerateMatrix_ScalesWithWindow(t *testing.T) {
 	svc := service.NewAlertGeneratorService()
 	slo, _ := common.NewSLOTarget(99.9)
