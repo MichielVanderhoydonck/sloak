@@ -189,11 +189,11 @@ SLOAK features embedded [CUE](https://cuelang.org/) templates ready for producti
 
 | Template Name | Flag Identifier | Target Output | Description |
 | :--- | :--- | :--- | :--- |
-| **Prometheus Operator** | `prometheus-operator` | YAML (`PrometheusRule`) | Multi-window multi-burn-rate alerting rules with recording rules. |
-| **Grafana Cloud** | `grafana-cloud` | YAML (Mimir/Loki Ruler) | Synthetic recording rules & alerts compatible with `mimirtool`. |
+| **Prometheus Operator** | `prometheus-operator` | YAML (`PrometheusRule`) | Multi-window multi-burn-rate alerting rules querying `job:<metric>:rate<window>`. |
+| **Grafana Cloud** | `grafana-cloud` | YAML (Mimir/Loki Ruler) | Multi-window multi-burn-rate alerting rules compatible with `mimirtool`. |
 | **OpenTelemetry** | `otel-collector` | YAML (`config.yaml`) | Metric processor configuration for OpenTelemetry Contrib collector. |
-| **Datadog** | `datadog` | JSON | Datadog Service Level Objective API payload / Terraform resource. |
-| **Incident.io** | `incident-io` | JSON | Alert source schema definition for automated incident escalation. |
+| **Datadog** | `datadog` | JSON / YAML | Datadog Service Level Objective API payload / Terraform resource. |
+| **Incident.io** | `incident-io` | JSON / YAML | Starter alert source schema mapping multi-window severities to incident handling. |
 | **Custom BYOT** | `./path/to/custom.cue` | Custom | Any user-provided CUE template file injected with SLOAK math. |
 
 > [!NOTE]

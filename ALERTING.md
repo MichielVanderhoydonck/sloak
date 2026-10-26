@@ -47,11 +47,10 @@ Apply it: `kubectl apply -f fixtures.yaml`
 ## 3. Generate & Apply Alerts
 
 Run sloak to generate the alerting rules.
-Important: We add the release=prometheus label so the Operator loads the file, and set the window to 0s to skip the "Pending" wait time for instant verification.
-Bash
+Important: We add the `release=prometheus` label so the Prometheus Operator loads the rule file.
 
 ### Render the YAML
-```
+```bash
 ./sloak render \
   --template prometheus-operator \
   --slo 99.9 \
@@ -61,11 +60,11 @@ Bash
   --set namespace=monitoring \
   --window 30d > slo-alerts.yaml
 ```
-### (Optional) Edit yaml to set 'for: 0s' for instant firing
-`sed -i 's/for: 5m/for: 0s/g' slo-alerts.yaml`
 
 ### Apply to Cluster
-`kubectl apply -f slo-alerts.yaml`
+```bash
+kubectl apply -f slo-alerts.yaml
+```
 
 ## 4. Verify in UI
 

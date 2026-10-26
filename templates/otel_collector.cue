@@ -28,7 +28,10 @@ connectors: {
 		}
 		dimensions: [
 			{name: "http.method"},
+			{name: "http.request.method"},
 			{name: "http.status_code"},
+			{name: "http.response.status_code"},
+			{name: "service.name"},
 		]
 	}
 }
