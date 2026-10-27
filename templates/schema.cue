@@ -17,6 +17,8 @@ import (
 	total_window_seconds: int | float
 	windows: [...#Alert]
 	recording_windows?: [...string]
+	error_ratio_query?:   string
+	sli_query?:           string
 	config?: {[string]: _}
 }
 
@@ -43,21 +45,51 @@ import (
 	][0]
 }
 
+#FormatRatioQueryPart: {
+	q:  string
+	w:  string
+	by: string
+	_hasPlaceholder: strings.Contains(q, "$window") || strings.Contains(q, "{{window}}") || strings.Contains(q, "[window]")
+	_isVector:       strings.HasPrefix(q, "vector(")
+
+	_sub1: strings.Replace(q, "$window", w, -1)
+	_sub2: strings.Replace(_sub1, "{{window}}", w, -1)
+	_sub3: strings.Replace(_sub2, "[window]", "[\(w)]", -1)
+
+	_avgPrefix: [
+		if by != "" && by != "none" { "avg by (\(by)) " },
+		"",
+	][0]
+
+	out: [
+		if _hasPlaceholder { _sub3 },
+		if _isVector { q },
+		if by != "" && by != "none" { "avg by (\(by)) (avg_over_time(\(q)[\(w)]))" },
+		"avg_over_time(\(q)[\(w)])",
+	][0]
+}
+
 #FormatRecordingExpr: {
 	w:                  string
+	error_ratio_query:  string
 	sli_query:          string
 	errors_query:       string
 	total_query:        string
 	aggregation_labels: string
 
+	_ratio_q: [
+		if error_ratio_query != "" { error_ratio_query },
+		sli_query,
+	][0]
+
 	_by: aggregation_labels
 
 	out: string
-	if sli_query != "" {
-		_sli: #FormatQueryPart & {q: sli_query, "w": w, by: _by}
-		out: _sli.out
+	if _ratio_q != "" {
+		_ratio: #FormatRatioQueryPart & {q: _ratio_q, "w": w, by: _by}
+		out: _ratio.out
 	}
-	if sli_query == "" && errors_query != "" {
+	if _ratio_q == "" && errors_query != "" {
 		_err: #FormatQueryPart & {q: errors_query, "w": w, by: _by}
 		if total_query != "" {
 			_tot: #FormatQueryPart & {q: total_query, "w": w, by: _by}
@@ -67,7 +99,7 @@ import (
 			out: _err.out
 		}
 	}
-	if sli_query == "" && errors_query == "" {
+	if _ratio_q == "" && errors_query == "" {
 		out: ""
 	}
 }

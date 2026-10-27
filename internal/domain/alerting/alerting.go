@@ -19,6 +19,7 @@ type GenerateParams struct {
 	TargetSLO   common.SLOTarget
 	TotalWindow time.Duration
 	Format      string
+	Template    string
 }
 
 type AlertDefinition struct {

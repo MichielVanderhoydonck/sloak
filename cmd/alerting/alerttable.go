@@ -3,6 +3,7 @@ package alerting
 import (
 	"fmt"
 	"io"
+	"math"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -69,8 +70,12 @@ func runAlertRulesCmd(cmd *cobra.Command, service domain.TableGenerator) error {
 		fmt.Fprintln(w, "---------\t------------\t-----------\t---------\t------------\t")
 
 		for _, rule := range res.Alerts {
-			fmt.Fprintf(w, "%.0f%%\t%s\t%s\t%.2fx\t%s\t\n",
-				rule.ConsumptionTarget,
+			threshStr := fmt.Sprintf("%.0f%%", rule.ConsumptionTarget)
+			if rule.ConsumptionTarget != math.Trunc(rule.ConsumptionTarget) {
+				threshStr = fmt.Sprintf("%.2f%%", rule.ConsumptionTarget)
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%.2fx\t%s\t\n",
+				threshStr,
 				rule.ShortWindow.String(),
 				rule.LongWindow.String(),
 				rule.BurnRate,

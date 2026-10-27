@@ -464,3 +464,362 @@ func TestRenderRecordingRules(t *testing.T) {
 		}
 	})
 }
+
+func TestRenderErrorRatioQuery(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	promTpl, err := templates.GetTemplate("prometheus-operator")
+	if err != nil {
+		t.Fatalf("failed to get prometheus-operator template: %v", err)
+	}
+
+	t.Run("auto-wraps bare ratio gauge with avg_over_time and default job grouping", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":       "checkout_errors",
+			"error_ratio_query": "slo:error_ratio",
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expected := "expr: avg by (job) (avg_over_time(slo:error_ratio[5m]))"
+		if !strings.Contains(out, expected) {
+			t.Errorf("expected %q in output, got:\n%s", expected, out)
+		}
+	})
+
+	t.Run("auto-wraps bare ratio gauge with custom aggregation labels", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":        "checkout_errors",
+			"error_ratio_query":  "slo:error_ratio",
+			"aggregation_labels": "service, env",
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expected := "expr: avg by (service, env) (avg_over_time(slo:error_ratio[5m]))"
+		if !strings.Contains(out, expected) {
+			t.Errorf("expected %q in output, got:\n%s", expected, out)
+		}
+	})
+
+	t.Run("auto-wraps bare ratio gauge with empty aggregation labels", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":        "checkout_errors",
+			"error_ratio_query":  "slo:error_ratio",
+			"aggregation_labels": "",
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expected := "expr: avg_over_time(slo:error_ratio[5m])"
+		if !strings.Contains(out, expected) {
+			t.Errorf("expected %q in output, got:\n%s", expected, out)
+		}
+	})
+
+	t.Run("preserves placeholder in error_ratio_query", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":       "checkout_errors",
+			"error_ratio_query": "rate(errors[$window]) / rate(total[$window])",
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expected := "expr: rate(errors[5m]) / rate(total[5m])"
+		if !strings.Contains(out, expected) {
+			t.Errorf("expected %q in output, got:\n%s", expected, out)
+		}
+	})
+
+	t.Run("sli_query alias works identically to error_ratio_query", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name": "checkout_errors",
+			"sli_query":   "slo:error_ratio",
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expected := "expr: avg by (job) (avg_over_time(slo:error_ratio[5m]))"
+		if !strings.Contains(out, expected) {
+			t.Errorf("expected %q in output, got:\n%s", expected, out)
+		}
+	})
+
+	t.Run("rejects combining error_ratio_query with counter queries", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name":       "checkout_errors",
+			"error_ratio_query": "slo:error_ratio",
+			"errors_query":      "http_requests_total{code=~\"5..\"}",
+			"total_query":       "http_requests_total",
+		}
+
+		_, err := svc.RenderTemplate(params, config, promTpl)
+		if err == nil {
+			t.Fatal("expected error combining error_ratio_query with errors_query, got nil")
+		}
+		if !strings.Contains(err.Error(), "error_ratio_query cannot be combined with errors_query or total_query") {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	})
+}
+
+func TestPromQLQueryValidation(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	promTpl, err := templates.GetTemplate("prometheus-operator")
+	if err != nil {
+		t.Fatalf("failed to get prometheus-operator template: %v", err)
+	}
+
+	testCases := []struct {
+		name        string
+		config      map[string]any
+		errContains string
+	}{
+		{
+			name: "rejects complex aggregate expression without placeholder",
+			config: map[string]any{
+				"metric_name":  "api_errors",
+				"errors_query": "sum(http_errors_total)",
+				"total_query":  "http_requests_total",
+			},
+			errContains: "complex PromQL expression (*parser.AggregateExpr)",
+		},
+		{
+			name: "rejects binary operator expression without placeholder",
+			config: map[string]any{
+				"metric_name":  "api_errors",
+				"errors_query": "a_total or b_total",
+				"total_query":  "http_requests_total",
+			},
+			errContains: "complex PromQL expression (*parser.BinaryExpr)",
+		},
+		{
+			name: "rejects compound fixed range selector x[1h30m]",
+			config: map[string]any{
+				"metric_name":  "api_errors",
+				"errors_query": "x[1h30m]",
+				"total_query":  "http_requests_total",
+			},
+			errContains: "contains a fixed range selector without a window placeholder",
+		},
+		{
+			name: "rejects subquery selector x[1h:5m]",
+			config: map[string]any{
+				"metric_name":  "api_errors",
+				"errors_query": "x[1h:5m]",
+				"total_query":  "http_requests_total",
+			},
+			errContains: "contains a fixed range selector without a window placeholder",
+		},
+		{
+			name: "rejects invalid PromQL syntax",
+			config: map[string]any{
+				"metric_name":  "api_errors",
+				"errors_query": "http_requests_total{{broken",
+				"total_query":  "http_requests_total",
+			},
+			errContains: "is not valid PromQL",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			params := domain.GenerateParams{
+				TargetSLO:   slo999,
+				TotalWindow: 30 * 24 * time.Hour,
+				Format:      "yaml",
+			}
+			_, err := svc.RenderTemplate(params, tc.config, promTpl)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tc.errContains)
+			}
+			if !strings.Contains(err.Error(), tc.errContains) {
+				t.Fatalf("expected error containing %q, got %v", tc.errContains, err)
+			}
+		})
+	}
+}
+
+func TestAggregationLabelsValidation(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	promTpl, err := templates.GetTemplate("prometheus-operator")
+	if err != nil {
+		t.Fatalf("failed to get prometheus-operator template: %v", err)
+	}
+
+	invalidLabels := []string{
+		"job;service",
+		"job service",
+		"job-name",
+		"123abc",
+		"service.name",
+	}
+
+	for _, label := range invalidLabels {
+		t.Run("rejects invalid label "+label, func(t *testing.T) {
+			params := domain.GenerateParams{
+				TargetSLO:   slo999,
+				TotalWindow: 30 * 24 * time.Hour,
+				Format:      "yaml",
+			}
+			config := map[string]any{
+				"metric_name":        "api_errors",
+				"errors_query":       "http_requests_total{code=~\"5..\"}",
+				"total_query":        "http_requests_total",
+				"aggregation_labels": label,
+			}
+			_, err := svc.RenderTemplate(params, config, promTpl)
+			if err == nil {
+				t.Fatalf("expected error for invalid label %q, got nil", label)
+			}
+			if !strings.Contains(err.Error(), "invalid aggregation label") {
+				t.Fatalf("unexpected error message: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateDatadogConfig(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	ddTpl, err := templates.GetTemplate("datadog")
+	if err != nil {
+		t.Fatalf("failed to get datadog template: %v", err)
+	}
+
+	t.Run("rejects invalid timeframe", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "json",
+			Template:    "datadog",
+		}
+		config := map[string]any{
+			"timeframe": "14d",
+		}
+		_, err := svc.RenderTemplate(params, config, ddTpl)
+		if err == nil {
+			t.Fatal("expected error for invalid datadog timeframe 14d, got nil")
+		}
+		if !strings.Contains(err.Error(), `datadog SLO timeframe "14d" is invalid`) {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("rejects unsupported window without timeframe override", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 14 * 24 * time.Hour,
+			Format:      "json",
+			Template:    "datadog",
+		}
+		config := map[string]any{}
+		_, err := svc.RenderTemplate(params, config, ddTpl)
+		if err == nil {
+			t.Fatal("expected error for unsupported window 14d, got nil")
+		}
+		if !strings.Contains(err.Error(), "datadog SLOs only support 7d, 30d, or 90d timeframes") {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	})
+}
+
+func TestConsumptionTargetFractions(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	t.Run("28d exact consumption targets", func(t *testing.T) {
+		res, err := svc.GenerateTable(domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 28 * 24 * time.Hour,
+		})
+		if err != nil {
+			t.Fatalf("GenerateTable failed: %v", err)
+		}
+		if len(res.Alerts) != 3 {
+			t.Fatalf("expected 3 alerts, got %d", len(res.Alerts))
+		}
+		// Page: 14.4 * 1h / 672h * 100 = 2.14%
+		if res.Alerts[0].ConsumptionTarget != 2.14 {
+			t.Errorf("expected 2.14%% for 28d Page, got %v", res.Alerts[0].ConsumptionTarget)
+		}
+		// Message: 6.0 * 6h / 672h * 100 = 5.36%
+		if res.Alerts[1].ConsumptionTarget != 5.36 {
+			t.Errorf("expected 5.36%% for 28d Message, got %v", res.Alerts[1].ConsumptionTarget)
+		}
+		// Ticket: 1.0 * 72h / 672h * 100 = 10.71%
+		if res.Alerts[2].ConsumptionTarget != 10.71 {
+			t.Errorf("expected 10.71%% for 28d Ticket, got %v", res.Alerts[2].ConsumptionTarget)
+		}
+	})
+
+	t.Run("30d exact consumption targets", func(t *testing.T) {
+		res, err := svc.GenerateTable(domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+		})
+		if err != nil {
+			t.Fatalf("GenerateTable failed: %v", err)
+		}
+		if res.Alerts[0].ConsumptionTarget != 2.0 {
+			t.Errorf("expected 2.0%% for 30d Page, got %v", res.Alerts[0].ConsumptionTarget)
+		}
+		if res.Alerts[1].ConsumptionTarget != 5.0 {
+			t.Errorf("expected 5.0%% for 30d Message, got %v", res.Alerts[1].ConsumptionTarget)
+		}
+		if res.Alerts[2].ConsumptionTarget != 10.0 {
+			t.Errorf("expected 10.0%% for 30d Ticket, got %v", res.Alerts[2].ConsumptionTarget)
+		}
+	})
+}

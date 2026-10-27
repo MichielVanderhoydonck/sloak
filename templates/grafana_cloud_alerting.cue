@@ -10,7 +10,13 @@ _config: {
 	rule_labels:        *data.config.rule_labels | {}
 	errors_query:       *data.config.errors_query | ""
 	total_query:        *data.config.total_query | ""
-	sli_query:          *data.config.sli_query | ""
+	_raw_ratio: [
+		if data.config.error_ratio_query != _|_ { data.config.error_ratio_query },
+		if data.config.sli_query != _|_ { data.config.sli_query },
+		"",
+	][0]
+	error_ratio_query:  _raw_ratio
+	sli_query:          _raw_ratio
 	aggregation_labels: *data.config.aggregation_labels | "job"
 
 	rule_annotations: *data.config.rule_annotations | {}
@@ -48,7 +54,7 @@ _pages:    _alerts & {sev: "page"}
 _messages: _alerts & {sev: "message"}
 _tickets:  _alerts & {sev: "ticket"}
 
-_has_recordings: (_config.errors_query != "" || _config.sli_query != "") && (data.recording_windows != _|_) && len(data.recording_windows) > 0
+_has_recordings: (_config.errors_query != "" || _config.error_ratio_query != "" || _config.sli_query != "") && (data.recording_windows != _|_) && len(data.recording_windows) > 0
 
 // Standard Mimir/Loki ruler format
 groups: [
@@ -59,6 +65,7 @@ groups: [
 				record: "job:\(_config.metric_name):rate\(w)"
 				expr:   (#FormatRecordingExpr & {
 					"w":                 w
+					error_ratio_query:  _config.error_ratio_query
 					sli_query:          _config.sli_query
 					errors_query:       _config.errors_query
 					total_query:        _config.total_query

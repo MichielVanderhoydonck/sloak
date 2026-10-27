@@ -34,23 +34,24 @@ Provide your error and total metric queries to generate a complete turnkey setup
 
 > [!NOTE]
 > **Query Ratio Contract & Aggregation Labels:**
-> - `errors_query` and `total_query` are paired together to compute the error ratio `sum by (job) (rate(errors[w])) / sum by (job) (rate(total[w]))`.
-> - If your metric is already an error ratio (e.g. from an SLI generator), use `sli_query` instead.
-> - Recording rules aggregate by `job` by default (`sum by (job) (rate(...))`), preserving the metric prefix `job:<metric>:rate<w>`. Customize this via `--set aggregation_labels="job,service"`, or disable grouping via `--set aggregation_labels=""`.
+> - **Counters (`errors_query` & `total_query`)**: Paired together to compute the error ratio `sum by (job) (rate(errors[w])) / sum by (job) (rate(total[w]))`. Bare selectors are automatically wrapped in `rate()`.
+> - **Precomputed Error Ratios (`error_ratio_query`)**: If your metric is already an error ratio gauge (e.g. from an SLI recording rule or generator), use `error_ratio_query` (or `sli_query`, maintained as a backward-compatible alias). Bare gauges are wrapped in `avg by (job) (avg_over_time(ratio[w]))` rather than `rate()`, preserving ratio semantics over time.
+> - **Aggregation Labels (`aggregation_labels`)**: Recording rules aggregate by `job` by default, preserving the canonical Prometheus metric prefix `job:<metric>:rate<w>`. Customize this via `--set aggregation_labels="job,service"`, or disable grouping via `--set aggregation_labels=""`. Each label identifier must match `^[a-zA-Z_][a-zA-Z0-9_]*$`.
+> - **Custom Placeholders**: If your query includes a `$window` (or `{{window}}`) placeholder, it is rendered verbatim with the window substituted, and `aggregation_labels` is ignored.
 
 > [!TIP]
 > **Recording Rule Performance on Large Clusters:**
 > Evaluating `rate(counter[3d])` (or `[9d]` for 90d windows) directly over raw high-churn counters can be resource-intensive in very large Prometheus deployments. In such environments, consider chaining recording rules (evaluating longer windows from recorded 1h ratios, as popularized by Sloth and Pyrra) or configuring subquery caching.
 
 ### Lab / Verification Setup (Simulated Outage)
-To deterministically test alerts firing in Minikube without generating traffic, pass `sli_query="vector(0.2)"` to simulate a constant 20% error rate across all windows (> 14.4x burn rate):
+To deterministically test alerts firing in Minikube without generating traffic, pass `error_ratio_query="vector(0.2)"` (or `sli_query="vector(0.2)"`) to simulate a constant 20% error rate across all windows (> 14.4x burn rate):
 ```bash
 ./sloak render \
   --template prometheus-operator \
   --slo 99.9 \
   --window 30d \
   --set metric_name=api_errors \
-  --set sli_query="vector(0.2)" \
+  --set error_ratio_query="vector(0.2)" \
   --set rule_labels.service=api \
   --set rule_labels.env=prod \
   --set meta_labels.release=prometheus \

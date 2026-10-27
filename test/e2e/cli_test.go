@@ -1048,6 +1048,9 @@ func TestCanonicalMonthlyWindowsE2E(t *testing.T) {
 	if !strings.Contains(s28d, "14.40x") || !strings.Contains(s28d, "6.00x") || !strings.Contains(s28d, "1.00x") {
 		t.Errorf("expected canonical burn rates for 28d, got:\n%s", s28d)
 	}
+	if !strings.Contains(s28d, "2.14%") || !strings.Contains(s28d, "5.36%") || !strings.Contains(s28d, "10.71%") {
+		t.Errorf("expected exact 28d consumption thresholds 2.14%%, 5.36%%, 10.71%%, got:\n%s", s28d)
+	}
 
 	// Case 2: render with 4w window
 	cmd4w := exec.Command(sloakBinaryPath, "render",
@@ -1063,5 +1066,83 @@ func TestCanonicalMonthlyWindowsE2E(t *testing.T) {
 	s4w := string(out4w)
 	if !strings.Contains(s4w, "HighBurnRatePage") || !strings.Contains(s4w, "HighBurnRateMessage") || !strings.Contains(s4w, "HighBurnRateTicket") {
 		t.Errorf("expected all 3 alert rules in 4w output, got:\n%s", s4w)
+	}
+}
+
+func TestErrorRatioQueryE2E(t *testing.T) {
+	// 1. Test auto-wrapping bare error ratio query with avg_over_time and avg by (job)
+	cmd := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=30d",
+		"--set", "metric_name=api_errors",
+		"--set", "error_ratio_query=slo:error_ratio",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("expected render error_ratio_query to succeed, got: %v, output: %s", err, string(out))
+	}
+	s := string(out)
+	expectedExpr := "expr: avg by (job) (avg_over_time(slo:error_ratio[5m]))"
+	if !strings.Contains(s, expectedExpr) {
+		t.Errorf("expected %q in output, got:\n%s", expectedExpr, s)
+	}
+
+	// 2. Test combining error_ratio_query with errors_query fails
+	cmdConflict := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=30d",
+		"--set", "metric_name=api_errors",
+		"--set", "error_ratio_query=slo:error_ratio",
+		"--set", "errors_query=http_requests_total{code=~\"5..\"}",
+		"--set", "total_query=http_requests_total",
+	)
+	var stderr bytes.Buffer
+	cmdConflict.Stderr = &stderr
+	if err := cmdConflict.Run(); err == nil {
+		t.Fatal("expected failure combining error_ratio_query with counter queries")
+	}
+	if !strings.Contains(stderr.String(), "error_ratio_query cannot be combined with errors_query or total_query") {
+		t.Errorf("expected mutual exclusivity error, got: %s", stderr.String())
+	}
+}
+
+func TestPromQLQueryValidationE2E(t *testing.T) {
+	// 1. Test complex expression without placeholder fails
+	cmdExpr := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=30d",
+		"--set", "metric_name=api_errors",
+		"--set", "errors_query=sum(http_errors_total)",
+		"--set", "total_query=http_requests_total",
+	)
+	var stderr1 bytes.Buffer
+	cmdExpr.Stderr = &stderr1
+	if err := cmdExpr.Run(); err == nil {
+		t.Fatal("expected failure for complex PromQL expression without placeholder")
+	}
+	if !strings.Contains(stderr1.String(), "is a complex PromQL expression") {
+		t.Errorf("expected complex expression error, got: %s", stderr1.String())
+	}
+
+	// 2. Test invalid aggregation label fails
+	cmdLabel := exec.Command(sloakBinaryPath, "render",
+		"--template=prometheus-operator",
+		"--slo=99.9",
+		"--window=30d",
+		"--set", "metric_name=api_errors",
+		"--set", "errors_query=http_requests_total{code=~\"5..\"}",
+		"--set", "total_query=http_requests_total",
+		"--set", "aggregation_labels=job;service",
+	)
+	var stderr2 bytes.Buffer
+	cmdLabel.Stderr = &stderr2
+	if err := cmdLabel.Run(); err == nil {
+		t.Fatal("expected failure for invalid aggregation label")
+	}
+	if !strings.Contains(stderr2.String(), "invalid aggregation label") {
+		t.Errorf("expected invalid aggregation label error, got: %s", stderr2.String())
 	}
 }

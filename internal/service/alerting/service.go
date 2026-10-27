@@ -15,6 +15,8 @@ import (
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/cuecontext"
 	cueyaml "cuelang.org/go/encoding/yaml"
+	"github.com/prometheus/prometheus/promql/parser"
+	"gopkg.in/yaml.v3"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
@@ -83,8 +85,10 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 			return domain.AlertDefinition{}, fmt.Errorf("alert short window (%v) must be greater than zero", shortWindow)
 		}
 
+		actualConsumption := (burnFactor * float64(longWindow) / float64(params.TotalWindow)) * 100.0
+
 		return domain.AlertDefinition{
-			ConsumptionTarget:  consumptionThreshold * 100,
+			ConsumptionTarget:  util.RoundValue(actualConsumption),
 			LongWindow:         util.Duration(longWindow),
 			LongWindowSeconds:  longWindow.Seconds(),
 			ShortWindow:        util.Duration(shortWindow),
@@ -122,6 +126,9 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 }
 
 func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error) {
+	if err := validateDatadogConfig(params, config, templateContent); err != nil {
+		return "", err
+	}
 	if err := validateQueryConfig(config); err != nil {
 		return "", err
 	}
@@ -160,7 +167,9 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 	for k, v := range config {
 		cfgCopy[k] = v
 	}
-	normalizeAggregationLabels(cfgCopy)
+	if err := normalizeAggregationLabels(cfgCopy); err != nil {
+		return "", err
+	}
 
 	contextData := domain.AlertingContext{
 		TargetSLO:          params.TargetSLO.Value,
@@ -272,7 +281,48 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 		return "", fmt.Errorf("failed to encode YAML: %w", err)
 	}
 
+	// Validate rendered PromQL expressions in YAML output if rules exist
+	var doc struct {
+		Spec struct {
+			Groups []struct {
+				Rules []struct {
+					Expr string `yaml:"expr"`
+				} `yaml:"rules"`
+			} `yaml:"groups"`
+		} `yaml:"spec"`
+		Groups []struct {
+			Rules []struct {
+				Expr string `yaml:"expr"`
+			} `yaml:"rules"`
+		} `yaml:"groups"`
+	}
+	if err := yaml.Unmarshal(yamlBytes, &doc); err == nil {
+		for _, g := range doc.Spec.Groups {
+			for _, r := range g.Rules {
+				if r.Expr != "" {
+					if _, err := parsePromQLExpr(r.Expr); err != nil {
+						return "", fmt.Errorf("rendered invalid PromQL expression %q: %w", r.Expr, err)
+					}
+				}
+			}
+		}
+		for _, g := range doc.Groups {
+			for _, r := range g.Rules {
+				if r.Expr != "" {
+					if _, err := parsePromQLExpr(r.Expr); err != nil {
+						return "", fmt.Errorf("rendered invalid PromQL expression %q: %w", r.Expr, err)
+					}
+				}
+			}
+		}
+	}
+
 	return string(yamlBytes), nil
+}
+
+func parsePromQLExpr(input string) (parser.Expr, error) {
+	p := parser.NewParser(parser.Options{})
+	return p.ParseExpr(input)
 }
 
 func formatPrometheusDuration(d time.Duration) string {
@@ -291,7 +341,25 @@ func formatPrometheusDuration(d time.Duration) string {
 	return fmt.Sprintf("%ds", int(d.Seconds()))
 }
 
-var fixedRangeRegex = regexp.MustCompile(`\[\s*[0-9]+[smhdwy]\s*\]`)
+func validateDatadogConfig(params domain.GenerateParams, config map[string]any, templateContent string) error {
+	isDatadog := strings.EqualFold(params.Template, "datadog") || strings.Contains(templateContent, "datadog")
+	if !isDatadog {
+		return nil
+	}
+	if config != nil {
+		if tf, ok := config["timeframe"].(string); ok && tf != "" {
+			if tf != "7d" && tf != "30d" && tf != "90d" {
+				return fmt.Errorf("datadog SLO timeframe %q is invalid: must be 7d, 30d, or 90d", tf)
+			}
+			return nil
+		}
+	}
+	winSec := params.TotalWindow.Seconds()
+	if winSec != 7*86400 && winSec != 30*86400 && winSec != 90*86400 {
+		return fmt.Errorf("datadog SLOs only support 7d, 30d, or 90d timeframes (window is %s); use --set timeframe=7d|30d|90d to override explicitly", util.FormatDuration(params.TotalWindow))
+	}
+	return nil
+}
 
 func validateQueryPart(name, q string) error {
 	q = strings.TrimSpace(q)
@@ -299,8 +367,43 @@ func validateQueryPart(name, q string) error {
 		return nil
 	}
 	hasPlaceholder := strings.Contains(q, "$window") || strings.Contains(q, "{{window}}") || strings.Contains(q, "[window]")
-	if fixedRangeRegex.MatchString(q) && !hasPlaceholder {
+	if hasPlaceholder {
+		sub := strings.ReplaceAll(q, "$window", "1m")
+		sub = strings.ReplaceAll(sub, "{{window}}", "1m")
+		sub = strings.ReplaceAll(sub, "[window]", "[1m]")
+		if _, err := parsePromQLExpr(sub); err != nil {
+			return fmt.Errorf("%s %q is not valid PromQL: %w", name, q, err)
+		}
+		return nil
+	}
+
+	if strings.HasPrefix(q, "vector(") {
+		if _, err := parsePromQLExpr(q); err != nil {
+			return fmt.Errorf("%s %q is not valid PromQL: %w", name, q, err)
+		}
+		return nil
+	}
+
+	expr, err := parsePromQLExpr(q)
+	if err != nil {
+		return fmt.Errorf("%s %q is not valid PromQL: %w", name, q, err)
+	}
+
+	var hasFixedRange bool
+	parser.Inspect(expr, func(node parser.Node, path []parser.Node) error {
+		switch node.(type) {
+		case *parser.MatrixSelector, *parser.SubqueryExpr:
+			hasFixedRange = true
+			return errors.New("stop")
+		}
+		return nil
+	})
+	if hasFixedRange {
 		return fmt.Errorf("%s %q contains a fixed range selector without a window placeholder; queries with a range selector must use $window or {{window}}", name, q)
+	}
+
+	if _, ok := expr.(*parser.VectorSelector); !ok {
+		return fmt.Errorf("%s %q is a complex PromQL expression (%T), not a bare metric selector; please specify a range window placeholder such as [$window] or use subquery syntax", name, q, expr)
 	}
 	return nil
 }
@@ -311,14 +414,24 @@ func validateQueryConfig(config map[string]any) error {
 	}
 	errQ, _ := config["errors_query"].(string)
 	totQ, _ := config["total_query"].(string)
+	errorRatioQ, _ := config["error_ratio_query"].(string)
 	sliQ, _ := config["sli_query"].(string)
 
 	errQ = strings.TrimSpace(errQ)
 	totQ = strings.TrimSpace(totQ)
+	errorRatioQ = strings.TrimSpace(errorRatioQ)
 	sliQ = strings.TrimSpace(sliQ)
 
-	if sliQ != "" {
-		if err := validateQueryPart("sli_query", sliQ); err != nil {
+	// If error_ratio_query is empty but sli_query is provided, populate error_ratio_query for consistency
+	if errorRatioQ == "" && sliQ != "" {
+		errorRatioQ = sliQ
+		config["error_ratio_query"] = errorRatioQ
+	} else if errorRatioQ != "" && sliQ == "" {
+		config["sli_query"] = errorRatioQ
+	}
+
+	if errorRatioQ != "" {
+		if err := validateQueryPart("error_ratio_query", errorRatioQ); err != nil {
 			return err
 		}
 	}
@@ -333,26 +446,39 @@ func validateQueryConfig(config map[string]any) error {
 		}
 	}
 
-	if errQ != "" && totQ == "" && sliQ == "" {
+	if errorRatioQ != "" && (errQ != "" || totQ != "") {
+		return fmt.Errorf("error_ratio_query cannot be combined with errors_query or total_query; use errors_query + total_query for counter metrics, or error_ratio_query for precomputed ratios")
+	}
+
+	if errQ != "" && totQ == "" && errorRatioQ == "" {
 		if !strings.HasPrefix(errQ, "vector(") {
-			return fmt.Errorf("errors_query requires total_query to compute the error ratio; if your query is already an error ratio, use sli_query instead")
+			return fmt.Errorf("errors_query requires total_query to compute the error ratio; if your query is already an error ratio, use error_ratio_query instead")
 		}
 	}
-	if totQ != "" && errQ == "" && sliQ == "" {
+	if totQ != "" && errQ == "" && errorRatioQ == "" {
 		return fmt.Errorf("total_query provided without errors_query; both errors_query and total_query are required to compute the error ratio")
 	}
 
 	return nil
 }
 
-func normalizeAggregationLabels(config map[string]any) {
+var validLabelRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+func validateLabelIdentifier(label string) error {
+	if !validLabelRegex.MatchString(label) {
+		return fmt.Errorf("invalid aggregation label %q: label names must match ^[a-zA-Z_][a-zA-Z0-9_]*$", label)
+	}
+	return nil
+}
+
+func normalizeAggregationLabels(config map[string]any) error {
 	if config == nil {
-		return
+		return nil
 	}
 	val, ok := config["aggregation_labels"]
 	if !ok {
 		config["aggregation_labels"] = "job"
-		return
+		return nil
 	}
 	switch v := val.(type) {
 	case string:
@@ -360,6 +486,9 @@ func normalizeAggregationLabels(config map[string]any) {
 		var cleaned []string
 		for _, p := range parts {
 			if s := strings.TrimSpace(p); s != "" {
+				if err := validateLabelIdentifier(s); err != nil {
+					return err
+				}
 				cleaned = append(cleaned, s)
 			}
 		}
@@ -369,16 +498,36 @@ func normalizeAggregationLabels(config map[string]any) {
 			config["aggregation_labels"] = strings.Join(cleaned, ", ")
 		}
 	case []string:
-		config["aggregation_labels"] = strings.Join(v, ", ")
+		var cleaned []string
+		for _, p := range v {
+			if s := strings.TrimSpace(p); s != "" {
+				if err := validateLabelIdentifier(s); err != nil {
+					return err
+				}
+				cleaned = append(cleaned, s)
+			}
+		}
+		config["aggregation_labels"] = strings.Join(cleaned, ", ")
 	case []any:
 		var items []string
 		for _, item := range v {
 			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
-				items = append(items, strings.TrimSpace(s))
+				trimmed := strings.TrimSpace(s)
+				if err := validateLabelIdentifier(trimmed); err != nil {
+					return err
+				}
+				items = append(items, trimmed)
 			}
 		}
 		config["aggregation_labels"] = strings.Join(items, ", ")
 	default:
-		config["aggregation_labels"] = fmt.Sprintf("%v", v)
+		s := strings.TrimSpace(fmt.Sprintf("%v", v))
+		if s != "" {
+			if err := validateLabelIdentifier(s); err != nil {
+				return err
+			}
+		}
+		config["aggregation_labels"] = s
 	}
+	return nil
 }
