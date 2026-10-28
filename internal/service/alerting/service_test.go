@@ -184,13 +184,13 @@ func TestGenerateMatrix_Validation(t *testing.T) {
 			name:        "SLO 100 percent",
 			slo:         common.SLOTarget{Value: 100.0},
 			window:      30 * 24 * time.Hour,
-			errContains: "strictly between 0 and 100",
+			errContains: "strictly between 0.0 and 100.0",
 		},
 		{
 			name:        "SLO 0 percent",
 			slo:         common.SLOTarget{Value: 0.0},
 			window:      30 * 24 * time.Hour,
-			errContains: "strictly between 0 and 100",
+			errContains: "strictly between 0.0 and 100.0",
 		},
 	}
 

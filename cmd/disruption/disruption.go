@@ -73,11 +73,12 @@ func runDisruptionCmd(cmd *cobra.Command, service domain.Service) error {
 		fmt.Fprintf(w, "Max Events Total: %d\n", res.MaxDisruptions)
 		fmt.Fprintf(w, "Daily Frequency:  %.1f events/day\n", res.DailyDisruptions)
 
-		if res.MaxDisruptions < 1 {
+		switch res.ResolveStatus() {
+		case domain.StatusBlocked:
 			fmt.Fprintln(w, "\nStatus: BLOCKED. Disruption cost exceeds total budget.")
-		} else if res.DailyDisruptions < 1.0 {
+		case domain.StatusRisky:
 			fmt.Fprintln(w, "\nStatus: RISKY. Budget allows less than 1 event per day.")
-		} else {
+		default:
 			fmt.Fprintln(w, "\nStatus: SAFE. Budget supports frequent changes.")
 		}
 		return nil

@@ -1,43 +1,37 @@
 package errorbudget
 
 import (
-	"errors"
+	"math"
+	"time"
 
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/errorbudget"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
-
-	"math"
-	"time"
 )
 
 type CalculatorService struct{}
 
 var _ errorbudgetDomain.Service = (*CalculatorService)(nil)
 
-func NewCalculatorService() *CalculatorService {
+func NewCalculatorService() errorbudgetDomain.Service {
 	return &CalculatorService{}
 }
 
 func (s *CalculatorService) CalculateBudget(params errorbudgetDomain.CalculationParams) (errorbudgetDomain.BudgetResult, error) {
-	if params.TargetSLO.Value <= 0 || params.TargetSLO.Value >= 100 {
-		return errorbudgetDomain.BudgetResult{}, errors.New("SLO target must be strictly between 0 and 100")
-	}
-	if params.TimeWindow <= 0 {
-		return errorbudgetDomain.BudgetResult{}, errors.New("time window must be greater than zero")
+	if err := params.Validate(); err != nil {
+		return errorbudgetDomain.BudgetResult{}, err
 	}
 
-	errorBudgetPercent := 1.0 - (params.TargetSLO.Value / 100.0)
-	allowedErrorNanos := float64(params.TimeWindow) * errorBudgetPercent
-	roundedNanos := int64(math.Round(allowedErrorNanos))
-	allowedError := time.Duration(roundedNanos)
+	window := time.Duration(params.TimeWindow)
+	allowedError := params.TargetSLO.AllowedDowntime(window)
+	errorBudgetRatio := params.TargetSLO.ErrorBudgetRatio()
 
 	return errorbudgetDomain.BudgetResult{
 		TargetSLO:            params.TargetSLO,
 		TotalDuration:        params.TimeWindow,
-		TotalDurationSeconds: math.Round(time.Duration(params.TimeWindow).Seconds()),
+		TotalDurationSeconds: math.Round(window.Seconds()),
 		AllowedError:         util.Duration(allowedError),
 		AllowedErrorSeconds:  math.Round(allowedError.Seconds()),
-		ErrorBudget:          util.RoundPercentage(errorBudgetPercent * 100.0),
-		TargetSLORatio:       math.Round((params.TargetSLO.Value/100.0)*1000000) / 1000000,
+		ErrorBudget:          util.RoundPercentage(errorBudgetRatio * 100.0),
+		TargetSLORatio:       params.TargetSLO.RoundedRatio(),
 	}, nil
 }

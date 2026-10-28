@@ -9,7 +9,7 @@ type AvailabilityService struct{}
 
 var _ domain.Service = (*AvailabilityService)(nil)
 
-func NewAvailabilityService() *AvailabilityService {
+func NewAvailabilityService() domain.Service {
 	return &AvailabilityService{}
 }
 

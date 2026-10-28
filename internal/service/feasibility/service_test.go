@@ -32,6 +32,9 @@ func TestCalculateFeasibility(t *testing.T) {
 	if res.RequiredMTBF.String() != expectedMTBF {
 		t.Errorf("Expected MTBF %s, got %s", expectedMTBF, res.RequiredMTBF.String())
 	}
+	if res.Status != domain.StatusChallenging {
+		t.Errorf("Expected status CHALLENGING, got %s", res.Status)
+	}
 }
 
 func TestCalculateFeasibility_NinetyPercent(t *testing.T) {

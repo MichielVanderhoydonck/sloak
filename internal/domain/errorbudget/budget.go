@@ -1,14 +1,25 @@
 package errorbudget
 
 import (
+	"errors"
+
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
 type CalculationParams struct {
-	TargetSLO common.SLOTarget
-
+	TargetSLO  common.SLOTarget
 	TimeWindow util.Duration
+}
+
+func (p CalculationParams) Validate() error {
+	if err := p.TargetSLO.Validate(); err != nil {
+		return err
+	}
+	if p.TimeWindow <= 0 {
+		return errors.New("time window must be greater than zero")
+	}
+	return nil
 }
 
 type BudgetResult struct {

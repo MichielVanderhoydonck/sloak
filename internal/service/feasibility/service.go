@@ -1,7 +1,6 @@
 package feasibility
 
 import (
-	"errors"
 	"math"
 	"time"
 
@@ -13,38 +12,36 @@ type FeasibilityService struct{}
 
 var _ domain.Service = (*FeasibilityService)(nil)
 
-func NewFeasibilityService() *FeasibilityService {
+func NewFeasibilityService() domain.Service {
 	return &FeasibilityService{}
 }
 
 func (s *FeasibilityService) CalculateFeasibility(params domain.FeasibilityParams) (domain.FeasibilityResult, error) {
+	if err := params.Validate(); err != nil {
+		return domain.FeasibilityResult{}, err
+	}
+
 	mttr := time.Duration(params.MTTR)
-	if mttr <= 0 {
-		return domain.FeasibilityResult{}, errors.New("MTTR must be greater than zero")
-	}
-
-	if params.TargetSLO.Value <= 0 || params.TargetSLO.Value >= 100 {
-		return domain.FeasibilityResult{}, errors.New("SLO target must be strictly between 0 and 100")
-	}
-
-	sloRatio := params.TargetSLO.Value / 100.0
+	sloRatio := params.TargetSLO.Ratio()
 	unavailabilityRatio := 1.0 - sloRatio
 
 	yearSeconds := (365 * 24 * time.Hour).Seconds()
 	incidentsPerYear := yearSeconds * unavailabilityRatio / mttr.Seconds()
+	incidentsPerQuarter := util.RoundValue(incidentsPerYear / 4.0)
 
 	mtbfSeconds := mttr.Seconds() * (sloRatio / unavailabilityRatio)
 	requiredMTBF := time.Duration(math.Round(mtbfSeconds * float64(time.Second)))
 
 	return domain.FeasibilityResult{
 		TargetSLO:           params.TargetSLO,
-		TargetSLORatio:      math.Round((params.TargetSLO.Value/100.0)*1000000) / 1000000,
+		TargetSLORatio:      params.TargetSLO.RoundedRatio(),
 		MTTR:                params.MTTR,
 		MTTRSeconds:         math.Round(mttr.Seconds()),
 		IncidentsPerYear:    util.RoundValue(incidentsPerYear),
-		IncidentsPerQuarter: util.RoundValue(incidentsPerYear / 4.0),
+		IncidentsPerQuarter: incidentsPerQuarter,
 		IncidentsPerMonth:   util.RoundValue(incidentsPerYear / 12.0),
 		RequiredMTBF:        util.Duration(requiredMTBF),
 		RequiredMTBFSeconds: math.Round(requiredMTBF.Seconds()),
+		Status:              domain.ClassifyFeasibility(incidentsPerQuarter),
 	}, nil
 }

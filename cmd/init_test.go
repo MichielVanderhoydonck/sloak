@@ -8,6 +8,7 @@ import (
 
 func TestInitCmd(t *testing.T) {
 	var buf bytes.Buffer
+	initCmd := NewInitCmd()
 	initCmd.SetOut(&buf)
 
 	// Run command

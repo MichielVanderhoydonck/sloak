@@ -36,6 +36,9 @@ func TestDisruptionService(t *testing.T) {
 	if res.DailyDisruptions < 1.4 || res.DailyDisruptions > 1.5 {
 		t.Errorf("Expected ~1.43 daily, got %f", res.DailyDisruptions)
 	}
+	if res.Status != domain.StatusSafe {
+		t.Errorf("Expected status SAFE, got %s", res.Status)
+	}
 }
 
 func TestDisruptionService_Validation(t *testing.T) {

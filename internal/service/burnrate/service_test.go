@@ -42,6 +42,7 @@ func TestBurnRateService(t *testing.T) {
 		expectedRemainingDur util.Duration
 		expectedTTE          util.Duration
 		expectedInfinite     bool
+		expectedStatus       burnrateDomain.Status
 	}{
 		{
 			name: "Critical Burn (2.98x)",
@@ -57,6 +58,7 @@ func TestBurnRateService(t *testing.T) {
 			expectedRemainingDur: util.Duration((13 * time.Minute) + (12 * time.Second)),
 			expectedTTE:          util.Duration(73*time.Hour + 55*time.Minute + 12*time.Second),
 			expectedInfinite:     false,
+			expectedStatus:       burnrateDomain.StatusWarning,
 		},
 		{
 			name: "Ideal Burn (1x)",
@@ -72,6 +74,7 @@ func TestBurnRateService(t *testing.T) {
 			expectedRemainingDur: util.Duration((21 * time.Minute) + (36 * time.Second)),
 			expectedTTE:          util.Duration(15 * 24 * time.Hour),
 			expectedInfinite:     false,
+			expectedStatus:       burnrateDomain.StatusHealthy,
 		},
 		{
 			name: "No Burn (0x)",
@@ -87,6 +90,7 @@ func TestBurnRateService(t *testing.T) {
 			expectedRemainingDur: util.Duration((43 * time.Minute) + (12 * time.Second)),
 			expectedTTE:          0,
 			expectedInfinite:     true,
+			expectedStatus:       burnrateDomain.StatusExcellent,
 		},
 		{
 			name: "Instant Burn (Infinite/Unbounded)",
@@ -103,6 +107,7 @@ func TestBurnRateService(t *testing.T) {
 			expectedRemainingDur: util.Duration((42 * time.Minute) + (12 * time.Second)),
 			expectedTTE:          0,
 			expectedInfinite:     false,
+			expectedStatus:       burnrateDomain.StatusCritical,
 		},
 		{
 			name: "Overspent Budget (Consumed > Budget, Negative Remaining)",
@@ -238,6 +243,10 @@ func TestBurnRateService(t *testing.T) {
 					if result.TimeToExhaustion.String() != tc.expectedTTE.String() {
 						t.Errorf("expected TTE %v, got %v", tc.expectedTTE, result.TimeToExhaustion)
 					}
+				}
+
+				if tc.expectedStatus != "" && result.Status != tc.expectedStatus {
+					t.Errorf("expected status %s, got %s", tc.expectedStatus, result.Status)
 				}
 
 				// Verify JSON encoding always succeeds

@@ -2,13 +2,11 @@ package alerting
 
 import (
 	"fmt"
-	"maps"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 
@@ -65,10 +63,9 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loa
 		return fmt.Errorf("--template is required")
 	}
 
-	sloFlag := v.GetFloat64("slo")
+	sloVal := v.GetFloat64("slo")
 	windowStr := v.GetString("window")
 
-	var sloVal float64 = sloFlag
 	var totalWindow time.Duration
 	var openSLOConfig map[string]any
 
@@ -95,92 +92,27 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loa
 		return err
 	}
 
-	// Build the generic configuration map
-	configData := make(map[string]any)
-
-	// 1. Read from OpenSLO metadata if parsed
-	maps.Copy(configData, openSLOConfig)
-
-	// 2. Read from values file (overrides OpenSLO defaults)
+	var valuesBytes []byte
 	if valuesFile != "" {
-		bytes, err := os.ReadFile(valuesFile)
+		valuesBytes, err = os.ReadFile(valuesFile)
 		if err != nil {
 			return fmt.Errorf("reading values file: %w", err)
 		}
-		if err := yaml.Unmarshal(bytes, &configData); err != nil {
-			return fmt.Errorf("parsing values file: %w", err)
-		}
 	}
 
-	// 3. Read from --set flags (overrides file and OpenSLO defaults)
-	for _, setVal := range setVals {
-		parts := strings.SplitN(setVal, "=", 2)
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid --set flag %q: expected key=value format", setVal)
-		}
-		key := strings.TrimSpace(parts[0])
-		if key == "" {
-			return fmt.Errorf("invalid --set flag %q: key cannot be empty", setVal)
-		}
-		val := strings.TrimSpace(parts[1])
-		parsedVal := parseSetVal(val)
-		setPath(configData, strings.Split(key, "."), parsedVal)
+	configData, err := BuildRenderConfig(openSLOConfig, valuesBytes, setVals, setJSONVals)
+	if err != nil {
+		return err
 	}
 
-	// 4. Read from --set-json flags
-	for _, setJSONVal := range setJSONVals {
-		parts := strings.SplitN(setJSONVal, "=", 2)
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid --set-json flag %q: expected key=value format", setJSONVal)
-		}
-		key := strings.TrimSpace(parts[0])
-		if key == "" {
-			return fmt.Errorf("invalid --set-json flag %q: key cannot be empty", setJSONVal)
-		}
-		rawVal := strings.TrimSpace(parts[1])
-		var parsedVal any
-		if err := yaml.Unmarshal([]byte(rawVal), &parsedVal); err != nil {
-			return fmt.Errorf("invalid json/yaml in --set-json %q: %w", setJSONVal, err)
-		}
-		setPath(configData, strings.Split(key, "."), cleanYAMLValue(parsedVal))
+	formatFlag, err := resolveOutputFormat(cmd, v.GetString("format"), v.GetString("output"), templatePath)
+	if err != nil {
+		return err
 	}
 
-	// 5. Determine output format (yaml or json)
-	formatFlag, _ := cmd.Flags().GetString("format")
-	if formatFlag == "" {
-		formatFlag = v.GetString("format")
-	}
-	if formatFlag == "" {
-		formatFlag = v.GetString("output")
-	}
-
-	if formatFlag == "" {
-		formatFlag = templates.GetDefaultFormat(templatePath)
-	}
-
-	formatFlag = strings.ToLower(strings.TrimSpace(formatFlag))
-	if formatFlag != "yaml" && formatFlag != "json" {
-		return fmt.Errorf("invalid format %q: must be yaml or json", formatFlag)
-	}
-
-	// Determine the CUE template content:
-	// 1. If templatePath exists on disk, load it as a custom file (custom templates take precedence).
-	// 2. Otherwise, check if templatePath matches an exact built-in template identifier.
-	// 3. If neither, return a descriptive error.
-	var templateContent string
-	if _, statErr := os.Stat(templatePath); statErr == nil {
-		bytes, err := os.ReadFile(templatePath)
-		if err != nil {
-			return fmt.Errorf("reading template file: %w", err)
-		}
-		templateContent = string(bytes)
-	} else if builtInContent, err := templates.GetTemplate(templatePath); err == nil {
-		templateContent = builtInContent
-	} else {
-		if strings.ContainsAny(templatePath, `/\`) || strings.HasSuffix(templatePath, ".cue") {
-			return fmt.Errorf("reading template file: %w", statErr)
-		}
-		return fmt.Errorf("unknown template %q (not a built-in template and file does not exist)", templatePath)
+	templateContent, err := templates.ResolveTemplate(templatePath)
+	if err != nil {
+		return err
 	}
 
 	params := domain.GenerateParams{
@@ -199,89 +131,21 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loa
 	return nil
 }
 
-func setPath(target map[string]any, path []string, value any) {
-	if len(path) == 0 {
-		return
+func resolveOutputFormat(cmd *cobra.Command, cfgFormat, cfgOutput, templatePath string) (string, error) {
+	formatFlag, _ := cmd.Flags().GetString("format")
+	if formatFlag == "" {
+		formatFlag = cfgFormat
 	}
-	if len(path) == 1 {
-		if existingMap, ok := target[path[0]].(map[string]any); ok {
-			if newMap, ok := value.(map[string]any); ok {
-				for k, v := range newMap {
-					existingMap[k] = v
-				}
-				return
-			}
-		}
-		target[path[0]] = value
-		return
+	if formatFlag == "" {
+		formatFlag = cfgOutput
+	}
+	if formatFlag == "" {
+		formatFlag = templates.GetDefaultFormat(templatePath)
 	}
 
-	currKey := path[0]
-	subMap, ok := target[currKey].(map[string]any)
-	if !ok {
-		subMap = make(map[string]any)
-		target[currKey] = subMap
+	formatFlag = strings.ToLower(strings.TrimSpace(formatFlag))
+	if formatFlag != "yaml" && formatFlag != "json" {
+		return "", fmt.Errorf("invalid format %q: must be yaml or json", formatFlag)
 	}
-	setPath(subMap, path[1:], value)
-}
-
-func parseSetVal(val string) any {
-	trimmed := strings.TrimSpace(val)
-	// Explicit map syntax: {k1=v1,k2=v2} or {k1: v1, k2: v2}
-	if strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}") {
-		inner := strings.TrimSpace(trimmed[1 : len(trimmed)-1])
-		if inner == "" {
-			return make(map[string]any)
-		}
-		// Check comma-separated k=v pairs: {k1=v1,k2=v2}
-		if strings.Contains(inner, "=") {
-			pairs := strings.Split(inner, ",")
-			m := make(map[string]any)
-			validMap := true
-			for _, pair := range pairs {
-				k, v, ok := strings.Cut(pair, "=")
-				if !ok || strings.TrimSpace(k) == "" {
-					validMap = false
-					break
-				}
-				m[strings.TrimSpace(k)] = strings.TrimSpace(v)
-			}
-			if validMap && len(m) > 0 {
-				return m
-			}
-		}
-		// Otherwise try JSON/YAML map: {k1: v1, k2: v2}
-		var parsed any
-		if err := yaml.Unmarshal([]byte(trimmed), &parsed); err == nil {
-			if m, ok := parsed.(map[string]any); ok {
-				return cleanYAMLValue(m)
-			}
-		}
-	}
-	return val
-}
-
-func cleanYAMLValue(v any) any {
-	switch val := v.(type) {
-	case map[string]any:
-		res := make(map[string]any, len(val))
-		for k, item := range val {
-			res[k] = cleanYAMLValue(item)
-		}
-		return res
-	case map[any]any:
-		res := make(map[string]any, len(val))
-		for k, item := range val {
-			res[fmt.Sprintf("%v", k)] = cleanYAMLValue(item)
-		}
-		return res
-	case []any:
-		res := make([]any, len(val))
-		for i, item := range val {
-			res[i] = cleanYAMLValue(item)
-		}
-		return res
-	default:
-		return val
-	}
+	return formatFlag, nil
 }

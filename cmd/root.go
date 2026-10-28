@@ -32,56 +32,60 @@ import (
 	openslo "github.com/MichielVanderhoydonck/sloak/internal/adapter/openslo"
 )
 
-var (
-	cfgFile   string
-	configErr error
-)
+func NewRootCmd() *cobra.Command {
+	var (
+		cfgFile   string
+		configErr error
+	)
 
-var rootCmd = &cobra.Command{
-	Use:   "sloak",
-	Short: "SLOAK is a Service Level Objective Army Knife for SRE calculations.",
-	Long: `SLOAK provides a suite of tools for calculating error budgets, 
+	root := &cobra.Command{
+		Use:   "sloak",
+		Short: "SLOAK is a Service Level Objective Army Knife for SRE calculations.",
+		Long: `SLOAK provides a suite of tools for calculating error budgets, 
            SLI attainment, burn rates, and more, following strict SRE principles.`,
-	SilenceErrors: true,
-	SilenceUsage:  true,
-	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-		if configErr != nil {
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			initConfig(cfgFile, &configErr)
 			return configErr
-		}
-		return nil
-	},
+		},
+	}
+
+	root.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.sloak.yaml)")
+
+	calcCmd := NewCalculateCmd()
+	genCmd := NewGenerateCmd()
+
+	root.AddCommand(calcCmd)
+	root.AddCommand(genCmd)
+	root.AddCommand(NewInitCmd())
+
+	calcCmd.AddCommand(errorbudgetCmd.NewErrorBudgetCmd(errorbudgetService.NewCalculatorService()))
+	calcCmd.AddCommand(burnrateCmd.NewBurnRateCmd(burnrateService.NewBurnRateService()))
+	calcCmd.AddCommand(dependencyCmd.NewDependencyCmd(dependencyService.NewAvailabilityService()))
+	calcCmd.AddCommand(disruptionCmd.NewDisruptionCmd(disruptionService.NewDisruptionService()))
+	calcCmd.AddCommand(feasibilityCmd.NewFeasibilityCmd(feasibilityService.NewFeasibilityService()))
+
+	root.AddCommand(convertCmd.NewConvertCmd(convertService.NewConvertService()))
+
+	alertSvc := alertingService.NewAlertGeneratorService()
+	specLoader := openslo.NewSpecLoader()
+	genCmd.AddCommand(alertingTableCmd.NewAlertTableCmd(alertSvc))
+	root.AddCommand(alertingTableCmd.NewRenderCmd(alertSvc, specLoader))
+
+	return root
 }
 
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := NewRootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.sloak.yaml)")
-
-	rootCmd.AddCommand(calculateCmd)
-	rootCmd.AddCommand(generateCmd)
-
-	calculateCmd.AddCommand(errorbudgetCmd.NewErrorBudgetCmd(errorbudgetService.NewCalculatorService()))
-	calculateCmd.AddCommand(burnrateCmd.NewBurnRateCmd(burnrateService.NewBurnRateService()))
-	calculateCmd.AddCommand(dependencyCmd.NewDependencyCmd(dependencyService.NewAvailabilityService()))
-	calculateCmd.AddCommand(disruptionCmd.NewDisruptionCmd(disruptionService.NewDisruptionService()))
-	calculateCmd.AddCommand(feasibilityCmd.NewFeasibilityCmd(feasibilityService.NewFeasibilityService()))
-
-	rootCmd.AddCommand(convertCmd.NewConvertCmd(convertService.NewConvertService()))
-
-	alertSvc := alertingService.NewAlertGeneratorService()
-	specLoader := openslo.NewSpecLoader()
-	generateCmd.AddCommand(alertingTableCmd.NewAlertTableCmd(alertSvc))
-	rootCmd.AddCommand(alertingTableCmd.NewRenderCmd(alertSvc, specLoader))
-}
-
-func initConfig() {
-	configErr = nil
+func initConfig(cfgFile string, configErr *error) {
+	*configErr = nil
+	viper.Reset()
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
@@ -99,11 +103,11 @@ func initConfig() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if cfgFile != "" {
-			configErr = fmt.Errorf("reading config file %q: %w", cfgFile, err)
+			*configErr = fmt.Errorf("reading config file %q: %w", cfgFile, err)
 		} else {
 			var configFileNotFoundError viper.ConfigFileNotFoundError
 			if !errors.As(err, &configFileNotFoundError) {
-				configErr = fmt.Errorf("reading config file: %w", err)
+				*configErr = fmt.Errorf("reading config file: %w", err)
 			}
 		}
 	}

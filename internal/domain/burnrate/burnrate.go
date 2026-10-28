@@ -1,8 +1,26 @@
 package burnrate
 
 import (
+	"errors"
+
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
+)
+
+type Status string
+
+const (
+	StatusExcellent Status = "EXCELLENT"
+	StatusHealthy   Status = "HEALTHY"
+	StatusWarning   Status = "WARNING"
+	StatusHigh      Status = "HIGH"
+	StatusCritical  Status = "CRITICAL"
+)
+
+const (
+	PageBurnRateThreshold    = 14.4
+	MessageBurnRateThreshold = 6.0
+	TicketBurnRateThreshold  = 1.0
 )
 
 type CalculationParams struct {
@@ -10,6 +28,25 @@ type CalculationParams struct {
 	TotalWindow   util.Duration
 	TimeElapsed   util.Duration
 	ErrorConsumed util.Duration
+}
+
+func (p CalculationParams) Validate() error {
+	if err := p.TargetSLO.Validate(); err != nil {
+		return err
+	}
+	if p.TotalWindow <= 0 {
+		return errors.New("total window must be greater than zero")
+	}
+	if p.TimeElapsed < 0 {
+		return errors.New("time elapsed cannot be negative")
+	}
+	if p.TimeElapsed > p.TotalWindow {
+		return errors.New("time elapsed cannot exceed total window")
+	}
+	if p.ErrorConsumed < 0 {
+		return errors.New("error consumed cannot be negative")
+	}
+	return nil
 }
 
 type BurnRateResult struct {
@@ -24,6 +61,32 @@ type BurnRateResult struct {
 	TimeToExhaustion        util.Duration `json:"time_to_exhaustion"`
 	TimeToExhaustionSeconds float64       `json:"time_to_exhaustion_seconds"`
 	NoBudgetConsumed        bool          `json:"no_budget_consumed"`
+	Status                  Status        `json:"status"`
+}
+
+// ResolveStatus returns the effective Status, classifying from BurnRate/flags if Status wasn't explicitly set.
+func (r BurnRateResult) ResolveStatus() Status {
+	if r.Status != "" {
+		return r.Status
+	}
+	return ClassifyBurnRate(r.BurnRate, r.BurnRateUnbounded, r.NoBudgetConsumed)
+}
+
+func ClassifyBurnRate(burnRate *float64, unbounded, noBudgetConsumed bool) Status {
+	switch {
+	case noBudgetConsumed:
+		return StatusExcellent
+	case unbounded:
+		return StatusCritical
+	case burnRate != nil && *burnRate >= PageBurnRateThreshold:
+		return StatusCritical
+	case burnRate != nil && *burnRate >= MessageBurnRateThreshold:
+		return StatusHigh
+	case burnRate != nil && *burnRate > TicketBurnRateThreshold:
+		return StatusWarning
+	default:
+		return StatusHealthy
+	}
 }
 
 type Service interface {

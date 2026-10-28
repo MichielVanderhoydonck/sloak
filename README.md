@@ -265,7 +265,7 @@ sloak calculate errorbudget
 ### Verifying Architectural Integrity
 We enforce clean architecture boundaries using `go-arch-lint`:
 ```bash
-docker run --rm -v ${PWD}:/app fe3dback/go-arch-lint:latest check --project-path /app
+docker run --rm -e GOTOOLCHAIN=auto -v ${PWD}:/app fe3dback/go-arch-lint:latest check --project-path /app
 ```
 
 ### Running Tests

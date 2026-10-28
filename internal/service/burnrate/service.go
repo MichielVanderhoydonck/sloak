@@ -13,31 +13,20 @@ type BurnRateService struct{}
 
 var _ burnrateDomain.Service = (*BurnRateService)(nil)
 
-func NewBurnRateService() *BurnRateService {
+func NewBurnRateService() burnrateDomain.Service {
 	return &BurnRateService{}
 }
 
 func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationParams) (burnrateDomain.BurnRateResult, error) {
+	if err := params.Validate(); err != nil {
+		return burnrateDomain.BurnRateResult{}, err
+	}
+
 	totalWindow := time.Duration(params.TotalWindow)
 	errorConsumed := time.Duration(params.ErrorConsumed)
 	timeElapsed := time.Duration(params.TimeElapsed)
 
-	if totalWindow <= 0 {
-		return burnrateDomain.BurnRateResult{}, errors.New("total window must be greater than zero")
-	}
-	if timeElapsed < 0 {
-		return burnrateDomain.BurnRateResult{}, errors.New("time elapsed cannot be negative")
-	}
-	if timeElapsed > totalWindow {
-		return burnrateDomain.BurnRateResult{}, errors.New("time elapsed cannot exceed total window")
-	}
-	if errorConsumed < 0 {
-		return burnrateDomain.BurnRateResult{}, errors.New("error consumed cannot be negative")
-	}
-
-	totalBudget := totalWindow.Seconds() * (1.0 - (params.TargetSLO.Value / 100.0))
-	totalBudgetDur := time.Duration(totalBudget * float64(time.Second))
-
+	totalBudgetDur := params.TargetSLO.AllowedDowntime(totalWindow)
 	if totalBudgetDur <= 0 {
 		return burnrateDomain.BurnRateResult{}, errors.New("total error budget is zero or negative")
 	}
@@ -75,6 +64,9 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 		tte = 0
 	}
 
+	noBudgetConsumed := errorConsumed == 0
+	status := burnrateDomain.ClassifyBurnRate(burnRate, burnRateUnbounded, noBudgetConsumed)
+
 	return burnrateDomain.BurnRateResult{
 		TotalErrorBudget:        util.Duration(totalBudgetDur),
 		TotalErrorBudgetSeconds: math.Round(totalBudgetDur.Seconds()),
@@ -86,6 +78,7 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 		BurnRateUnbounded:       burnRateUnbounded,
 		TimeToExhaustion:        util.Duration(tte),
 		TimeToExhaustionSeconds: math.Round(tte.Seconds()),
-		NoBudgetConsumed:        errorConsumed == 0,
+		NoBudgetConsumed:        noBudgetConsumed,
+		Status:                  status,
 	}, nil
 }

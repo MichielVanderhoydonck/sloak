@@ -73,15 +73,15 @@ func runFeasibilityCmd(cmd *cobra.Command, service domain.Service) error {
 		fmt.Fprintln(w, "Required Reliability (MTBF):")
 		fmt.Fprintf(w, "  • Systems must run for %s without failure.\n\n", res.RequiredMTBF)
 
-		// Simple Status Logic
 		fmt.Fprint(w, "Status: ")
-		if res.IncidentsPerQuarter < 1.0 {
+		switch res.ResolveStatus() {
+		case domain.StatusExtremelyHard:
 			fmt.Fprintln(w, "EXTREMELY HARD")
 			fmt.Fprintln(w, "You cannot afford even one major incident per quarter.")
-		} else if res.IncidentsPerQuarter < 3.0 {
+		case domain.StatusChallenging:
 			fmt.Fprintln(w, "CHALLENGING")
 			fmt.Fprintln(w, "Allows ~1 incident per month. Tight but possible.")
-		} else {
+		default:
 			fmt.Fprintln(w, "REALISTIC")
 			fmt.Fprintln(w, "Allows multiple incidents per quarter.")
 		}

@@ -3,6 +3,7 @@ package templates
 import (
 	"embed"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,19 +13,21 @@ import (
 var FS embed.FS
 
 type BuiltInInfo struct {
-	FileName       string
-	DefaultFormat  string
-	AllowedWindows []time.Duration
+	DisplayName     string
+	FileName        string
+	DefaultFormat   string
+	AllowedWindows  []time.Duration
+	TimeframeConfig string
 }
 
 var builtIns = map[string]BuiltInInfo{
-	"prometheus-operator":    {FileName: "prometheus_operator_mwmbr.cue", DefaultFormat: "yaml"},
-	"datadog":                {FileName: "datadog.cue", DefaultFormat: "json", AllowedWindows: []time.Duration{7 * 24 * time.Hour, 30 * 24 * time.Hour, 90 * 24 * time.Hour}},
-	"grafana-cloud":          {FileName: "grafana_cloud_alerting.cue", DefaultFormat: "yaml"},
-	"grafana-cloud-alerting": {FileName: "grafana_cloud_alerting.cue", DefaultFormat: "yaml"},
-	"otel-collector":         {FileName: "otel_collector.cue", DefaultFormat: "yaml"},
-	"incident-io":            {FileName: "incident_io.cue", DefaultFormat: "json"},
-	"incident_io":            {FileName: "incident_io.cue", DefaultFormat: "json"},
+	"prometheus-operator":    {DisplayName: "prometheus-operator", FileName: "prometheus_operator_mwmbr.cue", DefaultFormat: "yaml"},
+	"datadog":                {DisplayName: "datadog SLO", FileName: "datadog.cue", DefaultFormat: "json", AllowedWindows: []time.Duration{7 * 24 * time.Hour, 30 * 24 * time.Hour, 90 * 24 * time.Hour}, TimeframeConfig: "timeframe"},
+	"grafana-cloud":          {DisplayName: "grafana-cloud", FileName: "grafana_cloud_alerting.cue", DefaultFormat: "yaml"},
+	"grafana-cloud-alerting": {DisplayName: "grafana-cloud", FileName: "grafana_cloud_alerting.cue", DefaultFormat: "yaml"},
+	"otel-collector":         {DisplayName: "otel-collector", FileName: "otel_collector.cue", DefaultFormat: "yaml"},
+	"incident-io":            {DisplayName: "incident-io", FileName: "incident_io.cue", DefaultFormat: "json"},
+	"incident_io":            {DisplayName: "incident-io", FileName: "incident_io.cue", DefaultFormat: "json"},
 }
 
 // IsBuiltIn reports whether name is a recognized built-in template identifier.
@@ -71,6 +74,27 @@ func GetTemplate(name string) (string, error) {
 	}
 
 	return "", fmt.Errorf("not a built-in template: %q", name)
+}
+
+// ResolveTemplate loads a CUE template by checking:
+// 1. If templatePath exists on disk, load it as a custom file (custom templates take precedence).
+// 2. Otherwise, check if templatePath matches an exact built-in template identifier.
+// 3. If neither, return a descriptive error.
+func ResolveTemplate(templatePath string) (string, error) {
+	if _, statErr := os.Stat(templatePath); statErr == nil {
+		bytes, err := os.ReadFile(templatePath)
+		if err != nil {
+			return "", fmt.Errorf("reading template file: %w", err)
+		}
+		return string(bytes), nil
+	} else if builtInContent, err := GetTemplate(templatePath); err == nil {
+		return builtInContent, nil
+	} else {
+		if strings.ContainsAny(templatePath, `/\`) || strings.HasSuffix(templatePath, ".cue") {
+			return "", fmt.Errorf("reading template file: %w", statErr)
+		}
+		return "", fmt.Errorf("unknown template %q (not a built-in template and file does not exist)", templatePath)
+	}
 }
 
 // GetSchema returns the shared CUE input and alert schema definition.

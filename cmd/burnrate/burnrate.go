@@ -98,23 +98,24 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 		}
 		fmt.Fprintf(w, "Budget Remaining: %s\n", result.BudgetRemaining)
 
-		switch {
-		case result.NoBudgetConsumed:
+		switch result.ResolveStatus() {
+		case burnrateDomain.StatusExcellent:
 			fmt.Fprintln(w, "\nStatus: Excellent! No error budget consumed.")
-		case result.BurnRateUnbounded:
+		case burnrateDomain.StatusCritical:
 			fmt.Fprintln(w, "\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
-			fmt.Fprintln(w, "Forecast: Cannot forecast time-to-exhaustion with zero elapsed time.")
-		case result.BurnRate != nil && *result.BurnRate >= 14.4:
-			fmt.Fprintln(w, "\nStatus: CRITICAL (Page)! Budget is burning at an emergency rate.")
-			fmt.Fprintf(w, "Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
-			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
-			fmt.Fprintf(w, "Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
-		case result.BurnRate != nil && *result.BurnRate >= 6.0:
+			if result.BurnRateUnbounded {
+				fmt.Fprintln(w, "Forecast: Cannot forecast time-to-exhaustion with zero elapsed time.")
+			} else {
+				fmt.Fprintf(w, "Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
+				exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
+				fmt.Fprintf(w, "Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
+			}
+		case burnrateDomain.StatusHigh:
 			fmt.Fprintln(w, "\nStatus: HIGH (Message). Budget is burning significantly faster than expected.")
 			fmt.Fprintf(w, "Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
 			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))
 			fmt.Fprintf(w, "Predicted Exhaustion: %s\n", exhaustionDate.Format(time.RFC1123))
-		case result.BurnRate != nil && *result.BurnRate > 1.0:
+		case burnrateDomain.StatusWarning:
 			fmt.Fprintln(w, "\nStatus: WARNING (Ticket). Budget is burning faster than sustainable.")
 			fmt.Fprintf(w, "Forecast: Budget will be empty in %s\n", result.TimeToExhaustion)
 			exhaustionDate := time.Now().Add(time.Duration(result.TimeToExhaustion))

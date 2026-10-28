@@ -78,3 +78,13 @@ func TestSLOTarget_String(t *testing.T) {
 		})
 	}
 }
+
+func TestSLOTarget_Calculations(t *testing.T) {
+	slo, err := common.NewSLOTarget(99.9)
+	require.NoError(t, err)
+	require.NoError(t, slo.Validate())
+
+	require.InDelta(t, 0.999, slo.Ratio(), 1e-9)
+	require.Equal(t, 0.999, slo.RoundedRatio())
+	require.Equal(t, 0.001, slo.ErrorBudgetRatio())
+}
