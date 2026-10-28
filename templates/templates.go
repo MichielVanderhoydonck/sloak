@@ -3,39 +3,55 @@ package templates
 import (
 	"embed"
 	"fmt"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 //go:embed *.cue
 var FS embed.FS
 
 type BuiltInInfo struct {
-	FileName      string
-	DefaultFormat string
+	FileName       string
+	DefaultFormat  string
+	AllowedWindows []time.Duration
 }
 
 var builtIns = map[string]BuiltInInfo{
-	"prometheus-operator":    {"prometheus_operator_mwmbr.cue", "yaml"},
-	"datadog":                {"datadog.cue", "json"},
-	"grafana-cloud":          {"grafana_cloud_alerting.cue", "yaml"},
-	"grafana-cloud-alerting": {"grafana_cloud_alerting.cue", "yaml"},
-	"otel-collector":         {"otel_collector.cue", "yaml"},
-	"incident-io":            {"incident_io.cue", "json"},
-	"incident_io":            {"incident_io.cue", "json"},
+	"prometheus-operator":    {FileName: "prometheus_operator_mwmbr.cue", DefaultFormat: "yaml"},
+	"datadog":                {FileName: "datadog.cue", DefaultFormat: "json", AllowedWindows: []time.Duration{7 * 24 * time.Hour, 30 * 24 * time.Hour, 90 * 24 * time.Hour}},
+	"grafana-cloud":          {FileName: "grafana_cloud_alerting.cue", DefaultFormat: "yaml"},
+	"grafana-cloud-alerting": {FileName: "grafana_cloud_alerting.cue", DefaultFormat: "yaml"},
+	"otel-collector":         {FileName: "otel_collector.cue", DefaultFormat: "yaml"},
+	"incident-io":            {FileName: "incident_io.cue", DefaultFormat: "json"},
+	"incident_io":            {FileName: "incident_io.cue", DefaultFormat: "json"},
 }
 
 // IsBuiltIn reports whether name is a recognized built-in template identifier.
 func IsBuiltIn(name string) bool {
-	_, ok := builtIns[strings.ToLower(strings.TrimSpace(name))]
+	_, ok := GetBuiltInInfo(name)
 	return ok
+}
+
+// GetBuiltInInfo returns information about a built-in template, matching either
+// the direct template key or its base file name (with or without .cue extension).
+func GetBuiltInInfo(name string) (BuiltInInfo, bool) {
+	key := strings.ToLower(strings.TrimSpace(name))
+	if info, ok := builtIns[key]; ok {
+		return info, true
+	}
+	base := strings.TrimSuffix(filepath.Base(key), ".cue")
+	if info, ok := builtIns[base]; ok {
+		return info, true
+	}
+	return BuiltInInfo{}, false
 }
 
 // GetDefaultFormat returns the default output format for a template identifier.
 // Built-in templates default to their designated format (e.g. json for Datadog and Incident.io);
 // custom templates default to yaml.
 func GetDefaultFormat(name string) string {
-	key := strings.ToLower(strings.TrimSpace(name))
-	if info, ok := builtIns[key]; ok {
+	if info, ok := GetBuiltInInfo(name); ok {
 		return info.DefaultFormat
 	}
 	return "yaml"

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	cueyaml "cuelang.org/go/encoding/yaml"
 	"github.com/prometheus/prometheus/promql/parser"
-	"gopkg.in/yaml.v3"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
@@ -126,7 +126,7 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 }
 
 func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error) {
-	if err := validateDatadogConfig(params, config, templateContent); err != nil {
+	if err := validateDatadogConfig(params, config); err != nil {
 		return "", err
 	}
 	if err := validateQueryConfig(config); err != nil {
@@ -260,6 +260,12 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 		return "", fmt.Errorf("failed to build output CUE value: %w", outputVal.Err())
 	}
 
+	// Validate rendered PromQL expressions in 'expr' fields directly on the CUE value before encoding.
+	// This covers both JSON and YAML output formats, handles arbitrary rule nesting, and avoids decoding twice.
+	if err := validateCueExprs(outputVal); err != nil {
+		return "", err
+	}
+
 	// Check if JSON format was requested
 	format := strings.ToLower(strings.TrimSpace(params.Format))
 
@@ -281,43 +287,43 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 		return "", fmt.Errorf("failed to encode YAML: %w", err)
 	}
 
-	// Validate rendered PromQL expressions in YAML output if rules exist
-	var doc struct {
-		Spec struct {
-			Groups []struct {
-				Rules []struct {
-					Expr string `yaml:"expr"`
-				} `yaml:"rules"`
-			} `yaml:"groups"`
-		} `yaml:"spec"`
-		Groups []struct {
-			Rules []struct {
-				Expr string `yaml:"expr"`
-			} `yaml:"rules"`
-		} `yaml:"groups"`
-	}
-	if err := yaml.Unmarshal(yamlBytes, &doc); err == nil {
-		for _, g := range doc.Spec.Groups {
-			for _, r := range g.Rules {
-				if r.Expr != "" {
-					if _, err := parsePromQLExpr(r.Expr); err != nil {
-						return "", fmt.Errorf("rendered invalid PromQL expression %q: %w", r.Expr, err)
-					}
-				}
-			}
-		}
-		for _, g := range doc.Groups {
-			for _, r := range g.Rules {
-				if r.Expr != "" {
-					if _, err := parsePromQLExpr(r.Expr); err != nil {
-						return "", fmt.Errorf("rendered invalid PromQL expression %q: %w", r.Expr, err)
-					}
-				}
-			}
-		}
-	}
-
 	return string(yamlBytes), nil
+}
+
+func validateCueExprs(val cue.Value) error {
+	switch val.Kind() {
+	case cue.StructKind:
+		iter, err := val.Fields()
+		if err != nil {
+			return nil
+		}
+		for iter.Next() {
+			sel := iter.Selector()
+			child := iter.Value()
+			if sel.Unquoted() == "expr" && child.Kind() == cue.StringKind {
+				exprStr, err := child.String()
+				if err == nil && strings.TrimSpace(exprStr) != "" {
+					if _, err := parsePromQLExpr(exprStr); err != nil {
+						return fmt.Errorf("rendered invalid PromQL expression %q: %w", exprStr, err)
+					}
+				}
+			}
+			if err := validateCueExprs(child); err != nil {
+				return err
+			}
+		}
+	case cue.ListKind:
+		iter, err := val.List()
+		if err != nil {
+			return nil
+		}
+		for iter.Next() {
+			if err := validateCueExprs(iter.Value()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func parsePromQLExpr(input string) (parser.Expr, error) {
@@ -341,8 +347,9 @@ func formatPrometheusDuration(d time.Duration) string {
 	return fmt.Sprintf("%ds", int(d.Seconds()))
 }
 
-func validateDatadogConfig(params domain.GenerateParams, config map[string]any, templateContent string) error {
-	isDatadog := strings.EqualFold(params.Template, "datadog") || strings.Contains(templateContent, "datadog")
+func validateDatadogConfig(params domain.GenerateParams, config map[string]any) error {
+	info, isBuiltIn := templates.GetBuiltInInfo(params.Template)
+	isDatadog := (isBuiltIn && info.FileName == "datadog.cue") || strings.EqualFold(strings.TrimSuffix(filepath.Base(params.Template), ".cue"), "datadog")
 	if !isDatadog {
 		return nil
 	}
@@ -354,9 +361,22 @@ func validateDatadogConfig(params domain.GenerateParams, config map[string]any, 
 			return nil
 		}
 	}
-	winSec := params.TotalWindow.Seconds()
-	if winSec != 7*86400 && winSec != 30*86400 && winSec != 90*86400 {
-		return fmt.Errorf("datadog SLOs only support 7d, 30d, or 90d timeframes (window is %s); use --set timeframe=7d|30d|90d to override explicitly", util.FormatDuration(params.TotalWindow))
+	if len(info.AllowedWindows) > 0 {
+		var matched bool
+		for _, w := range info.AllowedWindows {
+			if params.TotalWindow == w {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return fmt.Errorf("datadog SLOs only support 7d, 30d, or 90d timeframes (window is %s); use --set timeframe=7d|30d|90d to override explicitly", util.FormatDuration(params.TotalWindow))
+		}
+	} else {
+		winSec := params.TotalWindow.Seconds()
+		if winSec != 7*86400 && winSec != 30*86400 && winSec != 90*86400 {
+			return fmt.Errorf("datadog SLOs only support 7d, 30d, or 90d timeframes (window is %s); use --set timeframe=7d|30d|90d to override explicitly", util.FormatDuration(params.TotalWindow))
+		}
 	}
 	return nil
 }
@@ -422,16 +442,14 @@ func validateQueryConfig(config map[string]any) error {
 	errorRatioQ = strings.TrimSpace(errorRatioQ)
 	sliQ = strings.TrimSpace(sliQ)
 
-	// If error_ratio_query is empty but sli_query is provided, populate error_ratio_query for consistency
-	if errorRatioQ == "" && sliQ != "" {
-		errorRatioQ = sliQ
-		config["error_ratio_query"] = errorRatioQ
-	} else if errorRatioQ != "" && sliQ == "" {
-		config["sli_query"] = errorRatioQ
+	// Determine effective ratio query without mutating the caller's config map
+	effectiveRatioQ := errorRatioQ
+	if effectiveRatioQ == "" {
+		effectiveRatioQ = sliQ
 	}
 
-	if errorRatioQ != "" {
-		if err := validateQueryPart("error_ratio_query", errorRatioQ); err != nil {
+	if effectiveRatioQ != "" {
+		if err := validateQueryPart("error_ratio_query", effectiveRatioQ); err != nil {
 			return err
 		}
 	}
@@ -446,16 +464,16 @@ func validateQueryConfig(config map[string]any) error {
 		}
 	}
 
-	if errorRatioQ != "" && (errQ != "" || totQ != "") {
+	if effectiveRatioQ != "" && (errQ != "" || totQ != "") {
 		return fmt.Errorf("error_ratio_query cannot be combined with errors_query or total_query; use errors_query + total_query for counter metrics, or error_ratio_query for precomputed ratios")
 	}
 
-	if errQ != "" && totQ == "" && errorRatioQ == "" {
+	if errQ != "" && totQ == "" && effectiveRatioQ == "" {
 		if !strings.HasPrefix(errQ, "vector(") {
 			return fmt.Errorf("errors_query requires total_query to compute the error ratio; if your query is already an error ratio, use error_ratio_query instead")
 		}
 	}
-	if totQ != "" && errQ == "" && errorRatioQ == "" {
+	if totQ != "" && errQ == "" && effectiveRatioQ == "" {
 		return fmt.Errorf("total_query provided without errors_query; both errors_query and total_query are required to compute the error ratio")
 	}
 

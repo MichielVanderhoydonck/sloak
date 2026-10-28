@@ -17,8 +17,6 @@ import (
 	total_window_seconds: int | float
 	windows: [...#Alert]
 	recording_windows?: [...string]
-	error_ratio_query?:   string
-	sli_query?:           string
 	config?: {[string]: _}
 }
 
@@ -55,11 +53,6 @@ import (
 	_sub1: strings.Replace(q, "$window", w, -1)
 	_sub2: strings.Replace(_sub1, "{{window}}", w, -1)
 	_sub3: strings.Replace(_sub2, "[window]", "[\(w)]", -1)
-
-	_avgPrefix: [
-		if by != "" && by != "none" { "avg by (\(by)) " },
-		"",
-	][0]
 
 	out: [
 		if _hasPlaceholder { _sub3 },

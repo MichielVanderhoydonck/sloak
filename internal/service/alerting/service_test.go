@@ -773,6 +773,152 @@ func TestValidateDatadogConfig(t *testing.T) {
 			t.Fatalf("unexpected error message: %v", err)
 		}
 	})
+
+	t.Run("rejects unsupported window when template path is ./templates/datadog.cue", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 14 * 24 * time.Hour,
+			Format:      "json",
+			Template:    "./templates/datadog.cue",
+		}
+		config := map[string]any{}
+		_, err := svc.RenderTemplate(params, config, ddTpl)
+		if err == nil {
+			t.Fatal("expected error for unsupported window 14d via file path, got nil")
+		}
+		if !strings.Contains(err.Error(), "datadog SLOs only support 7d, 30d, or 90d timeframes") {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("allows custom template mentioning datadog with 28d window without false positive", func(t *testing.T) {
+		customTpl := `package templates
+// Migrated from datadog monitoring system
+data: #Input
+rule: {
+	labels: {
+		source: "datadog-migrated"
+	}
+	expr: "sum(rate(http_requests_total[5m]))"
+}
+`
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 28 * 24 * time.Hour,
+			Format:      "yaml",
+			Template:    "./my-custom.cue",
+		}
+		config := map[string]any{}
+		out, err := svc.RenderTemplate(params, config, customTpl)
+		if err != nil {
+			t.Fatalf("expected custom template mentioning datadog to succeed with 28d window, got error: %v", err)
+		}
+		if !strings.Contains(out, "datadog-migrated") {
+			t.Fatalf("expected output to contain datadog-migrated label, got: %s", out)
+		}
+	})
+}
+
+func TestRenderedPromQLValidation_JSONAndNested(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, _ := common.NewSLOTarget(99.9)
+
+	t.Run("rejects invalid PromQL expression in JSON output format", func(t *testing.T) {
+		tpl := `package templates
+data: #Input
+rule: {
+	expr: "sum(rate(http_requests_total[5m]" // missing closing parenthesis
+}
+`
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "json",
+			Template:    "custom.cue",
+		}
+		_, err := svc.RenderTemplate(params, map[string]any{}, tpl)
+		if err == nil {
+			t.Fatal("expected error for invalid PromQL in JSON format, got nil")
+		}
+		if !strings.Contains(err.Error(), "rendered invalid PromQL expression") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("accepts valid PromQL expression in JSON output format", func(t *testing.T) {
+		tpl := `package templates
+data: #Input
+rule: {
+	expr: "sum(rate(http_requests_total[5m]))"
+}
+`
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "json",
+			Template:    "custom.cue",
+		}
+		out, err := svc.RenderTemplate(params, map[string]any{}, tpl)
+		if err != nil {
+			t.Fatalf("expected valid PromQL in JSON format to succeed, got error: %v", err)
+		}
+		if !strings.Contains(out, "http_requests_total") {
+			t.Fatalf("unexpected output: %s", out)
+		}
+	})
+}
+
+func TestValidateQueryConfig_NoMapMutation(t *testing.T) {
+	svc := service.NewAlertGeneratorService()
+	slo999, _ := common.NewSLOTarget(99.9)
+	tpl, err := templates.GetTemplate("prometheus-operator")
+	if err != nil {
+		t.Fatalf("failed to get template: %v", err)
+	}
+
+	t.Run("sli_query does not mutate caller map with error_ratio_query", func(t *testing.T) {
+		cfg := map[string]any{
+			"sli_query": "my_ratio_metric",
+		}
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+			Template:    "prometheus-operator",
+		}
+		_, err := svc.RenderTemplate(params, cfg, tpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+		if _, ok := cfg["error_ratio_query"]; ok {
+			t.Errorf("caller's config map was unexpectedly mutated with error_ratio_query")
+		}
+		if len(cfg) != 1 {
+			t.Errorf("expected caller map to have 1 key, got %d", len(cfg))
+		}
+	})
+
+	t.Run("error_ratio_query does not mutate caller map with sli_query", func(t *testing.T) {
+		cfg := map[string]any{
+			"error_ratio_query": "my_ratio_metric",
+		}
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+			Template:    "prometheus-operator",
+		}
+		_, err := svc.RenderTemplate(params, cfg, tpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+		if _, ok := cfg["sli_query"]; ok {
+			t.Errorf("caller's config map was unexpectedly mutated with sli_query")
+		}
+		if len(cfg) != 1 {
+			t.Errorf("expected caller map to have 1 key, got %d", len(cfg))
+		}
+	})
 }
 
 func TestConsumptionTargetFractions(t *testing.T) {
