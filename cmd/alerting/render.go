@@ -66,6 +66,7 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loa
 	sloVal := v.GetFloat64("slo")
 	windowStr := v.GetString("window")
 
+	var sloTarget common.SLOTarget
 	var totalWindow time.Duration
 	var openSLOConfig map[string]any
 
@@ -77,7 +78,10 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loa
 		if err != nil {
 			return fmt.Errorf("parsing OpenSLO spec: %w", err)
 		}
-		sloVal = spec.TargetSLO
+		if err := spec.TargetSLO.Validate(); err != nil {
+			return err
+		}
+		sloTarget = spec.TargetSLO
 		totalWindow = spec.TotalWindow
 		openSLOConfig = spec.Config
 	} else {
@@ -85,11 +89,10 @@ func runRenderCmd(cmd *cobra.Command, renderService domain.TemplateRenderer, loa
 		if err != nil {
 			return fmt.Errorf("parsing window: %w", err)
 		}
-	}
-
-	sloTarget, err := common.NewSLOTarget(sloVal)
-	if err != nil {
-		return err
+		sloTarget, err = common.NewSLOTarget(sloVal)
+		if err != nil {
+			return err
+		}
 	}
 
 	var valuesBytes []byte

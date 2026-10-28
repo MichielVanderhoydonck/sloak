@@ -1,4 +1,4 @@
-package alerting
+package cue
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -21,23 +20,22 @@ import (
 	templates "github.com/MichielVanderhoydonck/sloak/templates"
 )
 
-func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error) {
+// Engine implements domain.RenderEngine using CUE and the Prometheus PromQL parser.
+type Engine struct{}
+
+var _ domain.RenderEngine = (*Engine)(nil)
+
+func NewEngine() domain.RenderEngine {
+	return &Engine{}
+}
+
+func (e *Engine) EvaluateAndRender(contextData domain.AlertingContext, config map[string]any, params domain.GenerateParams, templateContent string) (string, error) {
 	if err := validateTemplateConstraints(params, config); err != nil {
 		return "", err
 	}
 	if err := validateQueryConfig(config); err != nil {
 		return "", err
 	}
-
-	// 1. Generate the table result first to get the windows and burn rates
-	tableRes, err := s.GenerateTable(params)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate alerting table: %w", err)
-	}
-
-	// 2. Prepare the AlertingContext DTO
-	budget := params.TargetSLO.ErrorBudgetRatio()
-	recordingWindows := collectRecordingWindows(tableRes.Alerts)
 
 	cfgCopy := make(map[string]any, len(config))
 	for k, v := range config {
@@ -46,49 +44,9 @@ func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, con
 	if err := normalizeAggregationLabels(cfgCopy); err != nil {
 		return "", err
 	}
+	contextData.Config = cfgCopy
 
-	contextData := domain.AlertingContext{
-		TargetSLO:          params.TargetSLO.Value,
-		ErrorBudgetRatio:   budget,
-		TotalWindowSeconds: int64(params.TotalWindow.Seconds()),
-		Windows:            make([]domain.AlertingWindow, len(tableRes.Alerts)),
-		RecordingWindows:   recordingWindows,
-		Config:             cfgCopy,
-	}
-
-	for i, alert := range tableRes.Alerts {
-		contextData.Windows[i] = domain.AlertingWindow{
-			LongWindow:       formatPrometheusDuration(time.Duration(alert.LongWindow)),
-			ShortWindow:      formatPrometheusDuration(time.Duration(alert.ShortWindow)),
-			BurnRate:         alert.BurnRate,
-			NotificationType: strings.ToLower(string(alert.NotificationType)),
-		}
-	}
-
-	// 3. CUE processing & encoding
 	return evaluateAndEncodeCUE(contextData, templateContent, params.Format)
-}
-
-func collectRecordingWindows(alerts []domain.AlertDefinition) []string {
-	uniqueWindowsMap := make(map[time.Duration]string)
-	for _, rule := range alerts {
-		dLong := time.Duration(rule.LongWindow)
-		dShort := time.Duration(rule.ShortWindow)
-		uniqueWindowsMap[dLong] = formatPrometheusDuration(dLong)
-		uniqueWindowsMap[dShort] = formatPrometheusDuration(dShort)
-	}
-	sortedDurations := make([]time.Duration, 0, len(uniqueWindowsMap))
-	for d := range uniqueWindowsMap {
-		sortedDurations = append(sortedDurations, d)
-	}
-	sort.Slice(sortedDurations, func(i, j int) bool {
-		return sortedDurations[i] < sortedDurations[j]
-	})
-	recordingWindows := make([]string, len(sortedDurations))
-	for i, d := range sortedDurations {
-		recordingWindows[i] = uniqueWindowsMap[d]
-	}
-	return recordingWindows
 }
 
 func evaluateAndEncodeCUE(contextData domain.AlertingContext, templateContent, rawFormat string) (string, error) {
@@ -450,4 +408,3 @@ func normalizeAggregationLabels(config map[string]any) error {
 	}
 	return nil
 }
-

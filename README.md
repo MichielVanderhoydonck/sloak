@@ -255,12 +255,12 @@ sloak calculate errorbudget
 
 ## 🏗 Architecture & Quality
 
-`sloak` strictly follows **Clean Architecture** principles:
-- **Domain (`internal/domain`)**: Core business rules, value objects, and interfaces. Pure Go, zero external dependencies.
-- **Adapter (`internal/adapter`)**: Ingestion and mapping of external formats (e.g. OpenSLO SDK) into domain models.
-- **Service (`internal/service`)**: Implementation of calculations and business workflows. Depends on `Domain`, `Util`, and embedded template assets.
-- **CLI Commands (`cmd/`)**: Delivery mechanism. Depends only on `Domain` interfaces; strictly prohibited from importing concrete services or adapters.
-- **Composition Root (`cmd/root.go`, `cmd/sloak/main.go`)**: Bootstrap layer where concrete dependencies are injected.
+`sloak` strictly follows **Clean / Hexagonal Architecture** principles:
+- **Domain (`internal/domain`)**: Core business rules, value objects, and port interfaces. Pure Go, zero external dependencies.
+- **Service (`internal/service`)**: Application use cases and mathematical calculations. Pure Go, zero external dependencies (depends only on `Domain` and `Util`).
+- **Adapter (`internal/adapter`)**: Driven adapters for external formats and engines (OpenSLO SDK ingestion, CUE template evaluation, and PromQL AST validation).
+- **CLI Commands (`cmd/`)**: Driving delivery mechanism. Depends only on `Domain` interfaces; strictly prohibited from importing concrete services or adapters.
+- **Composition Root (`cmd/root.go`, `cmd/sloak/main.go`)**: Bootstrap layer where concrete adapters and services are wired into commands.
 
 ### Verifying Architectural Integrity
 We enforce clean architecture boundaries using `go-arch-lint`:

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
 )
 
@@ -23,7 +24,7 @@ type ConversionParams struct {
 
 func (p *ConversionParams) Validate() error {
 	if p.Mode == ModeFromNines {
-		if p.Nines <= 0 || p.Nines >= 100 {
+		if _, err := common.NewSLOTarget(p.Nines); err != nil {
 			return errors.New("availability must be between 0 and 100")
 		}
 	} else if p.Mode == ModeFromDowntime {

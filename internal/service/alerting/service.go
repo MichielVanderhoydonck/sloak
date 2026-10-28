@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
+	"strings"
 	"time"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
@@ -19,12 +21,14 @@ const (
 	MinShortWindow    = 5 * time.Minute
 )
 
-type AlertGeneratorService struct{}
+type AlertGeneratorService struct {
+	engine domain.RenderEngine
+}
 
 var _ domain.Service = (*AlertGeneratorService)(nil)
 
-func NewAlertGeneratorService() domain.Service {
-	return &AlertGeneratorService{}
+func NewAlertGeneratorService(engine domain.RenderEngine) domain.Service {
+	return &AlertGeneratorService{engine: engine}
 }
 
 func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (domain.TableResult, error) {
@@ -110,4 +114,77 @@ func (s *AlertGeneratorService) GenerateTable(params domain.GenerateParams) (dom
 		TotalWindowSeconds: params.TotalWindow.Seconds(),
 		Alerts:             rules,
 	}, nil
+}
+
+func (s *AlertGeneratorService) RenderTemplate(params domain.GenerateParams, config map[string]any, templateContent string) (string, error) {
+	if s.engine == nil {
+		return "", errors.New("render engine is not configured")
+	}
+
+	// 1. Generate the table result first to get the windows and burn rates
+	tableRes, err := s.GenerateTable(params)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate alerting table: %w", err)
+	}
+
+	// 2. Prepare the AlertingContext DTO
+	budget := params.TargetSLO.ErrorBudgetRatio()
+	recordingWindows := collectRecordingWindows(tableRes.Alerts)
+
+	contextData := domain.AlertingContext{
+		TargetSLO:          params.TargetSLO.Value,
+		ErrorBudgetRatio:   budget,
+		TotalWindowSeconds: int64(params.TotalWindow.Seconds()),
+		Windows:            make([]domain.AlertingWindow, len(tableRes.Alerts)),
+		RecordingWindows:   recordingWindows,
+	}
+
+	for i, alert := range tableRes.Alerts {
+		contextData.Windows[i] = domain.AlertingWindow{
+			LongWindow:       formatPrometheusDuration(time.Duration(alert.LongWindow)),
+			ShortWindow:      formatPrometheusDuration(time.Duration(alert.ShortWindow)),
+			BurnRate:         alert.BurnRate,
+			NotificationType: strings.ToLower(string(alert.NotificationType)),
+		}
+	}
+
+	return s.engine.EvaluateAndRender(contextData, config, params, templateContent)
+}
+
+func collectRecordingWindows(alerts []domain.AlertDefinition) []string {
+	uniqueWindowsMap := make(map[time.Duration]string)
+	for _, rule := range alerts {
+		dLong := time.Duration(rule.LongWindow)
+		dShort := time.Duration(rule.ShortWindow)
+		uniqueWindowsMap[dLong] = formatPrometheusDuration(dLong)
+		uniqueWindowsMap[dShort] = formatPrometheusDuration(dShort)
+	}
+	sortedDurations := make([]time.Duration, 0, len(uniqueWindowsMap))
+	for d := range uniqueWindowsMap {
+		sortedDurations = append(sortedDurations, d)
+	}
+	sort.Slice(sortedDurations, func(i, j int) bool {
+		return sortedDurations[i] < sortedDurations[j]
+	})
+	recordingWindows := make([]string, len(sortedDurations))
+	for i, d := range sortedDurations {
+		recordingWindows[i] = uniqueWindowsMap[d]
+	}
+	return recordingWindows
+}
+
+func formatPrometheusDuration(d time.Duration) string {
+	if d.Seconds() == 0 {
+		return "0s"
+	}
+	if d%(24*time.Hour) == 0 {
+		return fmt.Sprintf("%dd", d/(24*time.Hour))
+	}
+	if d%time.Hour == 0 {
+		return fmt.Sprintf("%dh", d/time.Hour)
+	}
+	if d%time.Minute == 0 {
+		return fmt.Sprintf("%dm", d/time.Minute)
+	}
+	return fmt.Sprintf("%ds", int(d.Seconds()))
 }

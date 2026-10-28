@@ -53,12 +53,13 @@ deps:
         anyVendorDeps: false
 
     Adapter:
-        mayDependOn: [Domain, Util]
-        canUse: [3rd-openslo]
+        mayDependOn: [Domain, Util, Templates]
+        canUse: [3rd-openslo, 3rd-cue, 3rd-prometheus]
 
     Service:
-        mayDependOn: [Domain, Util, Templates]
-        canUse: [3rd-cue, 3rd-yaml, 3rd-prometheus]
+        mayDependOn: [Domain, Util]
+        canUse: []
+        anyVendorDeps: false
 
     CLI:
         mayDependOn: [CLI, Domain, Util, Templates] 

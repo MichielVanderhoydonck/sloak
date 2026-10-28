@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
+	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 )
 
 type mockRenderService struct {
@@ -46,7 +46,6 @@ func newTestRenderCmd(svc domain.TemplateRenderer) *cobra.Command {
 
 func TestRenderCommand_Success(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "apiVersion: monitoring.coreos.com/v1\nkind: PrometheusRule\n"}
 
 	var output bytes.Buffer
@@ -71,7 +70,6 @@ func TestRenderCommand_Success(t *testing.T) {
 
 func TestRenderCommand_MissingTemplate(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
 	var output bytes.Buffer
@@ -99,7 +97,6 @@ func TestRenderCommand_MissingTemplate(t *testing.T) {
 
 func TestRenderCommand_NonExistentTemplateFile(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
 	var output bytes.Buffer
@@ -128,7 +125,6 @@ func TestRenderCommand_NonExistentTemplateFile(t *testing.T) {
 
 func TestRenderCommand_RendererError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{err: errors.New("template execution failed")}
 
 	var output bytes.Buffer
@@ -157,7 +153,6 @@ func TestRenderCommand_RendererError(t *testing.T) {
 
 func TestRenderCommand_InvalidWindow(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
 	var output bytes.Buffer
@@ -186,7 +181,6 @@ func TestRenderCommand_InvalidWindow(t *testing.T) {
 
 func TestRenderCommand_InvalidSLO(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
 	var output bytes.Buffer
@@ -211,7 +205,6 @@ func TestRenderCommand_InvalidSLO(t *testing.T) {
 
 func TestRenderCommand_CustomTemplateTakesPrecedenceOverBuiltIn(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	customContent := `// custom datadog override content`
 	tmpDir := t.TempDir()
 	customFile := filepath.Join(tmpDir, "datadog.cue")
@@ -247,7 +240,6 @@ func TestRenderCommand_CustomTemplateTakesPrecedenceOverBuiltIn(t *testing.T) {
 
 func TestRenderCommand_NonExistentPathDoesNotFallbackToBuiltIn(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
 	var output bytes.Buffer
@@ -276,7 +268,6 @@ func TestRenderCommand_NonExistentPathDoesNotFallbackToBuiltIn(t *testing.T) {
 
 func TestRenderCommand_UnknownBuiltIn(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
 	var output bytes.Buffer
@@ -305,7 +296,6 @@ func TestRenderCommand_UnknownBuiltIn(t *testing.T) {
 
 func TestRenderCommand_SetDottedAndMapFlags(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
 	var output bytes.Buffer
@@ -354,7 +344,6 @@ func TestRenderCommand_SetDottedAndMapFlags(t *testing.T) {
 
 func TestRenderCommand_SetJSONFlags(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "some yaml"}
 
 	var output bytes.Buffer
@@ -388,11 +377,11 @@ func TestRenderCommand_SetJSONFlags(t *testing.T) {
 
 func TestRenderCommand_WithSpecLoader(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockRenderService{res: "rendered with spec"}
+	slo9995, _ := common.NewSLOTarget(99.95)
 	loader := &mockSpecLoader{
 		spec: domain.SLOSpec{
-			TargetSLO:   99.95,
+			TargetSLO:   slo9995,
 			TotalWindow: 30 * 24 * time.Hour,
 			Config: map[string]any{
 				"metric_name": "custom_metric",

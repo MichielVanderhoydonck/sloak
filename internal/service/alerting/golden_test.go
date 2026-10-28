@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	cueAdapter "github.com/MichielVanderhoydonck/sloak/internal/adapter/cue"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	service "github.com/MichielVanderhoydonck/sloak/internal/service/alerting"
@@ -16,7 +17,7 @@ import (
 var updateGolden = flag.Bool("update", false, "update golden files")
 
 func TestRenderGoldenFiles(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, err := common.NewSLOTarget(99.9)
 	if err != nil {
 		t.Fatalf("NewSLOTarget failed: %v", err)
@@ -116,7 +117,7 @@ func TestRenderGoldenFiles(t *testing.T) {
 }
 
 func TestRenderGoldenFiles_7dWindow(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, err := common.NewSLOTarget(99.9)
 	if err != nil {
 		t.Fatalf("NewSLOTarget failed: %v", err)

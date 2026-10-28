@@ -11,7 +11,6 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	errorbudgetDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/errorbudget"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
-	"github.com/spf13/viper"
 )
 
 type mockCalculatorService struct {
@@ -25,7 +24,6 @@ func (m *mockCalculatorService) CalculateBudget(_ errorbudgetDomain.CalculationP
 
 func TestErrorBudgetCommand(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	slo99_95, _ := common.NewSLOTarget(99.95)
 	mockResult := errorbudgetDomain.BudgetResult{
 		TargetSLO:     slo99_95,
@@ -66,7 +64,6 @@ func TestErrorBudgetCommand(t *testing.T) {
 
 func TestErrorBudgetCommand_InvalidWindow(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockSvc := &mockCalculatorService{}
 
 	var output bytes.Buffer
@@ -91,7 +88,6 @@ func TestErrorBudgetCommand_InvalidWindow(t *testing.T) {
 
 func TestErrorBudgetCommand_InvalidSLO(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockSvc := &mockCalculatorService{}
 
 	var output bytes.Buffer
@@ -116,7 +112,6 @@ func TestErrorBudgetCommand_InvalidSLO(t *testing.T) {
 
 func TestErrorBudgetCommand_ServiceError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockSvc := &mockCalculatorService{
 		MockError: errors.New("budget calculation failure"),
 	}

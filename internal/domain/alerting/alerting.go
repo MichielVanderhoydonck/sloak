@@ -63,6 +63,10 @@ type TemplateRenderer interface {
 	RenderTemplate(params GenerateParams, config map[string]any, templateContent string) (string, error)
 }
 
+type RenderEngine interface {
+	EvaluateAndRender(contextData AlertingContext, config map[string]any, params GenerateParams, templateContent string) (string, error)
+}
+
 type Service interface {
 	TableGenerator
 	TemplateRenderer
@@ -70,7 +74,7 @@ type Service interface {
 
 // SLOSpec represents a parsed SLO specification from an external definition (such as OpenSLO).
 type SLOSpec struct {
-	TargetSLO   float64
+	TargetSLO   common.SLOTarget
 	TotalWindow time.Duration
 	Config      map[string]any
 }

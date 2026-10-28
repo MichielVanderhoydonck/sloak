@@ -1,14 +1,13 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	burnrateCmd "github.com/MichielVanderhoydonck/sloak/cmd/burnrate"
+	"github.com/MichielVanderhoydonck/sloak/cmd/cliutil"
 	errorbudgetCmd "github.com/MichielVanderhoydonck/sloak/cmd/errorbudget"
 
 	burnrateService "github.com/MichielVanderhoydonck/sloak/internal/service/burnrate"
@@ -29,14 +28,12 @@ import (
 	feasibilityCmd "github.com/MichielVanderhoydonck/sloak/cmd/feasibility"
 	feasibilityService "github.com/MichielVanderhoydonck/sloak/internal/service/feasibility"
 
+	cueAdapter "github.com/MichielVanderhoydonck/sloak/internal/adapter/cue"
 	openslo "github.com/MichielVanderhoydonck/sloak/internal/adapter/openslo"
 )
 
 func NewRootCmd() *cobra.Command {
-	var (
-		cfgFile   string
-		configErr error
-	)
+	var cfgFile string
 
 	root := &cobra.Command{
 		Use:   "sloak",
@@ -45,9 +42,13 @@ func NewRootCmd() *cobra.Command {
            SLI attainment, burn rates, and more, following strict SRE principles.`,
 		SilenceErrors: true,
 		SilenceUsage:  true,
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			initConfig(cfgFile, &configErr)
-			return configErr
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			baseCfg, err := cliutil.LoadBaseConfig(cfgFile)
+			if err != nil {
+				return err
+			}
+			cliutil.WithBaseConfig(cmd, baseCfg)
+			return nil
 		},
 	}
 
@@ -68,7 +69,7 @@ func NewRootCmd() *cobra.Command {
 
 	root.AddCommand(convertCmd.NewConvertCmd(convertService.NewConvertService()))
 
-	alertSvc := alertingService.NewAlertGeneratorService()
+	alertSvc := alertingService.NewAlertGeneratorService(cueAdapter.NewEngine())
 	specLoader := openslo.NewSpecLoader()
 	genCmd.AddCommand(alertingTableCmd.NewAlertTableCmd(alertSvc))
 	root.AddCommand(alertingTableCmd.NewRenderCmd(alertSvc, specLoader))
@@ -80,35 +81,5 @@ func Execute() {
 	if err := NewRootCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
-	}
-}
-
-func initConfig(cfgFile string, configErr *error) {
-	*configErr = nil
-	viper.Reset()
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		home, err := os.UserHomeDir()
-		if err == nil {
-			viper.AddConfigPath(home)
-			viper.AddConfigPath(".")
-			viper.SetConfigType("yaml")
-			viper.SetConfigName(".sloak")
-		}
-	}
-
-	viper.SetEnvPrefix("SLOAK")
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err != nil {
-		if cfgFile != "" {
-			*configErr = fmt.Errorf("reading config file %q: %w", cfgFile, err)
-		} else {
-			var configFileNotFoundError viper.ConfigFileNotFoundError
-			if !errors.As(err, &configFileNotFoundError) {
-				*configErr = fmt.Errorf("reading config file: %w", err)
-			}
-		}
 	}
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/burnrate"
 	burnrateDomain "github.com/MichielVanderhoydonck/sloak/internal/domain/burnrate"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
-	"github.com/spf13/viper"
 )
 
 type mockBurnRateService struct {
@@ -24,7 +23,6 @@ func (m *mockBurnRateService) CalculateBurnRate(_ burnrateDomain.CalculationPara
 
 func TestBurnRateCommand(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	br := 2.98
 	mockResult := burnrateDomain.BurnRateResult{
 		TotalErrorBudget: util.Duration((43 * time.Minute) + (12 * time.Second)),
@@ -74,7 +72,6 @@ func TestBurnRateCommand(t *testing.T) {
 
 func TestBurnRateCommand_ConsumedWithDayUnit(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	br := 1.0
 	mockResult := burnrateDomain.BurnRateResult{
 		TotalErrorBudget: util.Duration(43 * time.Minute),
@@ -102,7 +99,6 @@ func TestBurnRateCommand_ConsumedWithDayUnit(t *testing.T) {
 
 func TestBurnRateCommand_Unbounded(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockResult := burnrateDomain.BurnRateResult{
 		TotalErrorBudget:  util.Duration(43 * time.Minute),
 		BurnRate:          nil,
@@ -137,7 +133,6 @@ func TestBurnRateCommand_Unbounded(t *testing.T) {
 
 func TestBurnRateCommand_HighMessageSeverity(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	br := 7.5
 	mockResult := burnrateDomain.BurnRateResult{
 		TotalErrorBudget: util.Duration(43 * time.Minute),
@@ -169,7 +164,6 @@ func TestBurnRateCommand_HighMessageSeverity(t *testing.T) {
 
 func TestBurnRateCommand_InvalidWindow(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockSvc := &mockBurnRateService{}
 
 	var output bytes.Buffer
@@ -194,7 +188,6 @@ func TestBurnRateCommand_InvalidWindow(t *testing.T) {
 
 func TestBurnRateCommand_InvalidElapsed(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockSvc := &mockBurnRateService{}
 
 	var output bytes.Buffer
@@ -220,7 +213,6 @@ func TestBurnRateCommand_InvalidElapsed(t *testing.T) {
 
 func TestBurnRateCommand_InvalidConsumed(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockSvc := &mockBurnRateService{}
 
 	var output bytes.Buffer
@@ -247,7 +239,6 @@ func TestBurnRateCommand_InvalidConsumed(t *testing.T) {
 
 func TestBurnRateCommand_InvalidSLO(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockSvc := &mockBurnRateService{}
 
 	var output bytes.Buffer
@@ -274,7 +265,6 @@ func TestBurnRateCommand_InvalidSLO(t *testing.T) {
 
 func TestBurnRateCommand_ServiceError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockSvc := &mockBurnRateService{
 		MockError: errors.New("burn rate calculation failed"),
 	}

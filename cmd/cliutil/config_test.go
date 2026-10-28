@@ -45,6 +45,29 @@ func TestScopedConfigIsolation(t *testing.T) {
 	}
 }
 
+func TestScopedConfigWithBaseContext(t *testing.T) {
+	base := viper.New()
+	base.Set("slo", 95.0)
+	base.Set("window", "14d")
+
+	cmd := &cobra.Command{Use: "sub"}
+	cmd.Flags().Float64("slo", 99.9, "slo flag")
+	cmd.Flags().String("window", "30d", "window flag")
+	cliutil.WithBaseConfig(cmd, base)
+
+	// Without explicit flag override, base config from context wins over flag default
+	v, err := cliutil.ScopedConfig(cmd)
+	if err != nil {
+		t.Fatalf("ScopedConfig failed: %v", err)
+	}
+	if got := v.GetFloat64("slo"); got != 95.0 {
+		t.Errorf("expected slo 95.0 from base context, got %v", got)
+	}
+	if got := v.GetString("window"); got != "14d" {
+		t.Errorf("expected window 14d from base context, got %q", got)
+	}
+}
+
 func TestPrintResult(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
 	buf := &bytes.Buffer{}

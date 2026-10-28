@@ -9,6 +9,7 @@ import (
 	"github.com/OpenSLO/go-sdk/pkg/openslosdk"
 
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
+	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 )
 
 // OpenSLOLoader implements domain.SpecLoader for OpenSLO definitions.
@@ -109,8 +110,13 @@ func Parse(data []byte) (domain.SLOSpec, error) {
 		metaConfig["labels"] = slo.Metadata.Labels
 	}
 
+	sloTarget, err := common.NewSLOTarget(target)
+	if err != nil {
+		return domain.SLOSpec{}, err
+	}
+
 	return domain.SLOSpec{
-		TargetSLO:   target,
+		TargetSLO:   sloTarget,
 		TotalWindow: parsedWindow,
 		Config:      metaConfig,
 	}, nil

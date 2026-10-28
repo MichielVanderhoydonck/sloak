@@ -154,8 +154,8 @@ spec:
 			}
 
 			if !tt.wantErr {
-				if spec.TargetSLO != tt.wantTarget {
-					t.Errorf("expected target %f, got %f", tt.wantTarget, spec.TargetSLO)
+				if spec.TargetSLO.Value != tt.wantTarget {
+					t.Errorf("expected target %f, got %f", tt.wantTarget, spec.TargetSLO.Value)
 				}
 				if spec.TotalWindow != tt.wantWindow {
 					t.Errorf("expected window %s, got %s", tt.wantWindow, spec.TotalWindow)

@@ -11,7 +11,6 @@ import (
 	common "github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/feasibility"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
-	"github.com/spf13/viper"
 )
 
 type mockFeasibilityService struct {
@@ -25,7 +24,6 @@ func (m *mockFeasibilityService) CalculateFeasibility(_ domain.FeasibilityParams
 
 func TestFeasibilityCommand(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	targetSLO, _ := common.NewSLOTarget(99.9)
 	mockRes := domain.FeasibilityResult{
 		TargetSLO:           targetSLO,
@@ -75,7 +73,6 @@ func TestFeasibilityCommand(t *testing.T) {
 
 func TestFeasibilityCommand_InvalidMTTR(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockFeasibilityService{}
 
 	var output bytes.Buffer
@@ -100,7 +97,6 @@ func TestFeasibilityCommand_InvalidMTTR(t *testing.T) {
 
 func TestFeasibilityCommand_InvalidSLO(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockFeasibilityService{}
 
 	var output bytes.Buffer
@@ -125,7 +121,6 @@ func TestFeasibilityCommand_InvalidSLO(t *testing.T) {
 
 func TestFeasibilityCommand_ServiceError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockFeasibilityService{err: errors.New("feasibility calculation error")}
 
 	var output bytes.Buffer

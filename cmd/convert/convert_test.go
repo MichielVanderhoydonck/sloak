@@ -10,7 +10,6 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/convert"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/convert"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
-	"github.com/spf13/viper"
 )
 
 type mockService struct {
@@ -24,7 +23,6 @@ func (m *mockService) Convert(_ domain.ConversionParams) (domain.ConversionResul
 
 func TestConvertCommand(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockRes := domain.ConversionResult{
 		AvailabilityPercent: 99.9,
 		DailyDowntime:       util.Duration(1*time.Minute + 26*time.Second),
@@ -55,7 +53,6 @@ func TestConvertCommand(t *testing.T) {
 
 func TestConvertCommand_BothFlagsError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockService{}
 
 	var output bytes.Buffer
@@ -77,7 +74,6 @@ func TestConvertCommand_BothFlagsError(t *testing.T) {
 
 func TestConvertCommand_NeitherFlagError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockService{}
 
 	var output bytes.Buffer
@@ -99,7 +95,6 @@ func TestConvertCommand_NeitherFlagError(t *testing.T) {
 
 func TestConvertCommand_InvalidDowntime(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockService{}
 
 	var output bytes.Buffer
@@ -121,7 +116,6 @@ func TestConvertCommand_InvalidDowntime(t *testing.T) {
 
 func TestConvertCommand_ServiceError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockService{err: errors.New("conversion failed")}
 
 	var output bytes.Buffer

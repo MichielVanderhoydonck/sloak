@@ -8,7 +8,6 @@ import (
 
 	"github.com/MichielVanderhoydonck/sloak/cmd/dependency"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/dependency"
-	"github.com/spf13/viper"
 )
 
 type mockService struct {
@@ -22,7 +21,6 @@ func (m *mockService) CalculateCompositeAvailability(_ domain.CalculationParams)
 
 func TestDependencyCommand(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockRes := domain.Result{
 		TotalAvailability: 99.8001,
 		CalculationType:   domain.Serial,
@@ -50,7 +48,6 @@ func TestDependencyCommand(t *testing.T) {
 
 func TestDependencyCommand_MissingComponents(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockService{}
 
 	var output bytes.Buffer
@@ -72,7 +69,6 @@ func TestDependencyCommand_MissingComponents(t *testing.T) {
 
 func TestDependencyCommand_InvalidComponent(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockService{}
 
 	var output bytes.Buffer
@@ -94,7 +90,6 @@ func TestDependencyCommand_InvalidComponent(t *testing.T) {
 
 func TestDependencyCommand_ServiceError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockService{err: errors.New("composite calculation failed")}
 
 	var output bytes.Buffer

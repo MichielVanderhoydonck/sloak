@@ -10,7 +10,6 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/disruption"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/disruption"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
-	"github.com/spf13/viper"
 )
 
 type mockDisruptionService struct {
@@ -24,7 +23,6 @@ func (m *mockDisruptionService) CalculateCapacity(_ domain.CalculationParams) (d
 
 func TestDisruptionCommand_Success(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockRes := domain.Result{
 		TotalErrorBudget: util.Duration(43 * time.Minute),
 		MaxDisruptions:   43,
@@ -58,7 +56,6 @@ func TestDisruptionCommand_Success(t *testing.T) {
 
 func TestDisruptionCommand_InvalidWindow(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockDisruptionService{}
 
 	var output bytes.Buffer
@@ -84,7 +81,6 @@ func TestDisruptionCommand_InvalidWindow(t *testing.T) {
 
 func TestDisruptionCommand_InvalidCost(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockDisruptionService{}
 
 	var output bytes.Buffer
@@ -110,7 +106,6 @@ func TestDisruptionCommand_InvalidCost(t *testing.T) {
 
 func TestDisruptionCommand_InvalidSLO(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockDisruptionService{}
 
 	var output bytes.Buffer
@@ -136,7 +131,6 @@ func TestDisruptionCommand_InvalidSLO(t *testing.T) {
 
 func TestDisruptionCommand_ServiceError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockDisruptionService{err: errors.New("capacity calc failed")}
 
 	var output bytes.Buffer

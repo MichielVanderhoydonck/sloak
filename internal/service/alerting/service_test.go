@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	cueAdapter "github.com/MichielVanderhoydonck/sloak/internal/adapter/cue"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	"github.com/MichielVanderhoydonck/sloak/internal/domain/common"
 	service "github.com/MichielVanderhoydonck/sloak/internal/service/alerting"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestGenerateMatrix(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo, _ := common.NewSLOTarget(99.9)
 
 	params := domain.GenerateParams{
@@ -65,7 +66,7 @@ func TestGenerateMatrix(t *testing.T) {
 }
 
 func TestGenerateMatrix_CanonicalMonthlyWindows(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo, err := common.NewSLOTarget(99.9)
 	if err != nil {
 		t.Fatalf("unexpected error creating SLO target: %v", err)
@@ -112,7 +113,7 @@ func TestGenerateMatrix_CanonicalMonthlyWindows(t *testing.T) {
 }
 
 func TestGenerateMatrix_ScalesWithWindow(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo, _ := common.NewSLOTarget(99.9)
 
 	// 7-day window
@@ -153,7 +154,7 @@ func TestGenerateMatrix_ScalesWithWindow(t *testing.T) {
 }
 
 func TestGenerateMatrix_Validation(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo99, _ := common.NewSLOTarget(99.9)
 
 	tests := []struct {
@@ -211,7 +212,7 @@ func TestGenerateMatrix_Validation(t *testing.T) {
 }
 
 func TestRenderRecordingRules(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, _ := common.NewSLOTarget(99.9)
 
 	promTpl, err := templates.GetTemplate("prometheus-operator")
@@ -466,7 +467,7 @@ func TestRenderRecordingRules(t *testing.T) {
 }
 
 func TestRenderErrorRatioQuery(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, _ := common.NewSLOTarget(99.9)
 
 	promTpl, err := templates.GetTemplate("prometheus-operator")
@@ -610,7 +611,7 @@ func TestRenderErrorRatioQuery(t *testing.T) {
 }
 
 func TestPromQLQueryValidation(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, _ := common.NewSLOTarget(99.9)
 
 	promTpl, err := templates.GetTemplate("prometheus-operator")
@@ -689,7 +690,7 @@ func TestPromQLQueryValidation(t *testing.T) {
 }
 
 func TestAggregationLabelsValidation(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, _ := common.NewSLOTarget(99.9)
 
 	promTpl, err := templates.GetTemplate("prometheus-operator")
@@ -730,7 +731,7 @@ func TestAggregationLabelsValidation(t *testing.T) {
 }
 
 func TestValidateDatadogConfig(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, _ := common.NewSLOTarget(99.9)
 
 	ddTpl, err := templates.GetTemplate("datadog")
@@ -820,7 +821,7 @@ rule: {
 }
 
 func TestRenderedPromQLValidation_JSONAndNested(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, _ := common.NewSLOTarget(99.9)
 
 	t.Run("rejects invalid PromQL expression in JSON output format", func(t *testing.T) {
@@ -869,7 +870,7 @@ rule: {
 }
 
 func TestValidateQueryConfig_NoMapMutation(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, _ := common.NewSLOTarget(99.9)
 	tpl, err := templates.GetTemplate("prometheus-operator")
 	if err != nil {
@@ -922,7 +923,7 @@ func TestValidateQueryConfig_NoMapMutation(t *testing.T) {
 }
 
 func TestConsumptionTargetFractions(t *testing.T) {
-	svc := service.NewAlertGeneratorService()
+	svc := service.NewAlertGeneratorService(cueAdapter.NewEngine())
 	slo999, _ := common.NewSLOTarget(99.9)
 
 	t.Run("28d exact consumption targets", func(t *testing.T) {

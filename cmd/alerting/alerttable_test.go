@@ -10,7 +10,6 @@ import (
 	"github.com/MichielVanderhoydonck/sloak/cmd/alerting"
 	domain "github.com/MichielVanderhoydonck/sloak/internal/domain/alerting"
 	util "github.com/MichielVanderhoydonck/sloak/internal/util"
-	"github.com/spf13/viper"
 )
 
 type mockTableGenerator struct {
@@ -26,7 +25,6 @@ func (m *mockTableGenerator) GenerateTable(_ domain.GenerateParams) (domain.Tabl
 
 func TestAlertRulesCommand(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	mockRes := domain.TableResult{
 		Alerts: []domain.AlertDefinition{
 			{
@@ -90,7 +88,6 @@ func TestAlertRulesCommand(t *testing.T) {
 
 func TestAlertRulesCommand_InvalidWindow(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockTableGenerator{}
 
 	var output bytes.Buffer
@@ -115,7 +112,6 @@ func TestAlertRulesCommand_InvalidWindow(t *testing.T) {
 
 func TestAlertRulesCommand_InvalidSLO(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockTableGenerator{}
 
 	var output bytes.Buffer
@@ -140,7 +136,6 @@ func TestAlertRulesCommand_InvalidSLO(t *testing.T) {
 
 func TestAlertRulesCommand_ServiceError(t *testing.T) {
 	t.Parallel()
-	viper.Reset()
 	svc := &mockTableGenerator{err: errors.New("table generation failed")}
 
 	var output bytes.Buffer
