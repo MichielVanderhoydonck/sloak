@@ -48,11 +48,18 @@ func Parse(data []byte) (domain.SLOSpec, error) {
 
 	var slo v1.SLO
 	found := false
+	sliByName := make(map[string]v1.SLI)
 	for _, obj := range objects {
-		if s, ok := obj.(v1.SLO); ok {
-			slo = s
-			found = true
-			break
+		switch o := obj.(type) {
+		case v1.SLO:
+			if !found {
+				slo = o
+				found = true
+			}
+		case v1.SLI:
+			if o.Metadata.Name != "" {
+				sliByName[o.Metadata.Name] = o
+			}
 		}
 	}
 
@@ -91,8 +98,22 @@ func Parse(data []byte) (domain.SLOSpec, error) {
 	parsedWindow := tw.Duration.Duration()
 
 	rawMetric := slo.Metadata.Name
-	if slo.Spec.Indicator != nil && slo.Spec.Indicator.Metadata.Name != "" {
-		rawMetric = slo.Spec.Indicator.Metadata.Name
+	var sliSpec *v1.SLISpec
+	if slo.Spec.Indicator != nil {
+		if slo.Spec.Indicator.Metadata.Name != "" {
+			rawMetric = slo.Spec.Indicator.Metadata.Name
+		}
+		sliSpec = &slo.Spec.Indicator.Spec
+	} else if slo.Spec.IndicatorRef != nil {
+		if referencedSLI, ok := sliByName[*slo.Spec.IndicatorRef]; ok {
+			if err := openslosdk.Validate(referencedSLI); err != nil {
+				return domain.SLOSpec{}, fmt.Errorf("OpenSLO SLI validation failed: %w", err)
+			}
+			if referencedSLI.Metadata.Name != "" {
+				rawMetric = referencedSLI.Metadata.Name
+			}
+			sliSpec = &referencedSLI.Spec
+		}
 	}
 
 	metaConfig := make(map[string]any)
@@ -102,12 +123,19 @@ func Parse(data []byte) (domain.SLOSpec, error) {
 	} else {
 		metaConfig["name"] = slo.Metadata.Name
 	}
+	if slo.Spec.Description != "" {
+		metaConfig["description"] = slo.Spec.Description
+	}
 	if slo.Spec.Service != "" {
 		metaConfig["service"] = slo.Spec.Service
 	}
 
 	if len(slo.Metadata.Labels) > 0 {
 		metaConfig["labels"] = slo.Metadata.Labels
+	}
+
+	if sliSpec != nil && sliSpec.RatioMetric != nil {
+		extractRatioMetricQueries(sliSpec.RatioMetric, metaConfig)
 	}
 
 	sloTarget, err := common.NewSLOTarget(target)
@@ -120,4 +148,31 @@ func Parse(data []byte) (domain.SLOSpec, error) {
 		TotalWindow: parsedWindow,
 		Config:      metaConfig,
 	}, nil
+}
+
+func extractRatioMetricQueries(rm *v1.SLIRatioMetric, metaConfig map[string]any) {
+	if badQ := extractMetricQuery(rm.Bad); badQ != "" {
+		metaConfig["errors_query"] = badQ
+	}
+	if goodQ := extractMetricQuery(rm.Good); goodQ != "" {
+		metaConfig["good_query"] = goodQ
+	}
+	if totQ := extractMetricQuery(rm.Total); totQ != "" {
+		metaConfig["total_query"] = totQ
+	}
+	if rawQ := extractMetricQuery(rm.Raw); rawQ != "" {
+		if rm.RawType == v1.SLIRawMetricTypeFailure || rm.RawType == "" {
+			metaConfig["error_ratio_query"] = rawQ
+		}
+	}
+}
+
+func extractMetricQuery(m *v1.SLIMetricSpec) string {
+	if m == nil || m.MetricSource.Spec == nil {
+		return ""
+	}
+	if q, ok := m.MetricSource.Spec["query"].(string); ok {
+		return q
+	}
+	return ""
 }

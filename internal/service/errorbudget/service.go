@@ -25,7 +25,7 @@ func (s *CalculatorService) CalculateBudget(params errorbudgetDomain.Calculation
 	allowedError := params.TargetSLO.AllowedDowntime(window)
 	errorBudgetRatio := params.TargetSLO.ErrorBudgetRatio()
 
-	return errorbudgetDomain.BudgetResult{
+	res := errorbudgetDomain.BudgetResult{
 		TargetSLO:            params.TargetSLO,
 		TotalDuration:        params.TimeWindow,
 		TotalDurationSeconds: math.Round(window.Seconds()),
@@ -33,5 +33,15 @@ func (s *CalculatorService) CalculateBudget(params errorbudgetDomain.Calculation
 		AllowedErrorSeconds:  math.Round(allowedError.Seconds()),
 		ErrorBudget:          util.RoundPercentage(errorBudgetRatio * 100.0),
 		TargetSLORatio:       params.TargetSLO.RoundedRatio(),
-	}, nil
+	}
+
+	if params.RPS > 0 {
+		totalReqs := int64(math.Round(params.RPS * window.Seconds()))
+		allowedFailed := int64(math.Round(params.RPS * allowedError.Seconds()))
+		res.RPS = params.RPS
+		res.TotalRequests = &totalReqs
+		res.AllowedFailedRequests = &allowedFailed
+	}
+
+	return res, nil
 }

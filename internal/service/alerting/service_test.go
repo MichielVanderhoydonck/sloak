@@ -446,6 +446,29 @@ func TestRenderRecordingRules(t *testing.T) {
 		}
 	})
 
+	t.Run("prometheus with good_query and total_query", func(t *testing.T) {
+		params := domain.GenerateParams{
+			TargetSLO:   slo999,
+			TotalWindow: 30 * 24 * time.Hour,
+			Format:      "yaml",
+		}
+		config := map[string]any{
+			"metric_name": "api_errors",
+			"good_query":  `http_requests_total{job="api",code=~"2.."}`,
+			"total_query": `http_requests_total{job="api"}`,
+		}
+
+		out, err := svc.RenderTemplate(params, config, promTpl)
+		if err != nil {
+			t.Fatalf("RenderTemplate failed: %v", err)
+		}
+
+		expectedExpr := `expr: 1 - (sum by (job) (rate(http_requests_total{job="api",code=~"2.."}[5m])) / sum by (job) (rate(http_requests_total{job="api"}[5m])))`
+		if !strings.Contains(out, expectedExpr) {
+			t.Errorf("expected 1 - (good / total) recording expr, got:\n%s", out)
+		}
+	})
+
 	t.Run("format param overrides config format", func(t *testing.T) {
 		params := domain.GenerateParams{
 			TargetSLO:   slo999,

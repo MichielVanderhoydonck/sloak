@@ -24,10 +24,12 @@ const (
 )
 
 type CalculationParams struct {
-	TargetSLO     common.SLOTarget
-	TotalWindow   util.Duration
-	TimeElapsed   util.Duration
-	ErrorConsumed util.Duration
+	TargetSLO      common.SLOTarget
+	TotalWindow    util.Duration
+	TimeElapsed    util.Duration
+	ErrorConsumed  util.Duration
+	RPS            float64
+	FailedRequests *int64
 }
 
 func (p CalculationParams) Validate() error {
@@ -46,6 +48,17 @@ func (p CalculationParams) Validate() error {
 	if p.ErrorConsumed < 0 {
 		return errors.New("error consumed cannot be negative")
 	}
+	if p.RPS < 0 {
+		return errors.New("rps cannot be negative")
+	}
+	if p.FailedRequests != nil {
+		if *p.FailedRequests < 0 {
+			return errors.New("failed requests cannot be negative")
+		}
+		if p.RPS <= 0 {
+			return errors.New("rps must be greater than zero when failed requests are specified")
+		}
+	}
 	return nil
 }
 
@@ -62,6 +75,10 @@ type BurnRateResult struct {
 	TimeToExhaustionSeconds float64       `json:"time_to_exhaustion_seconds"`
 	NoBudgetConsumed        bool          `json:"no_budget_consumed"`
 	Status                  Status        `json:"status"`
+	RPS                     float64       `json:"rps,omitempty"`
+	TotalBudgetRequests     *int64        `json:"total_error_budget_requests,omitempty"`
+	ConsumedRequests        *int64        `json:"consumed_requests,omitempty"`
+	RemainingRequests       *int64        `json:"remaining_requests,omitempty"`
 }
 
 // ResolveStatus returns the effective Status, classifying from BurnRate/flags if Status wasn't explicitly set.

@@ -27,15 +27,15 @@
 
 ## ⚡ Features
 
-- ⏱️ **Core SRE Math**: Calculate exact allowed downtime budgets over any arbitrary sliding window (`30d`, `90d`, `1y`).
-- 🔥 **Multi-Window Burn Rate Triage**: Forecast time-to-exhaustion and determine whether ongoing incidents breach your budget.
+- ⏱️ **Core SRE Math (Time & Request-Based)**: Calculate exact allowed downtime budgets and allowed failed request counts (`--rps`) over any arbitrary sliding window (`30d`, `90d`, `1y`).
+- 🔥 **Multi-Window Burn Rate Triage**: Forecast time-to-exhaustion from either error duration (`--consumed`) or failed request counts (`--failed-requests --rps`).
 - 🩺 **Feasibility & Operational Reality**: Check if a target SLO (e.g. 99.99%) is mathematically possible given your team's average MTTR and incident frequency.
 - 🚀 **Disruption Budgets**: Compute maximum deployment or restart allowances based on downtime cost per event.
-- 🔗 **Composite Availability**: Model serial (weakest link) and parallel (redundant) multi-service dependencies.
+- 🔗 **Composite Availability & Bottlenecks**: Model serial, parallel, and mixed (`|`) multi-service dependencies with named bottleneck detection and target `--slo` verification.
 - 🔄 **Nines Converter**: Instant bidirectional translation between availability percentages (e.g. `99.95%`) and allowed downtime per day/month/quarter/year.
 - 🚨 **Multi-Window Multi-Burn-Rate (MWMBR) Alerts**: Generate standard Google SRE alerting tables for paging, notifications, and tickets.
 - 🎨 **Polyglot Observability Rendering**: Generate alerting rules for Prometheus Operator, Grafana Cloud (Mimir/Loki), OpenTelemetry Collector, Datadog SLOs, and Incident.io Alert Sources using built-in or custom CUE templates.
-- 📄 **OpenSLO Specification Ingestion**: Directly parse OpenSLO YAML specifications (`--spec`) to render production alert rules.
+- 📄 **Full OpenSLO Specification Ingestion**: Directly parse OpenSLO YAML specifications (`--spec`), including inline or multi-document `SLI` `ratioMetric` queries (`bad`, `good`, `total`, `raw`), to render turnkey alert and recording rules.
 - 🤖 **CI/CD & Automation Ready**: All calculation commands support `-o json` for GitOps pipelines and automated policy gates.
 
 ---
@@ -237,11 +237,11 @@ sloak calculate errorbudget
 ### Calculations (`sloak calculate`)
 | Command | Key Flags | Description |
 | :--- | :--- | :--- |
-| `calculate errorbudget` | `--slo`, `--window`, `-o` | Total allowed downtime for an SLO and window. |
-| `calculate burnrate` | `--slo`, `--window`, `--elapsed`, `--consumed`, `-o` | Consumption velocity and forecast time-to-exhaustion. |
+| `calculate errorbudget` | `--slo`, `--window`, `--rps`, `-o` | Allowed downtime and optional allowed failed requests (`--rps`). |
+| `calculate burnrate` | `--slo`, `--window`, `--elapsed`, `--consumed`, `--rps`, `--failed-requests`, `-o` | Consumption velocity and forecast time-to-exhaustion (time or request-based). |
 | `calculate feasibility` | `--slo`, `--mttr`, `-o` | Required MTBF and maximum incident frequency per month/quarter. |
 | `calculate max-disruption` | `--slo`, `--window`, `--cost`, `-o` | Allowed deployment/restart frequency given disruption cost. |
-| `calculate dependency` | `--components`, `--type` (`serial`\|`parallel`), `-o` | Composite availability across multi-tier architectures. |
+| `calculate dependency` | `--components`, `--type` (`serial`\|`parallel`), `--slo`, `--window`, `-o` | Composite availability, bottleneck detection (`name=99.9`), and `\|` redundancy groups. |
 
 ### Conversions & Generation
 | Command | Key Flags | Description |

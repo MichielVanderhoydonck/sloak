@@ -26,6 +26,7 @@ func NewErrorBudgetCmd(service errorbudgetDomain.Service) *cobra.Command {
 
 	cmd.Flags().Float64P("slo", "s", 99.9, "The SLO target percentage (e.g., 99.9)")
 	cmd.Flags().StringP("window", "w", "30d", "The time window (e.g., 7d, 30d, 1y)")
+	cmd.Flags().Float64("rps", 0, "Optional average requests per second (RPS) to calculate request-based error budget")
 
 	return cmd
 }
@@ -37,6 +38,7 @@ func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) er
 	}
 	sloTarget := v.GetFloat64("slo")
 	windowStr := v.GetString("window")
+	rps := v.GetFloat64("rps")
 
 	timeWindow, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
@@ -51,6 +53,7 @@ func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) er
 	params := errorbudgetDomain.CalculationParams{
 		TargetSLO:  sloTargetVO,
 		TimeWindow: util.Duration(timeWindow),
+		RPS:        rps,
 	}
 
 	result, err := service.CalculateBudget(params)
@@ -65,6 +68,10 @@ func runErrorBudgetCmd(cmd *cobra.Command, service errorbudgetDomain.Service) er
 		fmt.Fprintf(w, "--------------------------------\n")
 		fmt.Fprintf(w, "Error Budget: %.4f%% of time\n", result.ErrorBudget)
 		fmt.Fprintf(w, "Allowed Downtime: %s\n", result.AllowedError)
+		if result.TotalRequests != nil && result.AllowedFailedRequests != nil {
+			fmt.Fprintf(w, "Total Requests: %d (at %.2f RPS)\n", *result.TotalRequests, result.RPS)
+			fmt.Fprintf(w, "Allowed Failed Requests: %d\n", *result.AllowedFailedRequests)
+		}
 		return nil
 	})
 }

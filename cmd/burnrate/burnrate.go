@@ -29,6 +29,8 @@ func NewBurnRateCmd(service burnrateDomain.Service) *cobra.Command {
 	cmd.Flags().StringP("window", "w", "30d", "The total time window (e.g., 30d)")
 	cmd.Flags().StringP("elapsed", "t", "", "Time elapsed since start of the window (defaults to half the window).")
 	cmd.Flags().StringP("consumed", "c", "1h", "Total error time consumed (e.g., 1h, 10m).")
+	cmd.Flags().Float64("rps", 0, "Optional average requests per second (RPS) for request-based burn rate analysis")
+	cmd.Flags().Int64("failed-requests", 0, "Optional number of failed requests in the elapsed window (requires --rps)")
 
 	return cmd
 }
@@ -42,6 +44,7 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 	windowStr := v.GetString("window")
 	elapsedStr := v.GetString("elapsed")
 	consumedStr := v.GetString("consumed")
+	rps := v.GetFloat64("rps")
 
 	totalWindow, err := util.ParseTimeWindow(windowStr)
 	if err != nil {
@@ -58,9 +61,21 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 		timeElapsed = totalWindow / 2
 	}
 
-	errorConsumed, err := util.ParseTimeWindow(consumedStr)
-	if err != nil {
-		return fmt.Errorf("parsing consumed duration: %w", err)
+	hasFailedRequests := cmd.Flags().Changed("failed-requests") || v.IsSet("failed-requests")
+	if hasFailedRequests && cmd.Flags().Changed("consumed") {
+		return fmt.Errorf("cannot specify both --consumed and --failed-requests")
+	}
+
+	var errorConsumed time.Duration
+	var failedRequests *int64
+	if hasFailedRequests {
+		fr := v.GetInt64("failed-requests")
+		failedRequests = &fr
+	} else {
+		errorConsumed, err = util.ParseTimeWindow(consumedStr)
+		if err != nil {
+			return fmt.Errorf("parsing consumed duration: %w", err)
+		}
 	}
 
 	sloTargetVO, err := common.NewSLOTarget(sloTarget)
@@ -69,10 +84,12 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 	}
 
 	params := burnrateDomain.CalculationParams{
-		TargetSLO:     sloTargetVO,
-		TotalWindow:   util.Duration(totalWindow),
-		TimeElapsed:   util.Duration(timeElapsed),
-		ErrorConsumed: util.Duration(errorConsumed),
+		TargetSLO:      sloTargetVO,
+		TotalWindow:    util.Duration(totalWindow),
+		TimeElapsed:    util.Duration(timeElapsed),
+		ErrorConsumed:  util.Duration(errorConsumed),
+		RPS:            rps,
+		FailedRequests: failedRequests,
 	}
 
 	result, err := service.CalculateBurnRate(params)
@@ -85,6 +102,9 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 		fmt.Fprintf(w, "SLO Target: %.3f%%\n", params.TargetSLO.Value)
 		fmt.Fprintf(w, "Time Window: %s\n", params.TotalWindow)
 		fmt.Fprintf(w, "Total Error Budget: %s\n", result.TotalErrorBudget)
+		if result.TotalBudgetRequests != nil {
+			fmt.Fprintf(w, "Total Request Budget: %d failed requests (at %.2f RPS)\n", *result.TotalBudgetRequests, result.RPS)
+		}
 		fmt.Fprintf(w, "--------------------------\n")
 		fmt.Fprintf(w, "Budget Consumed: %.2f%% (Time Elapsed: %.2f%%)\n",
 			result.BudgetConsumed,
@@ -97,6 +117,9 @@ func runBurnRateCmd(cmd *cobra.Command, service burnrateDomain.Service) error {
 			fmt.Fprintln(w, "Burn Rate: 0.00x")
 		}
 		fmt.Fprintf(w, "Budget Remaining: %s\n", result.BudgetRemaining)
+		if result.RemainingRequests != nil && result.ConsumedRequests != nil {
+			fmt.Fprintf(w, "Requests Remaining: %d (Consumed: %d)\n", *result.RemainingRequests, *result.ConsumedRequests)
+		}
 
 		switch result.ResolveStatus() {
 		case burnrateDomain.StatusExcellent:

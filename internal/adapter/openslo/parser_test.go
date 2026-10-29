@@ -71,6 +71,98 @@ spec:
 			},
 		},
 		{
+			name: "Valid OpenSLO with inline indicator bad and total queries",
+			yamlContent: `
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: checkout-availability
+  displayName: Checkout Availability
+spec:
+  description: Availability of checkout service
+  service: checkout
+  budgetingMethod: Occurrences
+  indicator:
+    metadata:
+      name: checkout-http-errors
+    spec:
+      ratioMetric:
+        counter: true
+        bad:
+          metricSource:
+            type: Prometheus
+            spec:
+              query: http_requests_total{job="checkout",code=~"5.."}
+        total:
+          metricSource:
+            type: Prometheus
+            spec:
+              query: http_requests_total{job="checkout"}
+  objectives:
+    - target: 0.999
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+`,
+			wantErr:    false,
+			wantTarget: 99.9,
+			wantWindow: 30 * 24 * time.Hour,
+			wantConfig: map[string]any{
+				"metric_name":  "checkout_http_errors",
+				"name":         "Checkout Availability",
+				"description":  "Availability of checkout service",
+				"service":      "checkout",
+				"errors_query": `http_requests_total{job="checkout",code=~"5.."}`,
+				"total_query":  `http_requests_total{job="checkout"}`,
+			},
+		},
+		{
+			name: "Valid multi-document OpenSLO with referenced SLI good and total queries",
+			yamlContent: `
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: api-good-ratio
+spec:
+  ratioMetric:
+    counter: true
+    good:
+      metricSource:
+        type: Prometheus
+        spec:
+          query: http_requests_total{job="api",code=~"2.."}
+    total:
+      metricSource:
+        type: Prometheus
+        spec:
+          query: http_requests_total{job="api"}
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: api-slo
+spec:
+  service: api
+  budgetingMethod: Occurrences
+  indicatorRef: api-good-ratio
+  objectives:
+    - targetPercent: 99.95
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+`,
+			wantErr:    false,
+			wantTarget: 99.95,
+			wantWindow: 30 * 24 * time.Hour,
+			wantConfig: map[string]any{
+				"metric_name": "api_good_ratio",
+				"name":        "api-slo",
+				"service":     "api",
+				"good_query":  `http_requests_total{job="api",code=~"2.."}`,
+				"total_query": `http_requests_total{job="api"}`,
+			},
+		},
+		{
 			name: "Invalid kind",
 			yamlContent: `
 apiVersion: openslo/v1

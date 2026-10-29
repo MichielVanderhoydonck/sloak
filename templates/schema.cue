@@ -67,6 +67,7 @@ import (
 	error_ratio_query:  string
 	sli_query:          string
 	errors_query:       string
+	good_query:         string
 	total_query:        string
 	aggregation_labels: string
 
@@ -92,7 +93,17 @@ import (
 			out: _err.out
 		}
 	}
-	if _ratio_q == "" && errors_query == "" {
+	if _ratio_q == "" && errors_query == "" && good_query != "" {
+		_good: #FormatQueryPart & {q: good_query, "w": w, by: _by}
+		if total_query != "" {
+			_tot: #FormatQueryPart & {q: total_query, "w": w, by: _by}
+			out: "1 - (\(_good.out) / \(_tot.out))"
+		}
+		if total_query == "" {
+			out: "1 - (\(_good.out))"
+		}
+	}
+	if _ratio_q == "" && errors_query == "" && good_query == "" {
 		out: ""
 	}
 }
@@ -134,6 +145,7 @@ import (
 	runbook_url:        *data.config.runbook_url | ""
 	rule_labels:        *data.config.rule_labels | {}
 	errors_query:       *data.config.errors_query | ""
+	good_query:         *data.config.good_query | ""
 	total_query:        *data.config.total_query | ""
 	_raw_ratio: [
 		if data.config.error_ratio_query != _|_ { data.config.error_ratio_query },
@@ -182,7 +194,7 @@ import (
 	_messages: _alerts & {sev: "message"}
 	_tickets:  _alerts & {sev: "ticket"}
 
-	_has_recordings: (cfg.errors_query != "" || cfg.error_ratio_query != "" || cfg.sli_query != "") && (data.recording_windows != _|_) && len(data.recording_windows) > 0
+	_has_recordings: (cfg.errors_query != "" || cfg.good_query != "" || cfg.error_ratio_query != "" || cfg.sli_query != "") && (data.recording_windows != _|_) && len(data.recording_windows) > 0
 
 	groups: [
 		if _has_recordings {
@@ -195,6 +207,7 @@ import (
 						error_ratio_query:  cfg.error_ratio_query
 						sli_query:          cfg.sli_query
 						errors_query:       cfg.errors_query
+						good_query:         cfg.good_query
 						total_query:        cfg.total_query
 						aggregation_labels: cfg.aggregation_labels
 					}).out

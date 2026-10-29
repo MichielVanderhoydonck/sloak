@@ -63,6 +63,15 @@ func TestCalculatorService(t *testing.T) {
 			},
 			expectedError: errors.New("time window must be greater than zero"),
 		},
+		{
+			name: "Negative RPS Error",
+			params: errorbudgetDomain.CalculationParams{
+				TargetSLO:  mustNewSLO(99.9),
+				TimeWindow: util.Duration(30 * 24 * time.Hour),
+				RPS:        -10,
+			},
+			expectedError: errors.New("rps cannot be negative"),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -86,4 +95,21 @@ func TestCalculatorService(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("Request-based budget calculation with RPS", func(t *testing.T) {
+		res, err := svc.CalculateBudget(errorbudgetDomain.CalculationParams{
+			TargetSLO:  mustNewSLO(99.9),
+			TimeWindow: util.Duration(30 * 24 * time.Hour),
+			RPS:        100,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.TotalRequests == nil || *res.TotalRequests != 259200000 {
+			t.Errorf("expected 259200000 total requests, got %v", res.TotalRequests)
+		}
+		if res.AllowedFailedRequests == nil || *res.AllowedFailedRequests != 259200 {
+			t.Errorf("expected 259200 allowed failed requests, got %v", res.AllowedFailedRequests)
+		}
+	})
 }

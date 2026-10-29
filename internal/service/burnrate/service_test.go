@@ -260,4 +260,30 @@ func TestBurnRateService(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("Request-based burn rate via FailedRequests and RPS", func(t *testing.T) {
+		failedReqs := int64(180000) // at 100 RPS, 180000 failed requests = 1800s (30m)
+		res, err := svc.CalculateBurnRate(burnrateDomain.CalculationParams{
+			TargetSLO:      mustNewSLO(t, 99.9),
+			TotalWindow:    util.Duration(30 * 24 * time.Hour),
+			TimeElapsed:    util.Duration(7 * 24 * time.Hour),
+			RPS:            100,
+			FailedRequests: &failedReqs,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.BurnRate == nil || !approxEqual(*res.BurnRate, 2.98, 0.01) {
+			t.Errorf("expected burn rate ~2.98, got %v", res.BurnRate)
+		}
+		if res.TotalBudgetRequests == nil || *res.TotalBudgetRequests != 259200 {
+			t.Errorf("expected total request budget 259200, got %v", res.TotalBudgetRequests)
+		}
+		if res.ConsumedRequests == nil || *res.ConsumedRequests != 180000 {
+			t.Errorf("expected consumed requests 180000, got %v", res.ConsumedRequests)
+		}
+		if res.RemainingRequests == nil || *res.RemainingRequests != 79200 {
+			t.Errorf("expected remaining requests 79200, got %v", res.RemainingRequests)
+		}
+	})
 }

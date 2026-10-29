@@ -19,8 +19,8 @@ The configuration file is intended for **stable, universal settings** that apply
 
 A configuration file should not be a dumping ground for every possible flag. We explicitly exclude flags that represent context-specific questions or volatile data.
 
-### 1. Ephemeral Incident State
-- **`elapsed` & `consumed`** *(from `calculate burnrate`)*: These describe the state of an ongoing, specific incident (e.g., "we are 5 days in and consumed 2 hours"). This changes every time you run the command.
+### 1. Ephemeral Incident & Traffic State
+- **`elapsed`, `consumed`, `failed-requests`, & `rps`** *(from `calculate burnrate` and `calculate errorbudget`)*: These describe the traffic rate of a specific service or the state of an ongoing incident (e.g., "we are 5 days in and consumed 2 hours or 180,000 failed requests at 100 RPS"). This changes per service and incident.
 
 ### 2. Ad-hoc Architecture Parameters
 - **`components` & `type`** *(from `calculate dependency`)*: These describe the specific system architecture you are evaluating *right now* (e.g., "calculate these three 99.9% services in parallel"). A user will evaluate many different systems throughout the day.

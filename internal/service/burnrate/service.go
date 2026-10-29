@@ -24,6 +24,11 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 
 	totalWindow := time.Duration(params.TotalWindow)
 	errorConsumed := time.Duration(params.ErrorConsumed)
+	errorConsumedSec := errorConsumed.Seconds()
+	if params.FailedRequests != nil && params.RPS > 0 {
+		errorConsumedSec = float64(*params.FailedRequests) / params.RPS
+		errorConsumed = time.Duration(math.Round(errorConsumedSec * float64(time.Second)))
+	}
 	timeElapsed := time.Duration(params.TimeElapsed)
 
 	totalBudgetDur := params.TargetSLO.AllowedDowntime(totalWindow)
@@ -32,18 +37,18 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 	}
 
 	budgetRemaining := totalBudgetDur - errorConsumed
-	consumedPercent := (errorConsumed.Seconds() / totalBudgetDur.Seconds()) * 100.0
+	consumedPercent := (errorConsumedSec / totalBudgetDur.Seconds()) * 100.0
 	timeElapsedPercent := (timeElapsed.Seconds() / totalWindow.Seconds()) * 100.0
 
 	var burnRate *float64
 	var burnRateUnbounded bool
 	if timeElapsed > 0 {
 		// Calculate burn rate directly from unrounded ratios: (consumed/budget) / (elapsed/window)
-		rawBurnRate := (errorConsumed.Seconds() / totalBudgetDur.Seconds()) / (timeElapsed.Seconds() / totalWindow.Seconds())
+		rawBurnRate := (errorConsumedSec / totalBudgetDur.Seconds()) / (timeElapsed.Seconds() / totalWindow.Seconds())
 		val := util.RoundValue(rawBurnRate)
 		burnRate = &val
 	} else {
-		if errorConsumed > 0 {
+		if errorConsumedSec > 0 {
 			burnRate = nil
 			burnRateUnbounded = true
 		} else {
@@ -53,10 +58,11 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 	}
 
 	var tte time.Duration
-	if errorConsumed > 0 && timeElapsed.Seconds() > 0 {
-		consumptionRate := errorConsumed.Seconds() / timeElapsed.Seconds()
+	if errorConsumedSec > 0 && timeElapsed.Seconds() > 0 {
+		consumptionRate := errorConsumedSec / timeElapsed.Seconds()
 		if consumptionRate > 0 {
-			tte = time.Duration(math.Round(budgetRemaining.Seconds()/consumptionRate)) * time.Second
+			remainingSec := totalBudgetDur.Seconds() - errorConsumedSec
+			tte = time.Duration(math.Round(remainingSec/consumptionRate)) * time.Second
 		}
 	}
 
@@ -64,10 +70,10 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 		tte = 0
 	}
 
-	noBudgetConsumed := errorConsumed == 0
+	noBudgetConsumed := errorConsumedSec == 0
 	status := burnrateDomain.ClassifyBurnRate(burnRate, burnRateUnbounded, noBudgetConsumed)
 
-	return burnrateDomain.BurnRateResult{
+	res := burnrateDomain.BurnRateResult{
 		TotalErrorBudget:        util.Duration(totalBudgetDur),
 		TotalErrorBudgetSeconds: math.Round(totalBudgetDur.Seconds()),
 		BudgetRemaining:         util.Duration(budgetRemaining),
@@ -80,5 +86,22 @@ func (s *BurnRateService) CalculateBurnRate(params burnrateDomain.CalculationPar
 		TimeToExhaustionSeconds: math.Round(tte.Seconds()),
 		NoBudgetConsumed:        noBudgetConsumed,
 		Status:                  status,
-	}, nil
+	}
+
+	if params.RPS > 0 {
+		totalBudgetReqs := int64(math.Round(totalBudgetDur.Seconds() * params.RPS))
+		var consumedReqs int64
+		if params.FailedRequests != nil {
+			consumedReqs = *params.FailedRequests
+		} else {
+			consumedReqs = int64(math.Round(errorConsumedSec * params.RPS))
+		}
+		remainingReqs := totalBudgetReqs - consumedReqs
+		res.RPS = params.RPS
+		res.TotalBudgetRequests = &totalBudgetReqs
+		res.ConsumedRequests = &consumedReqs
+		res.RemainingRequests = &remainingReqs
+	}
+
+	return res, nil
 }

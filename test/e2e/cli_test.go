@@ -1146,3 +1146,90 @@ func TestPromQLQueryValidationE2E(t *testing.T) {
 		t.Errorf("expected invalid aggregation label error, got: %s", stderr2.String())
 	}
 }
+
+func TestOpenSLOQueriesAndSRERequestUseCasesE2E(t *testing.T) {
+	// 1. Zero-flag OpenSLO render with inline ratioMetric queries
+	specYAML := `apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: checkout-slo
+  displayName: Checkout Availability
+spec:
+  service: checkout
+  budgetingMethod: Occurrences
+  indicator:
+    metadata:
+      name: checkout-http-errors
+    spec:
+      ratioMetric:
+        counter: true
+        bad:
+          metricSource:
+            type: Prometheus
+            spec:
+              query: http_requests_total{job="checkout",code=~"5.."}
+        total:
+          metricSource:
+            type: Prometheus
+            spec:
+              query: http_requests_total{job="checkout"}
+  objectives:
+    - target: 0.999
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+`
+	tmpSpec, err := os.CreateTemp("", "openslo-queries-*.yaml")
+	if err != nil {
+		t.Fatalf("failed to create temp OpenSLO file: %v", err)
+	}
+	defer os.Remove(tmpSpec.Name())
+	if _, err := tmpSpec.WriteString(specYAML); err != nil {
+		t.Fatalf("failed to write OpenSLO spec: %v", err)
+	}
+	tmpSpec.Close()
+
+	cmdSpec := exec.Command(sloakBinaryPath, "render", "--template=prometheus-operator", "--spec="+tmpSpec.Name())
+	outSpec, err := cmdSpec.CombinedOutput()
+	if err != nil {
+		t.Fatalf("render from OpenSLO with inline queries failed: %v\nOutput: %s", err, string(outSpec))
+	}
+	outSpecStr := string(outSpec)
+	if !strings.Contains(outSpecStr, "name: slo-recording-rules") || !strings.Contains(outSpecStr, `record: job:checkout_http_errors:rate5m`) {
+		t.Errorf("expected OpenSLO queries to generate recording rules automatically, got:\n%s", outSpecStr)
+	}
+
+	// 2. Request-based error budget (--rps)
+	cmdEB := exec.Command(sloakBinaryPath, "calculate", "errorbudget", "--slo=99.9", "--window=30d", "--rps=100")
+	outEB, err := cmdEB.CombinedOutput()
+	if err != nil {
+		t.Fatalf("errorbudget --rps failed: %v\nOutput: %s", err, string(outEB))
+	}
+	if !strings.Contains(string(outEB), "Allowed Failed Requests: 259200") {
+		t.Errorf("expected 'Allowed Failed Requests: 259200' in output, got:\n%s", string(outEB))
+	}
+
+	// 3. Request-based burn rate (--rps + --failed-requests)
+	cmdBR := exec.Command(sloakBinaryPath, "calculate", "burnrate", "--slo=99.9", "--window=30d", "--elapsed=7d", "--rps=100", "--failed-requests=180000")
+	outBR, err := cmdBR.CombinedOutput()
+	if err != nil {
+		t.Fatalf("burnrate --failed-requests failed: %v\nOutput: %s", err, string(outBR))
+	}
+	if !strings.Contains(string(outBR), "Burn Rate: 2.98x") || !strings.Contains(string(outBR), "Requests Remaining: 79200 (Consumed: 180000)") {
+		t.Errorf("unexpected burnrate --failed-requests output:\n%s", string(outBR))
+	}
+
+	// 4. Dependency topology with named components, inline redundancy '|', bottleneck, and target SLO
+	cmdDep := exec.Command(sloakBinaryPath, "calculate", "dependency",
+		"--components=api=99.99,db1=99.9|db2=99.9,auth=99.9",
+		"--slo=99.9",
+	)
+	outDep, err := cmdDep.CombinedOutput()
+	if err != nil {
+		t.Fatalf("dependency topology command failed: %v\nOutput: %s", err, string(outDep))
+	}
+	outDepStr := string(outDep)
+	if !strings.Contains(outDepStr, "Bottleneck: auth (99.9000%)") || !strings.Contains(outDepStr, "Status: BELOW_TARGET") {
+		t.Errorf("expected Bottleneck: auth and Status: BELOW_TARGET, got:\n%s", outDepStr)
+	}
+}

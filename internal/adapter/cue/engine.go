@@ -33,8 +33,10 @@ func (e *Engine) EvaluateAndRender(contextData domain.AlertingContext, config ma
 	if err := validateTemplateConstraints(params, config); err != nil {
 		return "", err
 	}
-	if err := validateQueryConfig(config); err != nil {
-		return "", err
+	if !isNonPromQLTemplate(params.Template) {
+		if err := validateQueryConfig(config); err != nil {
+			return "", err
+		}
 	}
 
 	cfgCopy := make(map[string]any, len(config))
@@ -287,16 +289,25 @@ func validateQueryPart(name, q string) error {
 	return nil
 }
 
+func isNonPromQLTemplate(templateName string) bool {
+	if info, ok := templates.GetBuiltInInfo(templateName); ok {
+		return info.NonPromQL
+	}
+	return false
+}
+
 func validateQueryConfig(config map[string]any) error {
 	if config == nil {
 		return nil
 	}
 	errQ, _ := config["errors_query"].(string)
+	goodQ, _ := config["good_query"].(string)
 	totQ, _ := config["total_query"].(string)
 	errorRatioQ, _ := config["error_ratio_query"].(string)
 	sliQ, _ := config["sli_query"].(string)
 
 	errQ = strings.TrimSpace(errQ)
+	goodQ = strings.TrimSpace(goodQ)
 	totQ = strings.TrimSpace(totQ)
 	errorRatioQ = strings.TrimSpace(errorRatioQ)
 	sliQ = strings.TrimSpace(sliQ)
@@ -317,14 +328,23 @@ func validateQueryConfig(config map[string]any) error {
 			return err
 		}
 	}
+	if goodQ != "" {
+		if err := validateQueryPart("good_query", goodQ); err != nil {
+			return err
+		}
+	}
 	if totQ != "" {
 		if err := validateQueryPart("total_query", totQ); err != nil {
 			return err
 		}
 	}
 
-	if effectiveRatioQ != "" && (errQ != "" || totQ != "") {
+	if effectiveRatioQ != "" && (errQ != "" || goodQ != "" || totQ != "") {
 		return fmt.Errorf("error_ratio_query cannot be combined with errors_query or total_query; use errors_query + total_query for counter metrics, or error_ratio_query for precomputed ratios")
+	}
+
+	if errQ != "" && goodQ != "" {
+		return fmt.Errorf("errors_query and good_query cannot be combined; specify either errors_query + total_query or good_query + total_query")
 	}
 
 	if errQ != "" && totQ == "" && effectiveRatioQ == "" {
@@ -332,7 +352,10 @@ func validateQueryConfig(config map[string]any) error {
 			return fmt.Errorf("errors_query requires total_query to compute the error ratio; if your query is already an error ratio, use error_ratio_query instead")
 		}
 	}
-	if totQ != "" && errQ == "" && effectiveRatioQ == "" {
+	if goodQ != "" && totQ == "" && effectiveRatioQ == "" {
+		return fmt.Errorf("good_query requires total_query to compute the error ratio")
+	}
+	if totQ != "" && errQ == "" && goodQ == "" && effectiveRatioQ == "" {
 		return fmt.Errorf("total_query provided without errors_query; both errors_query and total_query are required to compute the error ratio")
 	}
 

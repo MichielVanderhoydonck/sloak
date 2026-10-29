@@ -18,16 +18,17 @@ type BuiltInInfo struct {
 	DefaultFormat   string
 	AllowedWindows  []time.Duration
 	TimeframeConfig string
+	NonPromQL       bool
 }
 
 var builtIns = map[string]BuiltInInfo{
 	"prometheus-operator":    {DisplayName: "prometheus-operator", FileName: "prometheus_operator_mwmbr.cue", DefaultFormat: "yaml"},
-	"datadog":                {DisplayName: "datadog SLO", FileName: "datadog.cue", DefaultFormat: "json", AllowedWindows: []time.Duration{7 * 24 * time.Hour, 30 * 24 * time.Hour, 90 * 24 * time.Hour}, TimeframeConfig: "timeframe"},
+	"datadog":                {DisplayName: "datadog SLO", FileName: "datadog.cue", DefaultFormat: "json", AllowedWindows: []time.Duration{7 * 24 * time.Hour, 30 * 24 * time.Hour, 90 * 24 * time.Hour}, TimeframeConfig: "timeframe", NonPromQL: true},
 	"grafana-cloud":          {DisplayName: "grafana-cloud", FileName: "grafana_cloud_alerting.cue", DefaultFormat: "yaml"},
 	"grafana-cloud-alerting": {DisplayName: "grafana-cloud", FileName: "grafana_cloud_alerting.cue", DefaultFormat: "yaml"},
-	"otel-collector":         {DisplayName: "otel-collector", FileName: "otel_collector.cue", DefaultFormat: "yaml"},
-	"incident-io":            {DisplayName: "incident-io", FileName: "incident_io.cue", DefaultFormat: "json"},
-	"incident_io":            {DisplayName: "incident-io", FileName: "incident_io.cue", DefaultFormat: "json"},
+	"otel-collector":         {DisplayName: "otel-collector", FileName: "otel_collector.cue", DefaultFormat: "yaml", NonPromQL: true},
+	"incident-io":            {DisplayName: "incident-io", FileName: "incident_io.cue", DefaultFormat: "json", NonPromQL: true},
+	"incident_io":            {DisplayName: "incident-io", FileName: "incident_io.cue", DefaultFormat: "json", NonPromQL: true},
 }
 
 // IsBuiltIn reports whether name is a recognized built-in template identifier.
