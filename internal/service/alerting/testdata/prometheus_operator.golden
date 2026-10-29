@@ -11,27 +11,27 @@ spec:
       rules:
         - alert: HighBurnRatePage
           labels:
+            severity: page
             env: prod
             service: api
-            severity: page
           expr: (job:api_errors:rate1h > (14.4 * 0.001) and job:api_errors:rate5m > (14.4 * 0.001))
           annotations:
             summary: High burn rate for page alerts
             description: The page error budget is burning too fast for metric api_errors. Current burn rate exceeds SRE thresholds.
         - alert: HighBurnRateMessage
           labels:
+            severity: message
             env: prod
             service: api
-            severity: message
           expr: (job:api_errors:rate6h > (6 * 0.001) and job:api_errors:rate30m > (6 * 0.001))
           annotations:
             summary: High burn rate for message alerts
             description: The message error budget is burning too fast for metric api_errors. Current burn rate exceeds SRE thresholds.
         - alert: HighBurnRateTicket
           labels:
+            severity: ticket
             env: prod
             service: api
-            severity: ticket
           expr: (job:api_errors:rate3d > (1 * 0.001) and job:api_errors:rate6h > (1 * 0.001))
           annotations:
             summary: High burn rate for ticket alerts
