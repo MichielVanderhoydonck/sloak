@@ -44,6 +44,44 @@ Provide your error and total metric queries to generate a complete turnkey setup
 > **Recording Rule Performance on Large Clusters:**
 > Evaluating `rate(counter[3d])` (or `[9d]` for 90d windows) directly over raw high-churn counters can be resource-intensive in very large Prometheus deployments. In such environments, consider chaining recording rules (evaluating longer windows from recorded 1h ratios, as popularized by Sloth and Pyrra) or configuring subquery caching.
 
+### OpenSLO Specification Setup (`--spec`)
+You can also render turnkey recording and alerting rules directly from an OpenSLO YAML specification (`inline` `spec.indicator` or a multi-document `kind: SLI` referenced via `spec.indicatorRef`):
+```yaml
+# service-slo.yaml
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: api-availability
+  displayName: API Availability
+spec:
+  service: api
+  budgetingMethod: Occurrences
+  indicator:
+    metadata:
+      name: api-errors
+    spec:
+      ratioMetric:
+        counter: true
+        bad:
+          metricSource:
+            type: Prometheus
+            spec:
+              query: http_requests_total{job="api",code=~"5.."}
+        total:
+          metricSource:
+            type: Prometheus
+            spec:
+              query: http_requests_total{job="api"}
+  objectives:
+    - target: 0.999
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+```
+```bash
+./sloak render --template prometheus-operator --spec service-slo.yaml > slo-alerts.yaml
+```
+
 ### Lab / Verification Setup (Simulated Outage)
 To deterministically test alerts firing in Minikube without generating traffic, pass `error_ratio_query="vector(0.2)"` (or `sli_query="vector(0.2)"`) to simulate a constant 20% error rate across all windows (> 14.4x burn rate):
 ```bash

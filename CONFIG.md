@@ -23,7 +23,7 @@ A configuration file should not be a dumping ground for every possible flag. We 
 - **`elapsed`, `consumed`, `failed-requests`, & `rps`** *(from `calculate burnrate` and `calculate errorbudget`)*: These describe the traffic rate of a specific service or the state of an ongoing incident (e.g., "we are 5 days in and consumed 2 hours or 180,000 failed requests at 100 RPS"). This changes per service and incident.
 
 ### 2. Ad-hoc Architecture Parameters
-- **`components` & `type`** *(from `calculate dependency`)*: These describe the specific system architecture you are evaluating *right now* (e.g., "calculate these three 99.9% services in parallel"). A user will evaluate many different systems throughout the day.
+- **`components` & `type`** *(from `calculate dependency`)*: These describe the specific system architecture you are evaluating *right now* (e.g., "calculate `api=99.99,db1=99.9|db2=99.9,auth=99.9` in series"). Note that while `calculate dependency` uses `window` for expected composite downtime, its `--slo` flag is only evaluated when explicitly passed on the CLI so global `.sloak.yaml` defaults do not trigger unintended target checks during ad-hoc exploration.
 
 ### 3. Conversion Parameters
 - **`nines` & `downtime`** *(from `convert`)*: These are the direct input values you want the tool to translate (e.g., "What is 99.95% in downtime?"). 

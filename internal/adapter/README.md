@@ -6,7 +6,7 @@ In Hexagonal / Clean Architecture, adapters implement domain ports to translate 
 
 ## Adapters
 
-* **`openslo`**: Reads and validates external OpenSLO YAML specifications (using the official OpenSLO Go SDK) and maps them into domain `SLOSpec` models (`domain.SpecLoader`).
+* **`openslo`**: Reads and validates external OpenSLO YAML specifications (using the official OpenSLO Go SDK), resolves inline `indicator` or multi-document `kind: SLI` references (`ratioMetric` queries), and maps them into domain `SLOSpec` models (`domain.SpecLoader`).
 * **`cue`**: Evaluates CUE templates against the embedded schema, validates PromQL expressions via the Prometheus AST parser, and serializes output to YAML/JSON (`domain.RenderEngine`).
 
 ## Rule of Thumb

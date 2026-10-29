@@ -64,11 +64,11 @@ go build -o sloak cmd/sloak/main.go
 
 ## 🚀 Quickstart & Workflows
 
-### 1. Calculate Error Budgets
-Determine allowed failure time for a target SLO over a defined window:
+### 1. Calculate Error Budgets (Time & Request-Based)
+Determine allowed failure time—and optionally allowed failed requests (`--rps`)—for a target SLO over a defined window:
 
 ```bash
-sloak calculate errorbudget --slo 99.9 --window 30d
+sloak calculate errorbudget --slo 99.9 --window 30d --rps 100
 ```
 
 ```text
@@ -78,18 +78,24 @@ Time Window: 30.0d
 --------------------------------
 Error Budget: 0.1000% of time
 Allowed Downtime: 43m12s
+Total Requests: 259200000 (at 100.00 RPS)
+Allowed Failed Requests: 259200
 ```
 
 > [!TIP]
-> Add `-o json` to feed calculated error budget metrics into custom automation scripts or CI/CD dashboards.
+> Omit `--rps` for pure time-based calculations, or add `-o json` to feed calculated error budget metrics into custom automation scripts or CI/CD dashboards.
 
 ---
 
 ### 2. Triage an Active Incident (Burn Rate Analysis)
-Assess how fast an active degradation is consuming your budget and predict when it will be exhausted:
+Assess how fast an active degradation is consuming your budget (using either `--consumed` duration or `--failed-requests` with `--rps`) and predict when it will be exhausted:
 
 ```bash
+# Time-based triage
 sloak calculate burnrate --slo 99.9 --window 30d --elapsed 7d --consumed 30m
+
+# Request-based triage
+sloak calculate burnrate --slo 99.9 --window 30d --elapsed 7d --rps 100 --failed-requests 180000
 ```
 
 ```text
@@ -97,14 +103,16 @@ sloak calculate burnrate --slo 99.9 --window 30d --elapsed 7d --consumed 30m
 SLO Target: 99.900%
 Time Window: 30.0d
 Total Error Budget: 43m12s
+Total Request Budget: 259200 failed requests (at 100.00 RPS)
 --------------------------
 Budget Consumed: 69.44% (Time Elapsed: 23.33%)
 Burn Rate: 2.98x
 Budget Remaining: 13m12s
+Requests Remaining: 79200 (Consumed: 180000)
 
 Status: WARNING (Ticket). Budget is burning faster than sustainable.
 Forecast: Budget will be empty in 3.1d
-Predicted Exhaustion: Sun, 25 Oct 2026 23:45:12 CEST
+Predicted Exhaustion: Sun, 01 Nov 2026 12:57:12 CET
 ```
 
 ---
@@ -138,7 +146,27 @@ Allows multiple incidents per quarter.
 
 ---
 
-### 4. Generate SRE MWMBR Alert Tables
+### 4. Model Multi-Tier Dependency Topologies & Bottlenecks
+Evaluate composite availability across serial chains, redundant parallel pairs (`|`), and named components (`name=99.9`) against a target `--slo`:
+
+```bash
+sloak calculate dependency --components "api=99.99,db1=99.9|db2=99.9,auth=99.9" --slo 99.9
+```
+
+```text
+--- Dependency Availability (Serial) ---
+Components: 4
+------------------------------------
+Total Availability: 99.8899%
+Expected Downtime (30.0d): 47m34s
+Bottleneck: auth (99.9000%)
+
+Status: BELOW_TARGET (Target: 99.900%)
+```
+
+---
+
+### 5. Generate SRE MWMBR Alert Tables
 Generate the standard Google SRE alerting matrix with short/long windows and burn-rate multipliers:
 
 ```bash
@@ -158,8 +186,8 @@ THRESHOLD   SHORT WINDOW   LONG WINDOW   BURN RATE   NOTIFICATION
 
 ---
 
-### 5. Render Production Observability Configs
-Render turnkey alert definitions using built-in CUE templates, values overrides, or OpenSLO specifications:
+### 6. Render Production Observability Configs
+Render turnkey alert definitions using built-in CUE templates, values overrides, or OpenSLO specifications (including automatic extraction of `ratioMetric` queries from inline `indicator` or multi-document `SLI` specs):
 
 ```bash
 # Render Prometheus Operator PrometheusRule resource (with recording rules)
@@ -177,10 +205,10 @@ sloak render \
   --slo 99.9 \
   --values ./templates/values.yaml > datadog-slo.json
 
-# Render directly from an OpenSLO specification
+# Zero-flag compilation directly from an OpenSLO specification (extracts targets, windows, and SLI queries)
 sloak render \
   --template prometheus-operator \
-  --spec ./service-slo.yaml
+  --spec ./service-slo.yaml > prometheus-rules.yaml
 ```
 
 ---
